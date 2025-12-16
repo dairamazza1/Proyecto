@@ -24,12 +24,9 @@ export async function insertCompany(p) {
   return data;
 }
 
-export async function ShowCompanyByIDUser(){
+export async function ShowCompanyByIDUser(p){
   const {data,error} = await supabase.rpc("mostrarempresaporiduser",p)
-  .maybeSingle();
-
-  console.log("entró");
-  
+  .maybeSingle();  
 
   //   if (error) {
   //   Swal.fire({

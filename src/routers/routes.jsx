@@ -19,13 +19,12 @@ export function MyRoutes() {
 
   const { isLoading, error } = useQuery({
     queryKey: ["mostrar usuarios"],
-    // queryFn: showUsers({_id_user: dataUsers}),
-    queryFn: showUsers
+    queryFn: showUsers,refetchOnWindowFocus:false
   });
 
   const {data:dtCompany} = useQuery({
     queryKey: ["Mostrar empresa", dataUsers?.id],
-    queryFn: () => showCompany({ _id_user: dataUsers?.id }), enabled:!!dataUsers
+    queryFn: () => showCompany({ _id_user: dataUsers?.id }), enabled:!!dataUsers,refetchOnWindowFocus:false
   });
 
   if (isLoading) {

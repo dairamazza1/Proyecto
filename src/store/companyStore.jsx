@@ -6,7 +6,6 @@ export const useCompanyStore = create((set) => ({
     showCompany: async(p) => {
         const response = await ShowCompanyByIDUser(p)
         set({dataCompany: response});
-        console.log("????");
         
         return response;
     },

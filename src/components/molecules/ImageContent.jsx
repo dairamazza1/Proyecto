@@ -1,7 +1,7 @@
 import styled from "styled-components";
 import { LazyLoadImage } from "react-lazy-load-image-component";
 import "react-lazy-load-image-component/src/effects/blur.css";
-import { v } from "../../index";
+import {v} from "../../styles/variables"
 
 export function ImageContent({ imagen }) {
   return (

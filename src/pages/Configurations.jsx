@@ -7,7 +7,7 @@ export function Configurations() {
   const { getModuleSection } = useModuleSectionStore();
   const { isLoading, error } = useQuery({
     queryKey: ['Mostar secciones de módulo'],
-    queryFn:  getModuleSection,
+    queryFn:  getModuleSection,refetchOnWindowFocus:false
   });
 
 

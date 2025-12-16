@@ -4,7 +4,21 @@ import { supabase } from "../index";
 const table = "module";
 export async function InsertModule(p, file) {
   //no se debe repetir la descripcion del modulo/categoría  a menos que haya sucursal con las mismas categorias. en una misma suc no repite
-  const { error, data } = await supabase.rpc("insertModules", p);
+    const { error, data } = await supabase.rpc("insertmodules", p);
+console.log(p);
+
+  
+//   const pt = {
+//   "_name": "test",
+//   "_icon": "-",
+//   "_id_company": 1,
+//   "_color": "#000000"
+// }
+//  const { error, data } = await supabase.rpc("insertmodules", pt);
+
+
+
+
   if (error) {
     Swal.fire({
       icon: "error",
@@ -13,8 +27,8 @@ export async function InsertModule(p, file) {
     });
     return;
   }
-  const img = file.size;
-  if (img != undefined) {
+  if (file?.size != undefined) {
+
     const nuevoId = data;
     const urlimagen = await uploadFile(nuevoId, file);
 
@@ -27,7 +41,8 @@ export async function InsertModule(p, file) {
 }
 
 async function uploadFile(idCategory, file) {
-  const ruta = "categories/" + idCategory + "/";
+  const ruta = "modules/" + idCategory ;
+
   const { data, error } = await supabase.storage
     .from("images")
     .upload(ruta, file, {
@@ -44,7 +59,7 @@ async function uploadFile(idCategory, file) {
   }
   //acceder a la img de forma pública
   if (data) {
-    const { data: urlimagen } = (supabase.storage = await supabase.storage
+    const { data: urlimagen } = ( supabase.storage
       .from("images")
       .getPublicUrl(ruta));
     return urlimagen;
@@ -92,7 +107,7 @@ export async function deleteModule(p) {
     return;
   }
   if (p.icon != "-") {
-    const ruta = "categorias/" + p.id;
+    const ruta = "modules/" + p.id;
     await supabase.storage.from("images").remove([ruta]);
   }
 }
@@ -124,7 +139,7 @@ export async function editModule(p, fileOld, fileNew) {
 }
 
 export async function editIconStorage(id, file) {
-  const ruta = "categorias/" + id;
+  const ruta = "modules/" + id;
   await supabase.storage.from("images").update(ruta, file, {
     cacheControl: "0",
     upsert: true,

@@ -1,19 +1,19 @@
 import { create } from "zustand"
 import { deleteModule, editModule, getModule, InsertModule, searchModule } from "../index"
 
-export const useModulesStore = create((get,set) => ({
+export const useModulesStore = create((set,get) => ({
     buscador: "",
     setBuscador: (p) => {
         set({ buscador : p});
     },
     dataModules : [],
     moduleItemSelected: [],
-    params : {    },
-    showModules : async (p) =>{
+    params : {},
+    showModules: async (p) =>{
         const response = await getModule(p);
         set({params : p});
         set({dataModules: response})
-        set({moduleItemSelected : response[0]})
+        set({moduleItemSelected : response.length ? response[0] : null})
         return response;
     },
 
@@ -25,7 +25,8 @@ export const useModulesStore = create((get,set) => ({
         const {showModules} = get();
         const {params} = get();
 
-        set(showModules(params));
+        //set(showModules(params));
+        await showModules(params);
     },
     deleteModule: async(p) =>{
         await deleteModule();

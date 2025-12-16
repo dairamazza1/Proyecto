@@ -68,21 +68,30 @@ export function TablaCategorias({
   }
 
   // *** solo ajustar esto ***
+  
   const columns = [
     {
       accessorKey: "icon",
       header: "Icono", 
       enableSorting: false,
-      cell: (info) => (
-        <td data-title="Color" className="ContentCell">
-          {
-            info.getValue()!="-"?(   <ImageContent imagen={info.getValue()}/>):(<Icono>
-              {<v.iconoimagenvacia/>}
-            </Icono>)
-          }
+      // cell: (info) => (
+      //   <td data-title="Color" className="ContentCell">
+      //     {
+      //       info.getValue()!="-"?(   <ImageContent imagen={info.getValue()}/>):(<Icono>
+      //         {<v.iconoimagenvacia/>}
+      //       </Icono>)
+      //     }
     
-        </td>
-      ),
+      //   </td>
+      // ),
+      cell: (info) => (
+  <div data-title="Icono" className="ContentCell">
+    {info.getValue() !== "-"
+      ? <ImageContent imagen={info.getValue()} />
+      : <Icono><v.iconoimagenvacia /></Icono>
+    }
+  </div>
+),
 
       enableColumnFilter: true,
       filterFn: (row, columnId, filterStatuses) => {
@@ -118,11 +127,17 @@ export function TablaCategorias({
       accessorKey: "color",
       header: "Color",
       enableSorting: false,
+      // cell: (info) => (
+      //   <td data-title="Color" className="ContentCell">
+      //     <Colorcontent color={info.getValue()} $alto="25px" $ancho="25px" />
+      //   </td>
+      // )
       cell: (info) => (
-        <td data-title="Color" className="ContentCell">
-          <Colorcontent color={info.getValue()} $alto="25px" $ancho="25px" />
-        </td>
-      ),
+  <div data-title="Color" className="ContentCell">
+    <Colorcontent color={info.getValue()} $alto="25px" $ancho="25px" />
+  </div>
+)
+      ,
 
       enableColumnFilter: true,
       filterFn: (row, columnId, filterStatuses) => {
@@ -136,14 +151,22 @@ export function TablaCategorias({
       accessorKey: "acciones",
       header: "",
       enableSorting: false,
+      // cell: (info) => (
+      //   <td data-title="Acciones" className="ContentCell">
+      //     <ContentAccionesTabla
+      //       funcionEditar={() => editar(info.row.original)}
+      //       funcionEliminar={() => eliminar(info.row.original)}
+      //     />
+      //   </td>
+      // )
       cell: (info) => (
-        <td data-title="Acciones" className="ContentCell">
-          <ContentAccionesTabla
-            funcionEditar={() => editar(info.row.original)}
-            funcionEliminar={() => eliminar(info.row.original)}
-          />
-        </td>
-      ),
+  <div data-title="Acciones" className="ContentCell">
+    <ContentAccionesTabla
+      funcionEditar={() => editar(info.row.original)}
+      funcionEliminar={() => eliminar(info.row.original)}
+    />
+  </div>
+),
       enableColumnFilter: true,
       filterFn: (row, columnId, filterStatuses) => {
         if (filterStatuses.length === 0) return true;

@@ -17,10 +17,12 @@ export function RegistrarCategorias({
   onClose, //sirve para cerrar la ventana emergente
   dataSelect, //indica q al principio los datos estan vacíos y al editar se llenan los campos
   accion, //indica si se esta editando o agregando algo nuevo
-  setIsExploding, //mostrar particulas es decorativo
+  setIsExploding //mostrar particulas es decorativo
 }) {
   const { insertModule, editModule } = useModulesStore();
   const { dataCompany } = useCompanyStore();
+  
+
   const [currentColor, setColor] = useState("#F44336");
   const [file, setFile] = useState([]);
   const ref = useRef(null);
@@ -44,7 +46,6 @@ export function RegistrarCategorias({
   };
   const cerrarFormulario = () => {
     onClose();
-    setIsExploding(true);
   };
   async function insertar(data) {
     if (accion === "Editar") {
@@ -58,13 +59,13 @@ export function RegistrarCategorias({
     } else {
       const p = {
         _name: ConvertirCapitalize(data.descripcion),
-        _icono: "-",
+        _icon: "-",
         _id_company: dataCompany.id,
         _color: currentColor  
       };
 
-      console.log(dataCompany);
-      console.log(p);
+      // console.log(dataCompany);
+      // console.log(p);
       
       await insertModule(p, file);
     }
