@@ -28,6 +28,9 @@ export async function ShowCompanyByIDUser(){
   const {data,error} = await supabase.rpc("mostrarempresaporiduser",p)
   .maybeSingle();
 
+  console.log("entró");
+  
+
   //   if (error) {
   //   Swal.fire({
   //     icon: "error",

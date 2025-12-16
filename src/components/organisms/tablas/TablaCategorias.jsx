@@ -27,7 +27,7 @@ export function TablaCategorias({
   const [datas, setData] = useState(data);
   const [columnFilters, setColumnFilters] = useState([]);
 
-  const { eliminarCategoria } = useModulesStore();
+  const { deleteModule } = useModulesStore();
   function eliminar(p) {
     if (p.nombre === "General") {
       Swal.fire({
@@ -48,7 +48,7 @@ export function TablaCategorias({
       confirmButtonText: "Si, eliminar",
     }).then(async (result) => {
       if (result.isConfirmed) {
-        await eliminarCategoria({ id: p.id });
+        await deleteModule({ id: p.id });
       }
     });
   }
@@ -60,15 +60,17 @@ export function TablaCategorias({
         text: "Este registro no se permite modificar ya que es valor por defecto.",
         footer: '<a href="">...</a>',
       });
-      return;
+      return; 
     }
     SetopenRegistro(true);
     setdataSelect(data);
     setAccion("Editar");
   }
+
+  // *** solo ajustar esto ***
   const columns = [
     {
-      accessorKey: "icono",
+      accessorKey: "icon",
       header: "Icono", 
       enableSorting: false,
       cell: (info) => (
@@ -101,7 +103,7 @@ export function TablaCategorias({
       },
     },
     {
-      accessorKey: "nombre",
+      accessorKey: "name",
       header: "Descripcion",
       cell: (info) => <span>{info.getValue()}</span>,
       enableColumnFilter: true,
@@ -129,6 +131,7 @@ export function TablaCategorias({
         return filterStatuses.includes(status?.id);
       },
     },
+    //acción de agregar y editar
     {
       accessorKey: "acciones",
       header: "",
@@ -194,8 +197,8 @@ export function TablaCategorias({
                     )}
                     {
                       {
-                        asc: " 🔼",
-                        desc: " 🔽",
+                        asc: " ▲",
+                        desc: " ▼",
                       }[header.column.getIsSorted()]
                     }
                     <div
