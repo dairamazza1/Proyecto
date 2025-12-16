@@ -5,7 +5,6 @@ const table = "module";
 export async function InsertModule(p, file) {
   //no se debe repetir la descripcion del modulo/categoría  a menos que haya sucursal con las mismas categorias. en una misma suc no repite
     const { error, data } = await supabase.rpc("insertmodules", p);
-console.log(p);
 
   
 //   const pt = {
@@ -113,7 +112,7 @@ export async function deleteModule(p) {
 }
 
 export async function editModule(p, fileOld, fileNew) {
-  const { error } = await supabase.rpc("editCategory", p); //trigger de supabase
+  const { error } = await supabase.rpc("editcategory", p); //trigger de supabase
 
   if (error) {
     Swal.fire({
@@ -121,6 +120,7 @@ export async function editModule(p, fileOld, fileNew) {
       title: "Oops...",
       text: error.message,
     });
+  }
 
     //el usuario tiene una img agregada
     if (fileNew != "-" && fileNew.size != undefined) {
@@ -135,7 +135,7 @@ export async function editModule(p, fileOld, fileNew) {
         await editIconModule(pIconToEdit);
       }
     }
-  }
+  
 }
 
 export async function editIconStorage(id, file) {

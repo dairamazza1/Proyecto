@@ -29,7 +29,7 @@ export const useModulesStore = create((set,get) => ({
         await showModules(params);
     },
     deleteModule: async(p) =>{
-        await deleteModule();
+        await deleteModule(p);
 
         const {showModules} = get();
         const {params} = get();
@@ -37,6 +37,7 @@ export const useModulesStore = create((set,get) => ({
         set(showModules(params));
     },
     editModule: async(p, fileOld, fileNew) =>{
+
         await editModule(p,fileOld,fileNew);
 
         const {showModules} = get();

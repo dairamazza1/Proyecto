@@ -7,6 +7,7 @@ import {
   useModulesStore,
   Icono,
   ConvertirCapitalize,
+  Spinner1,
 } from "../../../index";
 import { useForm } from "react-hook-form";
 import { CirclePicker } from "react-color";
@@ -16,8 +17,7 @@ import { useMutation } from "@tanstack/react-query";
 export function RegistrarCategorias({
   onClose, //sirve para cerrar la ventana emergente
   dataSelect, //indica q al principio los datos estan vacíos y al editar se llenan los campos
-  accion, //indica si se esta editando o agregando algo nuevo
-  setIsExploding //mostrar particulas es decorativo
+  accion //indica si se esta editando o agregando algo nuevo
 }) {
   const { insertModule, editModule } = useModulesStore();
   const { dataCompany } = useCompanyStore();
@@ -48,14 +48,19 @@ export function RegistrarCategorias({
     onClose();
   };
   async function insertar(data) {
+    console.log(data);
+    
     if (accion === "Editar") {
       const p = {
-         _id: dataSelect.id,
+       
          _name: ConvertirCapitalize(data.descripcion),
          _id_company: dataCompany.id,
          _color: currentColor,
+        _id: dataSelect.id
+         
       };
-      await editModule(p, dataSelect.icono, file);
+      
+      await editModule(p, dataSelect.icon, file);
     } else {
       const p = {
         _name: ConvertirCapitalize(data.descripcion),
@@ -63,9 +68,6 @@ export function RegistrarCategorias({
         _id_company: dataCompany.id,
         _color: currentColor  
       };
-
-      // console.log(dataCompany);
-      // console.log(p);
       
       await insertModule(p, file);
     }
@@ -88,13 +90,13 @@ export function RegistrarCategorias({
   useEffect(() => {
     if (accion === "Editar") {
       setColor(dataSelect.color);
-      setFileurl(dataSelect.icono);
+      setFileurl(dataSelect.icon);
     }
   }, []);
   return (
     <Container>
       {isPending ? (
-        <span>...🔼</span>
+        <Spinner1></Spinner1>
       ) : (
         <div className="sub-contenedor">
           <div className="headers">
@@ -138,7 +140,7 @@ export function RegistrarCategorias({
                 <InputText icono={<v.iconoflechaderecha />}>
                   <input
                     className="form__field"
-                    defaultValue={dataSelect.nombre}
+                    defaultValue={dataSelect.name}
                     type="text"
                     placeholder="categoria"
                     {...register("descripcion", {

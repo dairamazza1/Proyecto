@@ -10,23 +10,24 @@ import {
 import { v } from "../../styles/variables";
 import { useState } from "react";
 export function CategoriesTemplate() {
-  const [openRegistro, setOpenRegistro] = useState(false);
-  const { dataModules } = useModulesStore();
+  const [openRegistro, SetopenRegistro] = useState(false);
+  const { dataModules, setBuscador } = useModulesStore();
   const [accion,setAccion] = useState("");
   const [dataSelect,setdataSelect] = useState("");
 
   function nuevoRegistro(){
-    setOpenRegistro(!openRegistro );
+    SetopenRegistro(!openRegistro);
     setAccion("Nuevo");
     setdataSelect([]);
   }
-
   return (
     <Container>
       {/* <section className="area1">area1</section> */}
 
       {
-       openRegistro && (<RegistrarCategorias onClose={() => setOpenRegistro(!openRegistro) } dataSelect={dataSelect} accion = {accion}/>)
+        
+       openRegistro && (<RegistrarCategorias onClose={() => SetopenRegistro(!openRegistro) } dataSelect={dataSelect} accion = {accion}/>)
+      
       }
 
       <section className="area2">
@@ -39,10 +40,12 @@ export function CategoriesTemplate() {
         ></Btn1>
       </section>
       <section className="area3">
-        <Buscador></Buscador>
+        <Buscador setBuscador={setBuscador}></Buscador>
       </section>
       <section className="main">
-        <TablaCategorias data={dataModules} />
+        
+        
+        <TablaCategorias setdataSelect={setdataSelect} setAccion={setAccion} SetopenRegistro={SetopenRegistro} data={dataModules} />
       </section>
     </Container>
   );
@@ -59,11 +62,11 @@ const Container = styled.div`
 
   .area1 {
     grid-area: area1;
-    background-color: #bc99ce;
+    /* background-color: #bc99ce; */
   }
   .area2 {
     grid-area: area2;
-    background-color: #9fce99;
+    /* background-color: #9fce99; */
     display: flex; //establece un contenedor flexible
     justify-content: end; //alinear elementos al final del contenedor
     align-items: center; //centrar elementos verticalmente
@@ -78,6 +81,6 @@ const Container = styled.div`
   }
   .main {
     grid-area: main;
-    background-color: #99a6ce;
+    /* background-color: #99a6ce; */
   }
 `;
