@@ -21,7 +21,7 @@ function App() {
     <ThemeProvider theme={themeStyle}>
       <AuthContextProvider>
          <GlobalStyles />
-        {pathname !== "/login" ? (
+        {pathname !== "/login" && pathname !== "/register" ? (
           <Container className={sidebarOpen ? "active" : ""}>
            
             <section className="contentSidebar">
@@ -38,7 +38,7 @@ function App() {
             </section>
           </Container>
         ) : (
-          <Login />
+          <MyRoutes />
         )}
       <ReactQueryDevtools initialIsOpen={true} />
 
