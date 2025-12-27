@@ -1,16 +1,10 @@
 import styled from "styled-components";
-import {
-  LinksArray,
-  SecondarylinksArray,
-  ToggleTema,
-} from "../../../index";
+import { LinksArray, SecondarylinksArray, ToggleTema } from "../../../index";
 import { v } from "../../../styles/variables";
 import { NavLink } from "react-router-dom";
 import { Icon } from "@iconify/react";
 
-
 export function Sidebar({ state, setState }) {
- 
   return (
     <Main $isopen={state.toString()}>
       <span className="Sidebarbutton" onClick={() => setState(!state)}>
@@ -71,8 +65,6 @@ export function Sidebar({ state, setState }) {
               <span className={state ? "label_ver" : "label_oculto"}>MÁS</span>
             </section>
           </div>
-         
-         
         </div>
 
         <ToggleTema />
@@ -92,7 +84,7 @@ const Container = styled.div`
   overflow-y: auto;
   overflow-x: hidden;
   border-right: 2px solid ${({ theme }) => theme.color2};
-  
+
   &::-webkit-scrollbar {
     width: 6px;
     border-radius: 10px;
@@ -132,8 +124,8 @@ const Container = styled.div`
   }
   .LinkContainer {
     margin: 9px 0;
-    margin-right:10px;
-    margin-left:8px;
+    margin-right: 10px;
+    margin-left: 8px;
     transition: all 0.3s ease-in-out;
     position: relative;
     text-transform: uppercase;

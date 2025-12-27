@@ -2,9 +2,11 @@ import { Routes, Route } from "react-router-dom";
 import {
   Categories,
   Configurations,
+  Empleado,
   Home,
   Login,
   ProtectedRoute,
+  RegistrarEmpleados,
   Spinner1,
   useCompanyStore,
   UserAuth,
@@ -37,11 +39,13 @@ export function MyRoutes() {
   return (
     <Routes>
       //Rutas protegidas
-      <Route element={<ProtectedRoute user={user} redirectTo="/login" />}>
+      {/* <Route element={<ProtectedRoute user={user} redirectTo="/login" />}> */}
         <Route path="/" element={<Home />} />
+        <Route path="/empleados/nuevo" element={<RegistrarEmpleados />} />
+        <Route path="/empleados/:id" element={<Empleado />} />
         <Route path="/configuracion" element={<Configurations />} />
         <Route path="/configuracion/categorias" element={<Categories />} />
-      </Route>
+      {/* </Route> */}
       <Route path="/login" element={<Login />} />
     </Routes>
   );

@@ -14,6 +14,7 @@ import { BsArrowDown, BsArrowUpShort } from "react-icons/bs";
 import { FaBalanceScale } from "react-icons/fa";
 import logo from "../assets/logo.svg";
 import { FcGoogle } from "react-icons/fc";
+import { FaAddressCard } from "react-icons/fa";
 
 import { RiCloseLine } from "react-icons/ri";
 import { BiSave } from "react-icons/bi";
@@ -45,6 +46,10 @@ import { FcImageFile } from "react-icons/fc";
 import { IoIosArrowBack } from "react-icons/io";
 import { GrAdd } from "react-icons/gr";
 import { FaSearch } from "react-icons/fa";
+import { FaFilePdf, FaFileAlt } from "react-icons/fa";
+import { FaUserTie } from "react-icons/fa";
+
+
 
 
 export const v = {
@@ -68,6 +73,10 @@ export const v = {
   icononombre:MdDriveFileRenameOutline,
   iconoemail:MdAlternateEmail,
   iconopass:RiLockPasswordLine,
+  iconopdf: FaFilePdf,
+  iconodocumento:FaAddressCard,
+  iconoProfesional:FaUserTie,
+
   sidebarWidth: `300px`,
   sidebarWidthInitial: `10vw`,
   smSpacing: `8px`,
