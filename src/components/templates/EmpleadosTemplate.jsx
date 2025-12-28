@@ -2,8 +2,11 @@ import styled from "styled-components";
 import { Title, Btn1, Buscador, TablaEmpleados, useEmpleadosStore } from "../../index";
 import { v } from "../../styles/variables";
 import { useNavigate } from "react-router-dom";
+import { useAuthStore } from "../../store/AuthStore";
+
 
 export function EmpleadosTemplate() {
+  const { cerrarSesion } = useAuthStore();
   const navigate = useNavigate();
   const { dataEmpleados, setBuscador } = useEmpleadosStore();
 
@@ -13,6 +16,7 @@ export function EmpleadosTemplate() {
 
   return (
     <Container>
+      <button onClick={cerrarSesion}>cerrar</button>
       <section className="header">
         <Title>Empleados</Title>
         <div className="acciones">

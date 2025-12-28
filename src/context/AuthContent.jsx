@@ -14,8 +14,8 @@ export const AuthContextProvider = ({ children }) => {
         setUser(session?.user);
         insertData(session?.user.id, session?.user.email);
        }
-      // console.log(event);
-      // console.log(session);
+       console.log(event);
+       console.log(session);
     });
     return () => {
       data.subscription;
@@ -28,17 +28,22 @@ export const AuthContextProvider = ({ children }) => {
       if(response){
         return; 
       }else{
-        const responseCompany = await insertCompany({id_auth: id_auth});
+        // const responseCompany = await insertCompany({id_auth: id_auth});
 
-        const responseDocType = await getDocType({id_company: responseCompany?.id});
-        const responseRole = await getRoleByName({name: "superadmin"});
+        // const responseDocType = await getDocType({id_company: responseCompany?.id});
+        // const responseRole = await getRoleByName({name: "superadmin"});
 
         const pUser = {
-          id_doc_type : responseDocType[0]?.id,
-          id_role: responseRole?.id,
           email: email,
-          registration_date: new Date(),
-          id_auth: id_auth
+          is_active: true,
+          created_at: new Date(),
+          auth_user_id: id_auth
+          // app_role: 
+          // id_doc_type : responseDocType[0]?.id,
+          // id_role: responseRole?.id,
+          
+          // registration_date: new Date(),
+          // id_auth: id_auth
         };
         
         await insertAdmin(pUser);
