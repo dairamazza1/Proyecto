@@ -5,6 +5,7 @@ import {
   Empleado,
   Home,
   Login,
+  Register,
   ProtectedRoute,
   RegistrarEmpleados,
   Spinner1,
@@ -47,6 +48,7 @@ export function MyRoutes() {
         <Route path="/configuracion/categorias" element={<Categories />} />
       </Route>
       <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
     </Routes>
   );
 }
