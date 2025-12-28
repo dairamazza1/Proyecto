@@ -32,4 +32,7 @@ export const useEmpleadosStore = create((set, get) => ({
       throw error;
     }
   },
+  setDataEmpleados: (data) => {
+    set({ dataEmpleados: data });
+  },
 }));

@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+/* eslint-disable no-unused-vars */
+import { useState } from "react";
 import styled from "styled-components";
 import { v } from "../styles/variables";
 import {
@@ -7,11 +8,12 @@ import {
   Spinner1,
   useCompanyStore,
   useEmpleadosStore,
-  useEmpresasStore,
+  useSucursalesStore,
   ConvertirCapitalize,
+  insertSucursalEmpleado,
 } from "../index";
 import { useForm } from "react-hook-form";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import Swal from "sweetalert2";
 import { useNavigate } from "react-router-dom";
 
@@ -19,8 +21,16 @@ export function RegistrarEmpleados() {
   const navigate = useNavigate();
   const { dataCompany } = useCompanyStore();
   const { createEmpleado } = useEmpleadosStore();
-  const { dataEmpresas, loadEmpresas } = useEmpresasStore();
+  const { showSucursales, dataSucursales } = useSucursalesStore();
   const [saving, setSaving] = useState(false);
+
+  // Cargar sucursales al montar el componente
+  useQuery({
+    queryKey: ["mostrar sucursales", dataCompany?.id],
+    queryFn: () => showSucursales({ empresa_id: dataCompany?.id }),
+    enabled: !!dataCompany,
+    refetchOnWindowFocus: false,
+  });
 
   const {
     register,
@@ -30,13 +40,8 @@ export function RegistrarEmpleados() {
   } = useForm({
     defaultValues: {
       document_type: "DNI",
-      empresa_id: "",
     },
   });
-
-  useEffect(() => {
-    loadEmpresas();
-  }, []);
 
   const { mutate: doInsertar } = useMutation({
     mutationFn: insertar,
@@ -70,11 +75,7 @@ export function RegistrarEmpleados() {
   };
 
   async function insertar(data) {
-    if (!data.empresa_id) {
-      throw new Error("Debe seleccionar una empresa.");
-    }
     const payload = {
-      empresa_id: parseInt(data.empresa_id),
       user_id: null,
       first_name: ConvertirCapitalize(data.first_name),
       last_name: ConvertirCapitalize(data.last_name),
@@ -87,7 +88,19 @@ export function RegistrarEmpleados() {
       created_at: new Date().toISOString(),
       hire_date: data.hire_date || null,
     };
-    return createEmpleado(payload);
+    
+    // Crear el empleado
+    const empleadoCreado = await createEmpleado(payload);
+    
+    // Si se seleccionó una sucursal, crear la relación
+    if (data.sucursal_id && empleadoCreado?.id) {
+      await insertSucursalEmpleado({
+        empleado_id: empleadoCreado.id,
+        sucursal_id: parseInt(data.sucursal_id),
+      });
+    }
+    
+    return empleadoCreado;
   }
 
   function cancelar() {
@@ -160,29 +173,6 @@ export function RegistrarEmpleados() {
             </article>
 
             <article>
-              <InputText icono={<v.iconoempresa />}>
-                <select
-                  className="form__field"
-                  {...register("empresa_id", { required: true })}
-                  defaultValue=""
-                >
-                  <option value="" disabled>
-                    Seleccionar empresa
-                  </option>
-                  {dataEmpresas?.map((empresa) => (
-                    <option key={empresa.id} value={empresa.id}>
-                      {empresa.name}
-                    </option>
-                  ))}
-                </select>
-                <label className="form__label">empresa</label>
-                {errors.empresa_id?.type === "required" && (
-                  <p>Campo requerido</p>
-                )}
-              </InputText>
-            </article>
-
-            <article>
               <InputText icono={<v.iconocodigointerno />}>
                 <select
                   className="form__field"
@@ -233,6 +223,29 @@ export function RegistrarEmpleados() {
                 </select>
                 <label className="form__label">tipo empleado</label>
                 {errors.employee_type?.type === "required" && (
+                  <p>Campo requerido</p>
+                )}
+              </InputText>
+            </article>
+
+            <article>
+              <InputText icono={<v.iconoubicacion />}>
+                <select
+                  className="form__field"
+                  {...register("sucursal_id", { required: true })}
+                  defaultValue=""
+                >
+                  <option value="" disabled>
+                    Seleccionar sucursal
+                  </option>
+                  {dataSucursales?.map((sucursal) => (
+                    <option key={sucursal.id} value={sucursal.id}>
+                      {sucursal.name}
+                    </option>
+                  ))}
+                </select>
+                <label className="form__label">sucursal</label>
+                {errors.sucursal_id?.type === "required" && (
                   <p>Campo requerido</p>
                 )}
               </InputText>

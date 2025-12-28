@@ -48,6 +48,7 @@ import { GrAdd } from "react-icons/gr";
 import { FaSearch } from "react-icons/fa";
 import { FaFilePdf, FaFileAlt } from "react-icons/fa";
 import { FaUserTie } from "react-icons/fa";
+import { MdLocationOn } from "react-icons/md";
 
 
 
@@ -76,6 +77,7 @@ export const v = {
   iconopdf: FaFilePdf,
   iconodocumento:FaAddressCard,
   iconoProfesional:FaUserTie,
+  iconoubicacion:MdLocationOn,
 
   sidebarWidth: `300px`,
   sidebarWidthInitial: `10vw`,

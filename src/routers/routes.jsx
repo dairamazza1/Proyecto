@@ -9,7 +9,6 @@ import {
   ProtectedRoute,
   RegistrarEmpleados,
   Spinner1,
-  useCompanyStore,
   UserAuth,
   useUsersStore,
 } from "../index";
@@ -17,17 +16,11 @@ import { useQuery } from "@tanstack/react-query";
 
 export function MyRoutes() {
   const { user } = UserAuth();
-  const { dataUsers, showUsers } = useUsersStore();
-  const { dataCompany, showCompany } = useCompanyStore();
+  const { showUsers } = useUsersStore();
 
   const { isLoading, error } = useQuery({
     queryKey: ["mostrar usuarios"],
     queryFn: showUsers,refetchOnWindowFocus:false
-  });
-
-  const {data:dtCompany} = useQuery({
-    queryKey: ["Mostrar empresa", dataUsers?.id],
-    queryFn: () => showCompany({ _id_user: dataUsers?.id }), enabled:!!dataUsers,refetchOnWindowFocus:false
   });
 
   if (isLoading) {

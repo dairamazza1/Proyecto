@@ -1,5 +1,5 @@
 import styled from "styled-components";
-import { Title, Btn1, Buscador, TablaEmpleados, useEmpleadosStore } from "../../index";
+import { Title, Btn1, Buscador, TablaEmpleados, useEmpleadosStore, useSucursalesStore } from "../../index";
 import { v } from "../../styles/variables";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../store/AuthStore";
@@ -9,10 +9,16 @@ export function EmpleadosTemplate() {
   const { cerrarSesion } = useAuthStore();
   const navigate = useNavigate();
   const { dataEmpleados, setBuscador } = useEmpleadosStore();
+  const { dataSucursales, sucursalSeleccionada, setSucursalSeleccionada } = useSucursalesStore();
 
   function nuevoRegistro() {
     navigate("/empleados/nuevo");
   }
+
+  const handleSucursalChange = (e) => {
+    const sucursalId = e.target.value ? parseInt(e.target.value) : null;
+    setSucursalSeleccionada(sucursalId);
+  };
 
   return (
     <Container>
@@ -20,6 +26,20 @@ export function EmpleadosTemplate() {
       <section className="header">
         <Title>Empleados</Title>
         <div className="acciones">
+          <div className="selector-sucursal">
+            <select 
+              value={sucursalSeleccionada || ""} 
+              onChange={handleSucursalChange}
+              className="select-sucursal"
+            >
+              <option value="">Todas las sucursales</option>
+              {dataSucursales?.map((sucursal) => (
+                <option key={sucursal.id} value={sucursal.id}>
+                  {sucursal.name}
+                </option>
+              ))}
+            </select>
+          </div>
           <div className="buscador">
             <Buscador setBuscador={setBuscador}></Buscador>
           </div>
@@ -67,6 +87,25 @@ const Container = styled.div`
     width: 100%;
     @media (min-width: ${v.bpbart}) {
       width: auto;
+    }
+  }
+  .selector-sucursal {
+    width: min(240px, 100%);
+    
+    .select-sucursal {
+      width: 100%;
+      padding: 10px 15px;
+      border-radius: 8px;
+      border: 1px solid ${({ theme }) => theme.color2};
+      background: ${({ theme }) => theme.bgtotal};
+      color: ${({ theme }) => theme.text};
+      font-size: 14px;
+      cursor: pointer;
+      outline: none;
+      
+      &:focus {
+        border-color: ${({ theme }) => theme.color1};
+      }
     }
   }
   .buscador {
