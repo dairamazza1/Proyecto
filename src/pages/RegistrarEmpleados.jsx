@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import styled from "styled-components";
 import { v } from "../styles/variables";
 import {
@@ -7,6 +7,7 @@ import {
   Spinner1,
   useCompanyStore,
   useEmpleadosStore,
+  useEmpresasStore,
   ConvertirCapitalize,
 } from "../index";
 import { useForm } from "react-hook-form";
@@ -18,6 +19,7 @@ export function RegistrarEmpleados() {
   const navigate = useNavigate();
   const { dataCompany } = useCompanyStore();
   const { createEmpleado } = useEmpleadosStore();
+  const { dataEmpresas, loadEmpresas } = useEmpresasStore();
   const [saving, setSaving] = useState(false);
 
   const {
@@ -28,8 +30,13 @@ export function RegistrarEmpleados() {
   } = useForm({
     defaultValues: {
       document_type: "DNI",
+      empresa_id: "",
     },
   });
+
+  useEffect(() => {
+    loadEmpresas();
+  }, []);
 
   const { mutate: doInsertar } = useMutation({
     mutationFn: insertar,
@@ -63,11 +70,11 @@ export function RegistrarEmpleados() {
   };
 
   async function insertar(data) {
-    if (!dataCompany?.id) {
-      throw new Error("No hay empresa asociada al usuario.");
+    if (!data.empresa_id) {
+      throw new Error("Debe seleccionar una empresa.");
     }
     const payload = {
-      empresa_id: dataCompany?.id,
+      empresa_id: parseInt(data.empresa_id),
       user_id: null,
       first_name: ConvertirCapitalize(data.first_name),
       last_name: ConvertirCapitalize(data.last_name),
@@ -148,6 +155,29 @@ export function RegistrarEmpleados() {
                 )}
                 {errors.employee_id_number?.type === "pattern" && (
                   <p>Solo numeros</p>
+                )}
+              </InputText>
+            </article>
+
+            <article>
+              <InputText icono={<v.iconoempresa />}>
+                <select
+                  className="form__field"
+                  {...register("empresa_id", { required: true })}
+                  defaultValue=""
+                >
+                  <option value="" disabled>
+                    Seleccionar empresa
+                  </option>
+                  {dataEmpresas?.map((empresa) => (
+                    <option key={empresa.id} value={empresa.id}>
+                      {empresa.name}
+                    </option>
+                  ))}
+                </select>
+                <label className="form__label">empresa</label>
+                {errors.empresa_id?.type === "required" && (
+                  <p>Campo requerido</p>
                 )}
               </InputText>
             </article>
