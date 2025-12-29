@@ -21,6 +21,7 @@ CREATE TABLE test.empleados (
   employee_id_number character varying,
   professional_number character varying,
   puesto_id bigint,
+  termination_date date,
   CONSTRAINT empleados_pkey PRIMARY KEY (id),
   CONSTRAINT empleados_user_id_fkey FOREIGN KEY (user_id) REFERENCES test.perfiles(id),
   CONSTRAINT empleados_empresa_id_fkey FOREIGN KEY (empresa_id) REFERENCES test.empresas(id),
@@ -155,6 +156,6 @@ CREATE TABLE test.sucursales_empleados (
   empleado_id bigint,
   sucursal_id bigint,
   CONSTRAINT sucursales_empleados_pkey PRIMARY KEY (id),
-  CONSTRAINT empleados_sucursales_empleado_id_fkey FOREIGN KEY (empleado_id) REFERENCES test.empleados(id),
-  CONSTRAINT empleados_sucursales_sucursal_id_fkey FOREIGN KEY (sucursal_id) REFERENCES test.sucursales(id)
+  CONSTRAINT empleados_sucursales_sucursal_id_fkey FOREIGN KEY (sucursal_id) REFERENCES test.sucursales(id),
+  CONSTRAINT sucursales_empleados_empleado_id_fkey FOREIGN KEY (empleado_id) REFERENCES test.empleados(id)
 );

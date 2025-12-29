@@ -75,7 +75,8 @@ export function TablaEmpleados({ data }) {
       enableSorting: true,
     },
     {
-      accessorKey: "puesto",
+      id: "puesto",
+      accessorFn: (row) => row.puesto?.name ?? "",
       header: "Puesto",
       meta: {
         cardLabel: "Puesto",
@@ -86,7 +87,8 @@ export function TablaEmpleados({ data }) {
           <span>{info.row.original.puesto?.name ?? "-"}</span>
         </div>
       ),
-      enableSorting: false,
+      enableSorting: true,
+      sortingFn: "alphanumeric",
     },
     {
       accessorKey: "professional_number",

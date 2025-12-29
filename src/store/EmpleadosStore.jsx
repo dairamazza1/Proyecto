@@ -1,5 +1,10 @@
 import { create } from "zustand";
-import { getEmpleados, insertEmpleado, searchEmpleados } from "../index";
+import {
+  getEmpleados,
+  insertEmpleado,
+  searchEmpleados,
+  updateEmpleado,
+} from "../index";
 
 export const useEmpleadosStore = create((set, get) => ({
   buscador: "",
@@ -25,6 +30,17 @@ export const useEmpleadosStore = create((set, get) => ({
     set({ loading: true, error: null });
     try {
       const response = await insertEmpleado(p);
+      set({ loading: false });
+      return response;
+    } catch (error) {
+      set({ loading: false, error });
+      throw error;
+    }
+  },
+  updateEmpleado: async (id, payload) => {
+    set({ loading: true, error: null });
+    try {
+      const response = await updateEmpleado(id, payload);
       set({ loading: false });
       return response;
     } catch (error) {

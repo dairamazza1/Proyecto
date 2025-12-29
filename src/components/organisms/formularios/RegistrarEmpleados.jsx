@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import styled from "styled-components";
-import { v } from "../styles/variables";
+import { v } from "../../../styles/variables";
 import {
   InputText,
   Btn1,
@@ -12,18 +12,92 @@ import {
   insertSucursalEmpleado,
   getAreasLaborales,
   getPuestosByArea,
-} from "../index";
+  getPuestoById,
+  checkEmpleadoDuplicate,
+  upsertSucursalEmpleado,
+} from "../../../index";
 import { useForm } from "react-hook-form";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Swal from "sweetalert2";
 import { useNavigate } from "react-router-dom";
 
-export function RegistrarEmpleados() {
+export function RegistrarEmpleados({
+  mode = "create",
+  empleadoId,
+  empleado,
+  sucursalEmpleado,
+  onClose,
+}) {
   const navigate = useNavigate();
   const { dataCompany } = useCompanyStore();
-  const { createEmpleado } = useEmpleadosStore();
+  const { createEmpleado, updateEmpleado } = useEmpleadosStore();
   const { showSucursales, dataSucursales } = useSucursalesStore();
   const [saving, setSaving] = useState(false);
+  const queryClient = useQueryClient();
+  const isEdit = mode === "edit";
+  const isModal = Boolean(onClose);
+  const headerTitle = isEdit ? "Editar empleado" : "Registrar empleado";
+
+  const getEmpleadoErrorText = (err, fallbackText) => {
+    if (err?.code !== "23505") {
+      console.log(err);
+      
+      return err?.message || fallbackText;
+    }
+
+    const raw = `${err?.message ?? ""} ${err?.details ?? ""}`.toLowerCase();
+
+    if (
+      raw.includes("document_number") ||
+      raw.includes("empleados_document_number")
+    ) {
+      return "El numero de documento ya existe.";
+    }
+    if (
+      raw.includes("employee_id_number") ||
+      raw.includes("empleados_employee_id_number")
+    ) {
+      return "El numero de legajo ya existe.";
+    }
+    if (
+      raw.includes("professional_number") ||
+      raw.includes("empleados_professional_number")
+    ) {
+      return "La matricula ya existe.";
+    }
+    return "Ya existe un empleado con alguno de estos datos.";
+  };
+
+  const handleMutationError = (fallbackText) => (err) => {
+    const text = getEmpleadoErrorText(err, fallbackText);
+    Swal.fire({
+      icon: "error",
+      title: "Oops...",
+      text,
+    });
+    setSaving(false);
+  };
+
+  const handleMutationSuccess = (title, text, after) => (data) => {
+    setSaving(false);
+    Swal.fire({
+      icon: "success",
+      title,
+      text,
+    });
+    after?.(data);
+  };
+
+  useEffect(() => {
+    if (!isModal) return;
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isModal, onClose]);
 
   // Cargar sucursales al montar el componente
   useQuery({
@@ -44,12 +118,16 @@ export function RegistrarEmpleados() {
     defaultValues: {
       document_type: "DNI",
       is_registered: false,
+      is_active: "true",
     },
   });
 
   const areaId = watch("area_id");
   const puestoId = watch("puesto_id");
   const isRegistered = watch("is_registered");
+  const isActiveValue = watch("is_active");
+  const showTerminationDate = isEdit && String(isActiveValue) === "false";
+  
 
   const { data: dataAreas, isLoading: loadingAreas } = useQuery({
     queryKey: ["mostrar areas laborales"],
@@ -88,61 +166,112 @@ export function RegistrarEmpleados() {
     selectedPuesto?.requires_professional_number
   );
 
-const { mutate: doInsertar } = useMutation({
-  mutationFn: insertar,
-  mutationKey: "insertar empleados",
-  onError: (err) => {
-    //console.error("Error insert empleado:", err);
+  const { data: puestoInfo } = useQuery({
+    queryKey: ["puestoInfo", empleado?.puesto_id],
+    queryFn: () => getPuestoById(empleado?.puesto_id),
+    enabled: isEdit && Boolean(empleado?.puesto_id),
+    refetchOnWindowFocus: false,
+  });
 
-    let text = err?.message || "Error al registrar empleado.";
+  useEffect(() => {
+    if (!isEdit || !empleado) return;
+    reset({
+      first_name: empleado.first_name ?? "",
+      last_name: empleado.last_name ?? "",
+      employee_id_number: empleado.employee_id_number ?? "",
+      document_type: empleado.document_type ?? "DNI",
+      document_number: empleado.document_number ?? "",
+      area_id: "",
+      puesto_id: "",
+      is_registered: empleado.is_registered ?? false,
+      professional_number: empleado.professional_number ?? "",
+      sucursal_id: sucursalEmpleado?.sucursal_id
+        ? String(sucursalEmpleado.sucursal_id)
+        : "",
+      hire_date: empleado.hire_date ?? "",
+      is_active: empleado.is_active ? "true" : "false",
+      termination_date: empleado.termination_date ?? "",
+    });
+  }, [empleado, isEdit, reset, sucursalEmpleado]);
 
-    if (err?.code === "23505") {
-      // En Supabase suele venir en err.message algo como:
-      // 'duplicate key value violates unique constraint "empleados_document_number_key"'
-      const raw = `${err?.message ?? ""} ${err?.details ?? ""}`.toLowerCase();
+  useEffect(() => {
+    if (!isEdit || !puestoInfo?.id_area) return;
+    setValue("area_id", String(puestoInfo.id_area));
+  }, [isEdit, puestoInfo, setValue]);
 
-      if (raw.includes("document_number") || raw.includes("empleados_document_number")) {
-        text = "El número de documento ya existe.";
-      } else if (raw.includes("employee_id_number") || raw.includes("empleados_employee_id_number")) {
-        text = "El número de legajo ya existe.";
-      } else if (raw.includes("professional_number") || raw.includes("empleados_professional_number")) {
-        text = "La matrícula ya existe.";
-      } else {
-        text = "Ya existe un empleado con alguno de estos datos.";
+  useEffect(() => {
+    if (!isEdit || !empleado?.puesto_id || !dataPuestos?.length) return;
+    setValue("puesto_id", String(empleado.puesto_id));
+  }, [dataPuestos, empleado, isEdit, setValue]);
+
+  const { mutate: doInsertar } = useMutation({
+    mutationFn: insertar,
+    mutationKey: "insertar empleados",
+    onError: handleMutationError("Error al registrar empleado."),
+    onSuccess: handleMutationSuccess(
+      "Empleado registrado",
+      "Se registro el empleado correctamente.",
+      () => {
+        queryClient.invalidateQueries({ queryKey: ["empleados"] });
+        reset();
+        if (onClose) {
+          onClose();
+        } else {
+          navigate("/");
+        }
       }
-    }
+    ),
+  });
 
-    Swal.fire({
-      icon: "error",
-      title: "Oops...",
-      text,
-    });
-
-    setSaving(false);
-  },
-  onSuccess: () => {
-    setSaving(false);
-    Swal.fire({
-      icon: "success",
-      title: "Empleado registrado",
-      text: "Se registró el empleado correctamente.",
-    });
-    reset();
-    navigate("/");
-  },
-});
+  const { mutate: doActualizar } = useMutation({
+    mutationFn: actualizar,
+    mutationKey: "actualizar empleados",
+    onError: handleMutationError("Error al actualizar empleado."),
+    onSuccess: handleMutationSuccess(
+      "Empleado actualizado",
+      "Se actualizo el empleado correctamente.",
+      (data) => {
+        queryClient.invalidateQueries({ queryKey: ["empleado", empleadoId] });
+        queryClient.invalidateQueries({ queryKey: ["empleados"] });
+        queryClient.invalidateQueries({
+          queryKey: ["sucursalEmpleado", empleadoId],
+        });
+        if (onClose) {
+          onClose();
+        } else {
+          navigate(`/empleados/${data?.id ?? empleadoId}`);
+        }
+      }
+    ),
+  });
 
   const handlesub = (data) => {
     setSaving(true);
-    doInsertar(data);
+    if (isEdit) {
+      doActualizar(data);
+    } else {
+      doInsertar(data);
+    }
   };
 
   async function insertar(data) {
+    const { documentExists, legajoExists } = await checkEmpleadoDuplicate({
+      document_number: data.document_number,
+      employee_id_number: data.employee_id_number,
+    });
+
+    // if (documentExists) {
+    //   throw new Error("El numero de documento ya existe.");
+    // }
+    // if (legajoExists) {
+    //   throw new Error("El numero de legajo ya existe.");
+    // }
+
     const payload = {
       user_id: null,
       first_name: ConvertirCapitalize(data.first_name),
       last_name: ConvertirCapitalize(data.last_name),
-      employee_id_number: data.employee_id_number, //número de legajo
+      employee_id_number: data.employee_id_number, //numero de legajo
       document_type: data.document_type || "DNI",
       document_number: data.document_number,
       puesto_id: data.puesto_id,
@@ -156,21 +285,76 @@ const { mutate: doInsertar } = useMutation({
       hire_date: data.hire_date || null,
     };
 
-    // Crear el empleado
     const empleadoCreado = await createEmpleado(payload);
 
-    // Si se seleccionó una sucursal, crear la relación
     if (data.sucursal_id && empleadoCreado?.id) {
       await insertSucursalEmpleado({
         empleado_id: empleadoCreado.id,
-        sucursal_id: parseInt(data.sucursal_id),
+        sucursal_id: parseInt(data.sucursal_id, 10),
       });
     }
 
     return empleadoCreado;
   }
 
+  async function actualizar(data) {
+    const documentChanged = data.document_number !== empleado?.document_number;
+    const legajoChanged = data.employee_id_number !== empleado?.employee_id_number;
+
+    if (documentChanged || legajoChanged) {
+      const { documentExists, legajoExists } = await checkEmpleadoDuplicate({
+        document_number: documentChanged ? data.document_number : null,
+        employee_id_number: legajoChanged ? data.employee_id_number : null,
+        excludeId: empleadoId,
+      });
+
+      // if (documentExists) {
+      //   throw new Error("El numero de documento ya existe.");
+      // }
+      // if (legajoExists) {
+      //   throw new Error("El numero de legajo ya existe.");
+      // }
+    }
+
+    const isActiveBool = String(data.is_active) === "true";
+    const payload = {
+      first_name: ConvertirCapitalize(data.first_name),
+      last_name: ConvertirCapitalize(data.last_name),
+      employee_id_number: data.employee_id_number,
+      document_type: data.document_type || "DNI",
+      document_number: data.document_number,
+      puesto_id: data.puesto_id,
+      professional_number:
+        requiresProfessionalNumber && data.is_registered
+          ? data.professional_number
+          : null,
+      is_registered: data.is_registered ?? false,
+      is_active: isActiveBool,
+      termination_date: isActiveBool ? null : data.termination_date || null,
+      hire_date: data.hire_date || null,
+    };
+
+    const empleadoActualizado = await updateEmpleado(empleadoId, payload);
+
+    if (data.sucursal_id && empleadoActualizado?.id) {
+      await upsertSucursalEmpleado({
+        empleado_id: empleadoActualizado.id,
+        sucursal_id: parseInt(data.sucursal_id, 10),
+      });
+    }
+
+    return empleadoActualizado;
+  }
+
   function cancelar() {
+    if (onClose) {
+      onClose();
+      return;
+    }
+    if (isEdit && empleadoId) {
+      navigate(`/empleados/${empleadoId}`);
+      return;
+    }
     navigate("/");
   }
 
@@ -178,13 +362,24 @@ const { mutate: doInsertar } = useMutation({
     return <Spinner1></Spinner1>;
   }
 
+  const handleBackdropClick = (event) => {
+    if (onClose && event.target === event.currentTarget) {
+      onClose();
+    }
+  };
+
   return (
-    <Container>
+    <Container $modal={isModal} onClick={handleBackdropClick}>
       <div className="sub-contenedor">
         <div className="headers">
           <section>
-            <h1>Registrar empleado</h1>
+            <h1>{headerTitle}</h1>
           </section>
+          {onClose && (
+            <section>
+              <span onClick={onClose}>x</span>
+            </section>
+          )}
         </div>
         <form className="formulario" onSubmit={handleSubmit(handlesub)}>
           <section className="form-subcontainer">
@@ -240,6 +435,57 @@ const { mutate: doInsertar } = useMutation({
             </article>
 
             <article>
+              <InputText icono={<v.iconocheck />}>
+                <select
+                  className="form__field"
+                  {...register("is_registered", {
+                    setValueAs: (value) => value === "true",
+                  })}
+                  defaultValue="false"
+                >
+                  <option value="false">No registrado</option>
+                  <option value="true">Registrado</option>
+                </select>
+                <label className="form__label">empleado registrado</label>
+              </InputText>
+            </article>
+
+            {isEdit && (
+              <article>
+                <InputText icono={<v.iconocheck />}>
+                  <select
+                    className="form__field"
+                    {...register("is_active")}
+                    defaultValue="true"
+                  >
+                    <option value="true">Activo</option>
+                    <option value="false">Inactivo</option>
+                  </select>
+                  <label className="form__label">estado</label>
+                </InputText>
+              </article>
+            )}
+
+            {showTerminationDate && (
+              <article>
+                <InputText icono={<v.iconocheck />}>
+                  <input
+                    className="form__field"
+                    type="date"
+                    placeholder="fecha de finalizacion laboral"
+                    {...register("termination_date", {
+                      required: "La fecha de finalizacion es obligatoria.",
+                    })}
+                  />
+                  <label className="form__label">fecha de finalizacion laboral</label>
+                  {errors.termination_date?.message && (
+                    <p>{errors.termination_date.message}</p>
+                  )}
+                </InputText>
+              </article>
+            )}
+
+            <article>
               <InputText icono={<v.iconocodigointerno />}>
                 <select
                   className="form__field"
@@ -280,14 +526,13 @@ const { mutate: doInsertar } = useMutation({
                 {errors.area_id?.type === "required" && <p>Campo requerido</p>}
               </InputText>
             </article>
-            
 
             <article>
               <InputText icono={<v.iconodocumento />}>
                 <input
                   className="form__field"
                   type="text"
-                  placeholder="Número de documento"
+                  placeholder="Numero de documento"
                   {...register("document_number", {
                     required: true,
                     pattern: /^[0-9]+$/,
@@ -334,21 +579,7 @@ const { mutate: doInsertar } = useMutation({
               </InputText>
             </article>
 
-            <article>
-              <InputText icono={<v.iconocheck />}>
-                <select
-                  className="form__field"
-                  {...register("is_registered", {
-                    setValueAs: (value) => value === "true",
-                  })}
-                  defaultValue="false"
-                >
-                  <option value="false">No registrado</option>
-                  <option value="true">Registrado</option>
-                </select>
-                <label className="form__label">empleado registrado</label>
-              </InputText>
-            </article>
+            
 
             {requiresProfessionalNumber && (
               <article>
@@ -357,7 +588,6 @@ const { mutate: doInsertar } = useMutation({
                     className="form__field"
                     type="text"
                     placeholder="Nro matricula"
-                    // required={isRegistered && requiresProfessionalNumber}
                     {...register("professional_number", {
                       validate: (value) => {
                         if (isRegistered && requiresProfessionalNumber) {
@@ -376,6 +606,8 @@ const { mutate: doInsertar } = useMutation({
                 </InputText>
               </article>
             )}
+
+            
 
             <article>
               <InputText icono={<v.iconoubicacion />}>
@@ -418,6 +650,7 @@ const { mutate: doInsertar } = useMutation({
                 titulo="Cancelar"
                 bgcolor="rgb(183, 183, 182)"
                 funcion={cancelar}
+                tipo="button"
               />
               <Btn1
                 icono={<v.iconoguardar />}
@@ -440,9 +673,35 @@ const Container = styled.div`
   align-items: center;
   justify-content: center;
 
+  ${({ $modal }) =>
+    $modal
+      ? `
+    position: fixed;
+    top: 0;
+    left: 0;
+    min-height: 100vh;
+    background-color: rgba(10, 9, 9, 0.5);
+    z-index: 1000;
+  `
+      : ""}
+
+  @media (max-width: ${v.bplisa}) {
+    padding: 16px 12px;
+  }
+
   @media (min-width: ${v.bplisa}) {
     padding: 28px 20px;
   }
+
+  ${({ $modal }) =>
+    $modal
+      ? `
+    @media (max-width: ${v.bplisa}) {
+      align-items: flex-start;
+      padding: 0;
+    }
+  `
+      : ""}
 
   .sub-contenedor {
     position: relative;
@@ -453,10 +712,36 @@ const Container = styled.div`
     box-shadow: -10px 15px 30px rgba(10, 9, 9, 0.25);
     padding: 16px 18px 20px 18px;
 
+    ${({ $modal }) =>
+      $modal
+        ? `
+      max-height: calc(100vh - 32px);
+      overflow-y: auto;
+    `
+        : ""}
+
     @media (min-width: ${v.bplisa}) {
       padding: 18px 26px 24px 26px;
       border-radius: 20px;
     }
+
+    @media (max-width: ${v.bplisa}) {
+      border-radius: 16px;
+      padding: 14px 14px 18px 14px;
+    }
+
+    ${({ $modal }) =>
+      $modal
+        ? `
+      @media (max-width: ${v.bplisa}) {
+        width: 100%;
+        height: 100vh;
+        max-height: none;
+        border-radius: 0;
+        padding: 16px 16px 20px 16px;
+      }
+    `
+        : ""}
 
     .headers {
       display: flex;
@@ -476,6 +761,12 @@ const Container = styled.div`
           font-size: 20px;
         }
       }
+
+      span {
+        font-size: 20px;
+        cursor: pointer;
+      }
+
     }
     .formulario {
       .form-subcontainer {
@@ -506,5 +797,6 @@ const Container = styled.div`
       align-items: stretch;
       gap: 10px;
     }
+
   }
 `;

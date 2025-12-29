@@ -31,6 +31,41 @@ export async function insertSucursalEmpleado(payload) {
   return data;
 }
 
+export async function getSucursalEmpleado(empleado_id) {
+  const { data, error } = await supabase
+    .schema(schema)
+    .from("sucursales_empleados")
+    .select("id, empleado_id, sucursal_id")
+    .eq("empleado_id", empleado_id)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export async function upsertSucursalEmpleado({ empleado_id, sucursal_id }) {
+  const existing = await getSucursalEmpleado(empleado_id);
+  if (existing?.id) {
+    const { data, error } = await supabase
+      .schema(schema)
+      .from("sucursales_empleados")
+      .update({ sucursal_id })
+      .eq("id", existing.id)
+      .select()
+      .maybeSingle();
+    if (error) throw error;
+    return data;
+  }
+
+  const { data, error } = await supabase
+    .schema(schema)
+    .from("sucursales_empleados")
+    .insert({ empleado_id, sucursal_id })
+    .select()
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
 // Obtener empleados por sucursal con join
 export async function getEmpleadosBySucursal({
   sucursal_id,

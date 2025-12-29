@@ -31,41 +31,47 @@ export async function searchEmpleados({
   orderBy = "last_name",
   ascending = true
 } = {}) {
-  const term = search?.trim();
-  let baseQuery = supabase
+  const term = (search ?? "").trim();
+  const isNumeric = /^\d+$/.test(term);
+
+  let q = supabase
     .schema(schema)
     .from(table)
     .select(selectFields)
-    .order(orderBy, { ascending });
+    .order(orderBy, { ascending })
 
-  if (empresa_id) {
-    baseQuery = baseQuery.eq("empresa_id", empresa_id);
-  }
+  if (empresa_id) q = q.eq("empresa_id", empresa_id);
 
   if (!term) {
-    const { data, error } = await baseQuery;
+    const { data, error } = await q;
     if (error) throw error;
     return data ?? [];
   }
 
-  const filters = [
+  // 1) OR para columnas locales (empleados)
+  const localFilters = [
     `first_name.ilike.%${term}%`,
     `last_name.ilike.%${term}%`,
+    `professional_number.ilike.%${term}%`,
   ];
 
-  if (/^\d+$/.test(term)) {
-    filters.push(`document_number.eq.${term}`);
+  if (isNumeric) {
+    localFilters.push(`document_number.eq.${term}`);
+    localFilters.push(`employee_id_number.eq.${term}`);
   }
 
-  const { data: localData, error: localError } = await baseQuery.or(
-    filters.join(",")
+  const { data: localData, error: localError } = await q.or(
+    localFilters.join(",")
   );
   if (localError) throw localError;
 
+  // 2) Busqueda por puesto (tabla relacionada)
   let puestoQuery = supabase
     .schema(schema)
-    .from(table)
-    .select("id, document_number, first_name, last_name, puesto:puestos_laborales!inner(name), empresa_id")
+    .from("empleados")
+    .select(
+      "id, document_number, first_name, last_name, puesto:puestos_laborales!inner(name), empresa_id, employee_id_number, professional_number"
+    )
     .order(orderBy, { ascending })
     .ilike("puestos_laborales.name", `%${term}%`);
 
@@ -80,8 +86,8 @@ export async function searchEmpleados({
   (localData ?? []).forEach((item) => merged.set(item.id, item));
   (puestoData ?? []).forEach((item) => merged.set(item.id, item));
   return Array.from(merged.values());
-
 }
+
 
 export async function insertEmpleado(payload) {
   const { data, error } = await supabase
@@ -92,6 +98,59 @@ export async function insertEmpleado(payload) {
     .maybeSingle();
   if (error) throw error;
   return data;
+}
+
+export async function updateEmpleado(id, payload) {
+  const { data, error } = await supabase
+    .schema(schema)
+    .from(table)
+    .update(payload)
+    .eq("id", id)
+    .select()
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export async function checkEmpleadoDuplicate({
+  document_number,
+  employee_id_number,
+  excludeId,
+} = {}) {
+  let documentExists = false;
+  let legajoExists = false;
+
+  if (document_number) {
+    let query = supabase
+      .schema(schema)
+      .from(table)
+      .select("id")
+      .eq("document_number", document_number)
+      .limit(1);
+    if (excludeId) {
+      query = query.neq("id", excludeId);
+    }
+    const { data, error } = await query;
+    if (error) throw error;
+    documentExists = (data ?? []).length > 0;
+  }
+
+  if (employee_id_number) {
+    let query = supabase
+      .schema(schema)
+      .from(table)
+      .select("id")
+      .eq("employee_id_number", employee_id_number)
+      .limit(1);
+    if (excludeId) {
+      query = query.neq("id", excludeId);
+    }
+    const { data, error } = await query;
+    if (error) throw error;
+    legajoExists = (data ?? []).length > 0;
+  }
+
+  return { documentExists, legajoExists };
 }
 
 export async function getEmpleadoById(id) {

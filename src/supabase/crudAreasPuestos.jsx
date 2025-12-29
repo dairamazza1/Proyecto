@@ -23,3 +23,14 @@ export async function getPuestosByArea(areaId) {
   if (error) throw error;
   return data ?? [];
 }
+
+export async function getPuestoById(puestoId) {
+  const { data, error } = await supabase
+    .schema(schema)
+    .from("puestos_laborales")
+    .select("id, id_area, requires_professional_number")
+    .eq("id", puestoId)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}

@@ -1,7 +1,12 @@
+import { useState } from "react";
 import styled from "styled-components";
-import { Title } from "../../index";
+import { Btn1, RegistrarEmpleados, Title } from "../../index";
+import { useNavigate } from "react-router-dom";
+import { v } from "../../styles/variables";
 
-export function EmpleadoTemplate({ id, empleado, isError }) {
+export function EmpleadoTemplate({ id, empleado, isError, sucursalEmpleado }) {
+  const navigate = useNavigate();
+  const [openEditar, setOpenEditar] = useState(false);
   const fullName = [empleado?.first_name, empleado?.last_name]
     .filter(Boolean)
     .join(" ");
@@ -13,6 +18,8 @@ export function EmpleadoTemplate({ id, empleado, isError }) {
   const hireDate = formatDate(empleado?.hire_date);
   const statusLabel = empleado?.is_active ? "Activo" : "Inactivo";
 
+  const terminationDate = formatDate(empleado?.termination_date);
+
   return (
     <Container>
       <Header>
@@ -21,9 +28,17 @@ export function EmpleadoTemplate({ id, empleado, isError }) {
           <h2>{fullName ? `Perfil Profesional de ${fullName}` : "-"}</h2>
         </div>
         {id && empleado && (
-          <StatusPill className={empleado?.is_active ? "activo" : "inactivo"}>
-            Estado: {statusLabel}
-          </StatusPill>
+          <div className="headerActions">
+            <StatusPill className={empleado?.is_active ? "activo" : "inactivo"}>
+              Estado: {statusLabel}
+            </StatusPill>
+            <Btn1
+              icono={<v.iconeditarTabla />}
+              titulo="Editar"
+              bgcolor="#F9D70B"
+              funcion={() => setOpenEditar(true)}
+            />
+          </div>
         )}
       </Header>
 
@@ -50,6 +65,10 @@ export function EmpleadoTemplate({ id, empleado, isError }) {
                 <span className="value">{empleado?.last_name ?? "-"}</span>
               </InfoItem>
               <InfoItem>
+                <span className="label">Documento</span>
+                <span className="value">{documentInfo}</span>
+              </InfoItem>
+              <InfoItem>
                 <span className="label">Puesto</span>
                 <span className="value">{empleado?.puesto?.name ?? "-"}</span>
               </InfoItem>
@@ -57,18 +76,24 @@ export function EmpleadoTemplate({ id, empleado, isError }) {
                 <span className="label">N° de Matricula</span>
                 <span className="value">{empleado?.professional_number ?? "-"}</span>
               </InfoItem>
-              <InfoItem>
-                <span className="label">Documento</span>
-                <span className="value">{documentInfo}</span>
-              </InfoItem>
-              <InfoItem>
-                <span className="label">Fecha ingreso</span>
-                <span className="value">{hireDate}</span>
-              </InfoItem>
+
               <InfoItem>
                 <span className="label">Empleado Registrado</span>
                 <span className="value">{empleado?.is_registered ? "Si" : "No"}</span>
               </InfoItem>
+              
+              <InfoItem>
+                <span className="label">Fecha ingreso</span>
+                <span className="value">{hireDate}</span>
+              </InfoItem>
+              
+              {!empleado?.is_active && (
+                <InfoItem>
+                  <span className="label">Fecha de finalizacion laboral</span>
+                  <span className="value">{terminationDate}</span>
+                </InfoItem>
+              )}
+              
             </InfoGrid>
           </InfoCard>
 
@@ -104,6 +129,16 @@ export function EmpleadoTemplate({ id, empleado, isError }) {
           </SectionCard>
         </>
       )}
+
+      {openEditar && (
+        <RegistrarEmpleados
+          mode="edit"
+          empleadoId={id}
+          empleado={empleado}
+          sucursalEmpleado={sucursalEmpleado}
+          onClose={() => setOpenEditar(false)}
+        />
+      )}
     </Container>
   );
 }
@@ -126,6 +161,13 @@ const Header = styled.header`
   .titleGroup {
     display: grid;
     gap: 6px;
+  }
+
+  .headerActions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
   }
 
   h2 {
@@ -159,7 +201,19 @@ const InfoCard = styled.section`
 const InfoGrid = styled.div`
   display: grid;
   gap: 18px 30px;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+
+  @media (min-width: ${v.bplisa}) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  @media (min-width: ${v.bpbart}) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  @media (min-width: ${v.bpmarge}) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 `;
 
 const InfoItem = styled.div`
