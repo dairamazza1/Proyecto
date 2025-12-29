@@ -49,7 +49,7 @@ export async function getEmpleadosBySucursal({
         document_number,
         first_name,
         last_name,
-        employee_type,
+        puesto:puestos_laborales(name),
         empresa_id
       )
     `
@@ -105,7 +105,7 @@ export async function searchEmpleadosBySucursal({
       const matchName =
         emp.first_name?.toLowerCase().includes(term.toLowerCase()) ||
         emp.last_name?.toLowerCase().includes(term.toLowerCase()) ||
-        emp.employee_type?.toLowerCase().includes(term.toLowerCase());
+        emp.puesto?.name?.toLowerCase().includes(term.toLowerCase());
 
       const matchNumber = /^\d+$/.test(term)
         ? emp.document_number === term

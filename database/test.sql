@@ -1,23 +1,30 @@
 -- WARNING: This schema is for context only and is not meant to be run.
 -- Table order and constraints may not be valid for execution.
 
+CREATE TABLE test.areas_laborales (
+  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  name character varying NOT NULL,
+  CONSTRAINT areas_laborales_pkey PRIMARY KEY (id)
+);
 CREATE TABLE test.empleados (
   id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
-  empresa_id bigint,
+  empresa_id bigint DEFAULT '1'::bigint,
   user_id bigint,
   first_name character varying,
   last_name character varying,
   document_type character varying DEFAULT 'DNI'::character varying,
   document_number character varying UNIQUE,
-  employee_type character varying,
   is_registered boolean,
   is_active boolean,
   created_at timestamp without time zone NOT NULL,
   hire_date date,
   employee_id_number character varying,
+  professional_number character varying,
+  puesto_id bigint,
   CONSTRAINT empleados_pkey PRIMARY KEY (id),
   CONSTRAINT empleados_user_id_fkey FOREIGN KEY (user_id) REFERENCES test.perfiles(id),
-  CONSTRAINT empleados_empresa_id_fkey FOREIGN KEY (empresa_id) REFERENCES test.empresas(id)
+  CONSTRAINT empleados_empresa_id_fkey FOREIGN KEY (empresa_id) REFERENCES test.empresas(id),
+  CONSTRAINT empleados_puesto_id_fkey FOREIGN KEY (puesto_id) REFERENCES test.puestos_laborales(id)
 );
 CREATE TABLE test.empleados_cambios_actividades (
   id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
@@ -121,6 +128,14 @@ CREATE TABLE test.perfiles (
   app_role character varying NOT NULL DEFAULT 'employee'::character varying,
   CONSTRAINT perfiles_pkey PRIMARY KEY (id),
   CONSTRAINT users_auth_user_id_fkey FOREIGN KEY (auth_user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE test.puestos_laborales (
+  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  id_area bigint,
+  name text,
+  requires_professional_number boolean,
+  CONSTRAINT puestos_laborales_pkey PRIMARY KEY (id),
+  CONSTRAINT puestos_laborales_id_area_fkey FOREIGN KEY (id_area) REFERENCES test.areas_laborales(id)
 );
 CREATE TABLE test.sucursales (
   id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,

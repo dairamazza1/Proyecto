@@ -9,20 +9,39 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { FaArrowsAltV, FaEye } from "react-icons/fa";
 import { Link } from "react-router-dom";
 
 export function TablaEmpleados({ data }) {
   if (data == null) return null;
   const [columnFilters] = useState([]);
+  const [sorting, setSorting] = useState([{ id: "last_name", desc: false }]);
 
   const columns = [
     {
-      accessorKey: "document_number",
-      header: "N° Legajo",
+      accessorKey: "employee_id_number",
+      header: "Nro Legajo",
+      meta: {
+        cardLabel: "Legajo",
+        cardValue: (row) =>
+          row.employee_id_number ?? row.document_number ?? row.id ?? "-",
+      },
       cell: (info) => (
-        <div data-title="N° Legajo" className="ContentCell">
-          <span>{info.row.original.document_number ?? info.row.original.id}</span>
+        <div data-title="Nro Legajo" className="ContentCell">
+          <AccederLink
+            to={`/empleados/${info.row.original.id}`}
+            title="Acceder a empleado"
+            aria-label={`Acceder a empleado ${
+              info.row.original.employee_id_number ??
+              info.row.original.document_number ??
+              info.row.original.id
+            }`}
+          >
+            <span className="legajoValue">
+              {info.row.original.employee_id_number ??
+                info.row.original.document_number ??
+                info.row.original.id}
+            </span>
+          </AccederLink>
         </div>
       ),
       enableSorting: true,
@@ -30,9 +49,13 @@ export function TablaEmpleados({ data }) {
     {
       accessorKey: "first_name",
       header: "Nombre",
+      meta: {
+        cardLabel: "Nombre",
+        cardValue: (row) => row.first_name ?? "-",
+      },
       cell: (info) => (
         <div data-title="Nombre" className="ContentCell">
-          <span>{info.getValue()}</span>
+          <span>{info.getValue() ?? "-"}</span>
         </div>
       ),
       enableSorting: true,
@@ -40,37 +63,44 @@ export function TablaEmpleados({ data }) {
     {
       accessorKey: "last_name",
       header: "Apellido",
+      meta: {
+        cardLabel: "Apellido",
+        cardValue: (row) => row.last_name ?? "-",
+      },
       cell: (info) => (
         <div data-title="Apellido" className="ContentCell">
-          <span>{info.getValue()}</span>
+          <span>{info.getValue() ?? "-"}</span>
         </div>
       ),
       enableSorting: true,
     },
     {
-      accessorKey: "employee_type",
-      header: "Tipo",
+      accessorKey: "puesto",
+      header: "Puesto",
+      meta: {
+        cardLabel: "Puesto",
+        cardValue: (row) => row.puesto?.name ?? "-",
+      },
       cell: (info) => (
-        <div data-title="Tipo" className="ContentCell">
-          <span>{info.getValue()}</span>
+        <div data-title="Puesto" className="ContentCell">
+          <span>{info.row.original.puesto?.name ?? "-"}</span>
         </div>
       ),
-      enableSorting: true,
-    },
-    {
-      id: "acciones",
-      header: "Acciones",
       enableSorting: false,
+    },
+    {
+      accessorKey: "professional_number",
+      header: "Matricula",
+      meta: {
+        cardLabel: "Matricula",
+        cardValue: (row) => row.professional_number || "-",
+      },
       cell: (info) => (
-        <div data-title="Acciones" className="ContentCell">
-          <AccederLink to={`/empleados/${info.row.original.id}`}>
-            <Icono>
-              <FaEye />
-            </Icono>
-            <span>Acceder</span>
-          </AccederLink>
+        <div data-title="Matricula" className="ContentCell">
+          <span>{info.getValue() || "-"}</span>
         </div>
       ),
+      enableSorting: true,
     },
   ];
 
@@ -79,7 +109,9 @@ export function TablaEmpleados({ data }) {
     columns,
     state: {
       columnFilters,
+      sorting,
     },
+    onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -88,36 +120,78 @@ export function TablaEmpleados({ data }) {
 
   return (
     <Container>
+      <div className="cards">
+        {table.getRowModel().rows.map((row) => {
+          const empleado = row.original;
+          const cardFields = columns
+            .map((column) => ({
+              label: column.meta?.cardLabel,
+              value: column.meta?.cardValue?.(empleado),
+            }))
+            .filter((field) => field.label);
+          return (
+            <CardLink
+              to={`/empleados/${empleado.id}`}
+              key={row.id}
+              aria-label={`Acceder a empleado ${empleado.last_name ?? ""} ${empleado.first_name ?? ""}`}
+            >
+              <article className="card">
+                <div className="cardHeader">
+                  <h3>
+                    {empleado.last_name ?? "-"}, {empleado.first_name ?? "-"}
+                  </h3>
+
+                </div>
+                <div className="cardBody">
+                  {cardFields.map((field) => (
+                    <div className="cardRow" key={field.label}>
+                      <span className="label">{field.label}</span>
+                      <span className="value">{field.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </article>
+            </CardLink>
+          );
+        })}
+      </div>
+
       <table className="responsive-table">
         <thead>
           {table.getHeaderGroups().map((headerGroup) => (
             <tr key={headerGroup.id}>
-              {headerGroup.headers.map((header) => (
-                <th key={header.id}>
-                  {header.column.columnDef.header}
-                  {header.column.getCanSort() && (
-                    <span
-                      style={{ cursor: "pointer" }}
-                      onClick={header.column.getToggleSortingHandler()}
+              {headerGroup.headers.map((header) => {
+                const canSort = header.column.getCanSort();
+                const sorted = header.column.getIsSorted();
+
+                return (
+                  <th key={header.id}>
+                    <div
+                      className={canSort ? "thInner sortable" : "thInner"}
+                      onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
+                      role={canSort ? "button" : undefined}
+                      tabIndex={canSort ? 0 : undefined}
+                      onKeyDown={
+                        canSort
+                          ? (e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                header.column.getToggleSortingHandler()?.(e);
+                              }
+                            }
+                          : undefined
+                      }
                     >
-                      <FaArrowsAltV />
-                    </span>
-                  )}
-                  {
-                    {
-                      asc: " ƒ-ý",
-                      desc: " ƒ-¬",
-                    }[header.column.getIsSorted()]
-                  }
-                  <div
-                    onMouseDown={header.getResizeHandler()}
-                    onTouchStart={header.getResizeHandler()}
-                    className={`resizer ${
-                      header.column.getIsResizing() ? "isResizing" : ""
-                    }`}
-                  />
-                </th>
-              ))}
+                      <span className="thLabel">{header.column.columnDef.header}</span>
+                      {canSort && (
+                        <span className={`sortIcon ${sorted ? "sorted" : ""}`}>
+                          {sorted === "asc" ? "^" : sorted === "desc" ? "v" : ""}
+                        </span>
+                      )}
+                    </div>
+                  </th>
+                );
+              })}
             </tr>
           ))}
         </thead>
@@ -148,16 +222,83 @@ const Container = styled.div`
   @media (min-width: ${v.bphomer}) {
     margin: 2em auto;
   }
+
+  .cards {
+    display: grid;
+    gap: 14px;
+    margin-bottom: 1.5em;
+
+    @media (min-width: ${v.bpbart}) {
+      display: none;
+    }
+  }
+
+  .card {
+    background: ${({ theme }) => theme.bgtotal};
+    border-radius: 14px;
+    padding: 14px 16px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+    display: grid;
+    gap: 12px;
+  }
+
+  .cardHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+
+    h3 {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 700;
+      color: ${({ theme }) => theme.text};
+    }
+  }
+
+  .cardBody {
+    display: grid;
+    gap: 8px;
+  }
+
+  .cardRow {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 0.95rem;
+
+    .label {
+      color: ${({ theme }) => theme.textsecundary};
+    }
+
+    .value {
+      color: ${({ theme }) => theme.text};
+      font-weight: 600;
+    }
+  }
+
+  .cardLink {
+    text-decoration: none;
+    color: inherit;
+  }
+
   .responsive-table {
     width: 100%;
     margin-bottom: 1.5em;
     border-spacing: 0;
+
+    @media (max-width: ${v.bpbart}) {
+      display: none;
+    }
+
     @media (min-width: ${v.bpbart}) {
       font-size: 0.9em;
     }
     @media (min-width: ${v.bpmarge}) {
       font-size: 1em;
     }
+
     thead {
       position: absolute;
       padding: 0;
@@ -172,16 +313,44 @@ const Container = styled.div`
         width: auto;
         overflow: auto;
       }
+
       th {
         border-bottom: 2px solid ${({ theme }) => theme.color2};
         font-weight: 700;
         text-align: center;
         color: ${({ theme }) => theme.text};
-        &:first-of-type {
-          text-align: center;
-        }
+      }
+
+      .thInner {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        width: 100%;
+        user-select: none;
+      }
+
+      .sortable {
+        cursor: pointer;
+      }
+
+      .thLabel {
+        display: inline-block;
+      }
+
+      .sortIcon {
+        font-size: 0.9em;
+        opacity: 0.8;
+        transform: translateY(-1px);
+        transition: opacity 120ms ease, transform 120ms ease;
+      }
+
+      .sortIcon.sorted {
+        opacity: 1;
+        transform: translateY(0px);
       }
     }
+
     tbody,
     tr,
     th,
@@ -191,6 +360,7 @@ const Container = styled.div`
       text-align: left;
       white-space: normal;
     }
+
     tr {
       @media (min-width: ${v.bpbart}) {
         display: table-row;
@@ -215,6 +385,7 @@ const Container = styled.div`
         padding: 0.75em;
       }
     }
+
     tbody {
       @media (min-width: ${v.bpbart}) {
         display: table-row-group;
@@ -229,16 +400,7 @@ const Container = styled.div`
           margin-bottom: 0;
         }
       }
-      th[scope="row"] {
-        @media (min-width: ${v.bplisa}) {
-          border-bottom: 1px solid rgba(161, 161, 161, 0.32);
-        }
-        @media (min-width: ${v.bpbart}) {
-          background-color: transparent;
-          text-align: center;
-          color: ${({ theme }) => theme.text};
-        }
-      }
+
       .ContentCell {
         text-align: right;
         display: flex;
@@ -251,12 +413,14 @@ const Container = styled.div`
           border-bottom: none;
         }
       }
+
       td {
         text-align: right;
         @media (min-width: ${v.bpbart}) {
           text-align: center;
         }
       }
+
       td[data-title]:before {
         content: attr(data-title);
         float: left;
@@ -277,10 +441,25 @@ const AccederLink = styled(Link)`
   align-items: center;
   gap: 6px;
   color: ${({ theme }) => theme.text};
-  text-decoration: none;
-  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  font-weight: 700;
 
   &:hover {
     color: ${({ theme }) => theme.color1};
+  }
+
+  .legajoValue {
+    letter-spacing: 0.2px;
+  }
+`;
+
+const CardLink = styled(Link)`
+  text-decoration: none;
+  color: inherit;
+
+  &:hover .card {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.12);
   }
 `;

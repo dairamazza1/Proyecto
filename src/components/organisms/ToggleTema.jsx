@@ -14,7 +14,7 @@ export function ToggleTema() {
             onClick={setTheme}
           />
           <div className="icon icon--moon">
-            <svg
+            {/* <svg
               xmlns="http://www.w3.org/2000/svg"
               width="30"
               height="30"
@@ -94,6 +94,29 @@ export function ToggleTema() {
                   opacity=".2"
                 ></path>
               </g>
+            </svg> */}
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="30"
+              height="30"
+              aria-label="Modo oscuro"
+              role="img"
+              viewBox="0 0 24 24"
+            >
+              <defs>
+                <mask id="crescent-mask">
+                  <path fill="#ff5353" d="M0 0h24v24H0z" />
+                  <circle cx="15" cy="9" r="8" fill="#000" />
+                </mask>
+              </defs>
+              <circle
+                cx="12"
+                cy="12"
+                r="9"
+                fill="currentColor"
+                mask="url(#crescent-mask)"
+              />
+              
             </svg>
           </div>
 

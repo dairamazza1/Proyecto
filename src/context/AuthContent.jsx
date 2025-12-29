@@ -14,8 +14,8 @@ export const AuthContextProvider = ({ children }) => {
         setUser(session?.user);
         insertData(session?.user.id, session?.user.email);
        }
-       console.log(event);
-       console.log(session);
+      //  console.log(event);
+      //  console.log(session);
     });
     return () => {
       data.subscription;

@@ -1,5 +1,5 @@
 import styled from "styled-components";
-import { useAuthStore } from "../../store/AuthStore";
+import { useAuthStore } from "../../context/AuthStore";
 
 export function HomeTemplate() {
   const { cerrarSesion } = useAuthStore();

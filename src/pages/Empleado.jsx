@@ -1,21 +1,19 @@
-import styled from "styled-components";
-import { Title } from "../index";
+import { EmpleadoTemplate, Spinner1, getEmpleadoById } from "../index";
 import { useParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 
 export function Empleado() {
   const { id } = useParams();
+  const { data: empleado, isLoading, isError } = useQuery({
+    queryKey: ["empleado", id],
+    queryFn: () => getEmpleadoById(id),
+    enabled: !!id,
+    refetchOnWindowFocus: false,
+  });
 
-  return (
-    <Container>
-      <Title>Empleado</Title>
-      <p>{id ? `Detalle del empleado ${id}` : "Nuevo empleado"}</p>
-    </Container>
-  );
+  if (id && isLoading) {
+    return <Spinner1 />;
+  }
+
+  return <EmpleadoTemplate id={id} empleado={empleado} isError={isError} />;
 }
-
-const Container = styled.div`
-  height: calc(100dvh - 30px);
-  padding: 15px;
-  display: grid;
-  gap: 12px;
-`;

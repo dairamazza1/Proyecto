@@ -2,11 +2,11 @@ import styled from "styled-components";
 import { Title, Btn1, Buscador, TablaEmpleados, useEmpleadosStore, useSucursalesStore } from "../../index";
 import { v } from "../../styles/variables";
 import { useNavigate } from "react-router-dom";
-import { useAuthStore } from "../../store/AuthStore";
+// import { useAuthStore } from "../../store/AuthStore";
 
 
 export function EmpleadosTemplate() {
-  const { cerrarSesion } = useAuthStore();
+  // const { cerrarSesion } = useAuthStore();
   const navigate = useNavigate();
   const { dataEmpleados, setBuscador } = useEmpleadosStore();
   const { dataSucursales, sucursalSeleccionada, setSucursalSeleccionada } = useSucursalesStore();
@@ -22,7 +22,7 @@ export function EmpleadosTemplate() {
 
   return (
     <Container>
-      <button onClick={cerrarSesion}>cerrar</button>
+      {/* <button onClick={cerrarSesion}>cerrar</button> */}
       <section className="header">
         <Title>Empleados</Title>
         <div className="acciones">
@@ -67,7 +67,7 @@ const Container = styled.div`
   padding: 15px;
   display: grid;
   grid-template:
-    "header" 80px
+    "header" auto
     "main" auto;
 
   .header {
@@ -77,6 +77,10 @@ const Container = styled.div`
     align-items: center;
     gap: 15px;
     flex-wrap: wrap;
+
+    @media (max-width: ${v.bpbart}) {
+      align-items: stretch;
+    }
   }
   .acciones {
     display: flex;
@@ -88,18 +92,26 @@ const Container = styled.div`
     @media (min-width: ${v.bpbart}) {
       width: auto;
     }
+    @media (max-width: ${v.bpbart}) {
+      justify-content: stretch;
+      gap: 10px;
+    }
   }
   .selector-sucursal {
     width: min(240px, 100%);
+    @media (max-width: ${v.bpbart}) {
+      width: 100%;
+    }
     
     .select-sucursal {
       width: 100%;
-      padding: 10px 15px;
-      border-radius: 8px;
-      border: 1px solid ${({ theme }) => theme.color2};
+      height: 60px;
+      padding: 0 15px;
+      border-radius: 10px;
+      border: 2px solid ${({ theme }) => theme.color2};
       background: ${({ theme }) => theme.bgtotal};
       color: ${({ theme }) => theme.text};
-      font-size: 14px;
+      font-size: 18px;
       cursor: pointer;
       outline: none;
       
@@ -110,6 +122,9 @@ const Container = styled.div`
   }
   .buscador {
     width: min(340px, 100%);
+    @media (max-width: ${v.bpbart}) {
+      width: 100%;
+    }
   }
   .main {
     grid-area: main;
