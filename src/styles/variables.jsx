@@ -49,6 +49,9 @@ import { FaSearch } from "react-icons/fa";
 import { FaFilePdf, FaFileAlt } from "react-icons/fa";
 import { FaUserTie } from "react-icons/fa";
 import { MdLocationOn } from "react-icons/md";
+import { MdOutlinePhoneIphone } from "react-icons/md";
+import { MdLabelImportantOutline } from "react-icons/md";
+import { Md123 } from "react-icons/md";
 
 
 
@@ -129,6 +132,10 @@ export const v = {
   iconobars: BsBarChartLine,
   iconocalculadora: AiOutlineCalculator,
   iconocheck: BsCalendarCheck,
+  iconoTelephone: MdOutlinePhoneIphone ,
+  iconoImportante: MdLabelImportantOutline  ,
+  iconoNumbers: Md123  ,
+
 
   iconoflechaderecha:IoIosArrowForward,
   iconoflechaizquierda:IoIosArrowBack,

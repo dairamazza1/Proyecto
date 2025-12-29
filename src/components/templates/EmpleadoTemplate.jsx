@@ -69,6 +69,10 @@ export function EmpleadoTemplate({ id, empleado, isError, sucursalEmpleado }) {
                 <span className="value">{documentInfo}</span>
               </InfoItem>
               <InfoItem>
+                <span className="label">Nro telefono</span>
+                <span className="value">{empleado?.telephone ?? "-"}</span>
+              </InfoItem>
+              <InfoItem>
                 <span className="label">Puesto</span>
                 <span className="value">{empleado?.puesto?.name ?? "-"}</span>
               </InfoItem>

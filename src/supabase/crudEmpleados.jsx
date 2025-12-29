@@ -3,7 +3,7 @@ import { supabase } from "../index";
 const schema = "test";
 const table = "empleados";
 const selectFields =
-  "id, document_number, first_name, last_name, puesto:puestos_laborales(name), empresa_id, employee_id_number,professional_number";
+  "id, document_number, first_name, last_name, puesto:puestos_laborales(name), empresa_id, employee_id_number,professional_number,telephone";
 export async function getEmpleados({
   empresa_id,
   orderBy = "last_name",

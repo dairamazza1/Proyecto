@@ -283,6 +283,7 @@ export function RegistrarEmpleados({
       is_active: true,
       created_at: new Date().toISOString(),
       hire_date: data.hire_date || null,
+      telephone:data.telephone
     };
 
     const empleadoCreado = await createEmpleado(payload);
@@ -391,7 +392,7 @@ export function RegistrarEmpleados({
                   placeholder="nombre"
                   {...register("first_name", { required: true })}
                 />
-                <label className="form__label">nombre</label>
+                <label className="form__label">Nombre</label>
                 {errors.first_name?.type === "required" && (
                   <p>Campo requerido</p>
                 )}
@@ -406,7 +407,7 @@ export function RegistrarEmpleados({
                   placeholder="apellido"
                   {...register("last_name", { required: true })}
                 />
-                <label className="form__label">apellido</label>
+                <label className="form__label">Apellido</label>
                 {errors.last_name?.type === "required" && (
                   <p>Campo requerido</p>
                 )}
@@ -434,6 +435,19 @@ export function RegistrarEmpleados({
               </InputText>
             </article>
 
+
+            <article>
+              <InputText icono={<v.iconoTelephone />}>
+                <input
+                  className="form__field"
+                  type="text"
+                  placeholder="Nro contacto"
+                  {...register("telephone")}
+                />
+                <label className="form__label">Nro telefono</label>
+              </InputText>
+            </article>
+
             <article>
               <InputText icono={<v.iconocheck />}>
                 <select
@@ -446,13 +460,13 @@ export function RegistrarEmpleados({
                   <option value="false">No registrado</option>
                   <option value="true">Registrado</option>
                 </select>
-                <label className="form__label">empleado registrado</label>
+                <label className="form__label">Empleado registrado</label>
               </InputText>
             </article>
 
             {isEdit && (
               <article>
-                <InputText icono={<v.iconocheck />}>
+                <InputText icono={<v.iconoImportante />}>
                   <select
                     className="form__field"
                     {...register("is_active")}
@@ -461,7 +475,7 @@ export function RegistrarEmpleados({
                     <option value="true">Activo</option>
                     <option value="false">Inactivo</option>
                   </select>
-                  <label className="form__label">estado</label>
+                  <label className="form__label">Estado</label>
                 </InputText>
               </article>
             )}
@@ -477,7 +491,7 @@ export function RegistrarEmpleados({
                       required: "La fecha de finalizacion es obligatoria.",
                     })}
                   />
-                  <label className="form__label">fecha de finalizacion laboral</label>
+                  <label className="form__label">Fecha de finalizacion laboral</label>
                   {errors.termination_date?.message && (
                     <p>{errors.termination_date.message}</p>
                   )}
@@ -486,7 +500,7 @@ export function RegistrarEmpleados({
             )}
 
             <article>
-              <InputText icono={<v.iconocodigointerno />}>
+              <InputText icono={<v.iconodocumento />}>
                 <select
                   className="form__field"
                   {...register("document_type")}
@@ -496,7 +510,7 @@ export function RegistrarEmpleados({
                   <option value="Pasaporte">Pasaporte</option>
                   <option value="Otro">Otro</option>
                 </select>
-                <label className="form__label">tipo documento</label>
+                <label className="form__label">Tipo documento</label>
               </InputText>
             </article>
 
@@ -522,13 +536,13 @@ export function RegistrarEmpleados({
                     </option>
                   ))}
                 </select>
-                <label className="form__label">area laboral</label>
+                <label className="form__label">Area laboral</label>
                 {errors.area_id?.type === "required" && <p>Campo requerido</p>}
               </InputText>
             </article>
 
             <article>
-              <InputText icono={<v.iconodocumento />}>
+              <InputText icono={<v.iconoNumbers />}>
                 <input
                   className="form__field"
                   type="text"
@@ -572,7 +586,7 @@ export function RegistrarEmpleados({
                     </option>
                   ))}
                 </select>
-                <label className="form__label">puesto laboral</label>
+                <label className="form__label">Puesto laboral</label>
                 {errors.puesto_id?.type === "required" && (
                   <p>Campo requerido</p>
                 )}
@@ -625,7 +639,7 @@ export function RegistrarEmpleados({
                     </option>
                   ))}
                 </select>
-                <label className="form__label">sucursal</label>
+                <label className="form__label">Sucursal</label>
                 {errors.sucursal_id?.type === "required" && (
                   <p>Campo requerido</p>
                 )}
@@ -640,7 +654,7 @@ export function RegistrarEmpleados({
                   placeholder="fecha ingreso"
                   {...register("hire_date")}
                 />
-                <label className="form__label">fecha ingreso</label>
+                <label className="form__label">Fecha ingreso</label>
               </InputText>
             </article>
 
