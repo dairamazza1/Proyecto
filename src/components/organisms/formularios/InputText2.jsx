@@ -45,6 +45,16 @@ const Container = styled.div`
       border-bottom: 1px dashed #656565;
     }
   }
+
+  select.form__field {
+    background-color: ${({ theme }) => theme.bgtotal};
+    color: ${({ theme }) => theme.text};
+  }
+
+  select.form__field option {
+    background-color: ${({ theme }) => theme.bgtotal};
+    color: ${({ theme }) => theme.text};
+  }
   .form__field:placeholder-shown ~ .form__label {
     font-size: 17px;
     cursor: text;

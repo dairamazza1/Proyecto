@@ -52,6 +52,16 @@ const Container = styled.div`
     }
   }
 
+  select.form__field {
+    background-color: ${(props) => props.theme.bgtotal};
+    color: ${(props) => props.theme.text};
+  }
+
+  select.form__field option {
+    background-color: ${(props) => props.theme.bgtotal};
+    color: ${(props) => props.theme.text};
+  }
+
   .form__field::placeholder {
     color: transparent;
   }

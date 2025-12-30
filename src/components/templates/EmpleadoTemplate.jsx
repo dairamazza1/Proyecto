@@ -1,12 +1,21 @@
 import { useState } from "react";
 import styled from "styled-components";
-import { Btn1, RegistrarEmpleados, Title } from "../../index";
+import {
+  Btn1,
+  RegistrarEmpleados,
+  Title,
+  VacacionesSection,
+  LicenciasSection,
+  CambiosSection,
+  SancionesSection,
+} from "../../index";
 import { useNavigate } from "react-router-dom";
 import { v } from "../../styles/variables";
 
 export function EmpleadoTemplate({ id, empleado, isError, sucursalEmpleado }) {
   const navigate = useNavigate();
   const [openEditar, setOpenEditar] = useState(false);
+  const [activeTab, setActiveTab] = useState("vacaciones");
   const fullName = [empleado?.first_name, empleado?.last_name]
     .filter(Boolean)
     .join(" ");
@@ -53,7 +62,7 @@ export function EmpleadoTemplate({ id, empleado, isError, sucursalEmpleado }) {
           <InfoCard>
             <InfoGrid>
               <InfoItem>
-                <span className="label">N° Legajo</span>
+                <span className="label">N° de Legajo</span>
                 <span className="value">{legajo}</span>
               </InfoItem>
               <InfoItem>
@@ -69,7 +78,7 @@ export function EmpleadoTemplate({ id, empleado, isError, sucursalEmpleado }) {
                 <span className="value">{documentInfo}</span>
               </InfoItem>
               <InfoItem>
-                <span className="label">Nro telefono</span>
+                <span className="label">N° de teléfono</span>
                 <span className="value">{empleado?.telephone ?? "-"}</span>
               </InfoItem>
               <InfoItem>
@@ -102,35 +111,48 @@ export function EmpleadoTemplate({ id, empleado, isError, sucursalEmpleado }) {
           </InfoCard>
 
           <Tabs>
-            <button className="tab active" type="button">
+            <button
+              className={`tab ${activeTab === "vacaciones" ? "active" : ""}`}
+              type="button"
+              onClick={() => setActiveTab("vacaciones")}
+            >
               Vacaciones
             </button>
-            <button className="tab" type="button">
+            <button
+              className={`tab ${activeTab === "licencias" ? "active" : ""}`}
+              type="button"
+              onClick={() => setActiveTab("licencias")}
+            >
               Licencias
             </button>
-            <button className="tab" type="button">
+            <button
+              className={`tab ${activeTab === "cambios" ? "active" : ""}`}
+              type="button"
+              onClick={() => setActiveTab("cambios")}
+            >
               Cambios de turnos
             </button>
-            <button className="tab" type="button">
+            <button
+              className={`tab ${activeTab === "sanciones" ? "active" : ""}`}
+              type="button"
+              onClick={() => setActiveTab("sanciones")}
+            >
               Sanciones
             </button>
           </Tabs>
 
-          <SectionCard>
-            <div className="sectionHeader">
-              <h3>Vacaciones</h3>
-              <button className="ghostButton" type="button">
-                + nuevo
-              </button>
-            </div>
-            <div className="sectionMeta">
-              <span>Anuales: 21 dias</span>
-              <span>Tomados: 0</span>
-              <span>Pendientes: 21</span>
-              <span>Ultimo periodo: 2024</span>
-            </div>
-            <EmptyState>Sin registros por el momento.</EmptyState>
-          </SectionCard>
+          {activeTab === "vacaciones" && (
+            <VacacionesSection empleado={empleado} empleadoId={id} />
+          )}
+          {activeTab === "licencias" && (
+            <LicenciasSection empleadoId={id} />
+          )}
+          {activeTab === "cambios" && (
+            <CambiosSection empleadoId={id} />
+          )}
+          {activeTab === "sanciones" && (
+            <SancionesSection empleadoId={id} />
+          )}
         </>
       )}
 
@@ -255,40 +277,6 @@ const Tabs = styled.div`
     border-color: ${({ theme }) => theme.color1};
     color: ${({ theme }) => theme.color1};
     background: rgba(31, 141, 255, 0.08);
-  }
-`;
-
-const SectionCard = styled.section`
-  background: ${({ theme }) => theme.bg};
-  border-radius: 18px;
-  padding: 20px 24px;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
-  display: grid;
-  gap: 14px;
-
-  .sectionHeader {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .sectionMeta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 18px;
-    color: ${({ theme }) => theme.textsecundary};
-    font-weight: 500;
-  }
-
-  .ghostButton {
-    border: none;
-    border-radius: 999px;
-    padding: 8px 18px;
-    background: rgba(31, 141, 255, 0.15);
-    color: ${({ theme }) => theme.color1};
-    font-weight: 600;
-    cursor: pointer;
   }
 `;
 

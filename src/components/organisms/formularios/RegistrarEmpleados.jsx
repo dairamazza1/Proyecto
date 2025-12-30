@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import styled from "styled-components";
 import { v } from "../../../styles/variables";
 import {
@@ -37,11 +37,12 @@ export function RegistrarEmpleados({
   const isEdit = mode === "edit";
   const isModal = Boolean(onClose);
   const headerTitle = isEdit ? "Editar empleado" : "Registrar empleado";
+  const prevAreaRef = useRef();
 
   const getEmpleadoErrorText = (err, fallbackText) => {
     if (err?.code !== "23505") {
       console.log(err);
-      
+
       return err?.message || fallbackText;
     }
 
@@ -127,7 +128,6 @@ export function RegistrarEmpleados({
   const isRegistered = watch("is_registered");
   const isActiveValue = watch("is_active");
   const showTerminationDate = isEdit && String(isActiveValue) === "false";
-  
 
   const { data: dataAreas, isLoading: loadingAreas } = useQuery({
     queryKey: ["mostrar areas laborales"],
@@ -156,7 +156,10 @@ export function RegistrarEmpleados({
   });
 
   useEffect(() => {
-    setValue("puesto_id", "");
+    if (prevAreaRef.current && prevAreaRef.current !== areaId) {
+      setValue("puesto_id", "");
+    }
+    prevAreaRef.current = areaId;
   }, [areaId, setValue]);
 
   const selectedPuesto = dataPuestos?.find(
@@ -195,14 +198,30 @@ export function RegistrarEmpleados({
   }, [empleado, isEdit, reset, sucursalEmpleado]);
 
   useEffect(() => {
-    if (!isEdit || !puestoInfo?.id_area) return;
-    setValue("area_id", String(puestoInfo.id_area));
-  }, [isEdit, puestoInfo, setValue]);
+    if (!isEdit || areaId || !puestoInfo?.id_area) return;
+    const resolvedAreaId = String(puestoInfo.id_area);
+    const existsInAreas = dataAreas?.some(
+      (area) => String(area.id) === resolvedAreaId
+    );
+    if (!existsInAreas) return;
+    setValue("area_id", resolvedAreaId);
+  }, [isEdit, areaId, puestoInfo, dataAreas, setValue]);
 
   useEffect(() => {
-    if (!isEdit || !empleado?.puesto_id || !dataPuestos?.length) return;
+    if (
+      !isEdit ||
+      !empleado?.puesto_id ||
+      puestoId ||
+      !dataPuestos?.length
+    ) {
+      return;
+    }
+    const existsInPuestos = dataPuestos.some(
+      (puesto) => String(puesto.id) === String(empleado.puesto_id)
+    );
+    if (!existsInPuestos) return;
     setValue("puesto_id", String(empleado.puesto_id));
-  }, [dataPuestos, empleado, isEdit, setValue]);
+  }, [dataPuestos, empleado, isEdit, puestoId, setValue]);
 
   const { mutate: doInsertar } = useMutation({
     mutationFn: insertar,
@@ -283,7 +302,7 @@ export function RegistrarEmpleados({
       is_active: true,
       created_at: new Date().toISOString(),
       hire_date: data.hire_date || null,
-      telephone:data.telephone
+      telephone: data.telephone,
     };
 
     const empleadoCreado = await createEmpleado(payload);
@@ -300,7 +319,8 @@ export function RegistrarEmpleados({
 
   async function actualizar(data) {
     const documentChanged = data.document_number !== empleado?.document_number;
-    const legajoChanged = data.employee_id_number !== empleado?.employee_id_number;
+    const legajoChanged =
+      data.employee_id_number !== empleado?.employee_id_number;
 
     if (documentChanged || legajoChanged) {
       const { documentExists, legajoExists } = await checkEmpleadoDuplicate({
@@ -435,13 +455,12 @@ export function RegistrarEmpleados({
               </InputText>
             </article>
 
-
             <article>
               <InputText icono={<v.iconoTelephone />}>
                 <input
                   className="form__field"
                   type="text"
-                  placeholder="Nro contacto"
+                  placeholder="N° de telefono"
                   {...register("telephone")}
                 />
                 <label className="form__label">Nro telefono</label>
@@ -449,7 +468,7 @@ export function RegistrarEmpleados({
             </article>
 
             <article>
-              <InputText icono={<v.iconocheck />}>
+              <InputText icono={<v.iconoCalendario />}>
                 <select
                   className="form__field"
                   {...register("is_registered", {
@@ -482,7 +501,7 @@ export function RegistrarEmpleados({
 
             {showTerminationDate && (
               <article>
-                <InputText icono={<v.iconocheck />}>
+                <InputText icono={<v.iconoCalendario />}>
                   <input
                     className="form__field"
                     type="date"
@@ -491,7 +510,9 @@ export function RegistrarEmpleados({
                       required: "La fecha de finalizacion es obligatoria.",
                     })}
                   />
-                  <label className="form__label">Fecha de finalizacion laboral</label>
+                  <label className="form__label">
+                    Fecha de finalizacion laboral
+                  </label>
                   {errors.termination_date?.message && (
                     <p>{errors.termination_date.message}</p>
                   )}
@@ -562,8 +583,6 @@ export function RegistrarEmpleados({
               </InputText>
             </article>
 
-            
-
             <article>
               <InputText icono={<v.iconoProfesional />}>
                 <select
@@ -593,8 +612,6 @@ export function RegistrarEmpleados({
               </InputText>
             </article>
 
-            
-
             {requiresProfessionalNumber && (
               <article>
                 <InputText icono={<v.iconocodigobarras />}>
@@ -621,8 +638,6 @@ export function RegistrarEmpleados({
               </article>
             )}
 
-            
-
             <article>
               <InputText icono={<v.iconoubicacion />}>
                 <select
@@ -647,7 +662,7 @@ export function RegistrarEmpleados({
             </article>
 
             <article>
-              <InputText icono={<v.iconocheck />}>
+              <InputText icono={<v.iconoCalendario />}>
                 <input
                   className="form__field"
                   type="date"
@@ -780,7 +795,6 @@ const Container = styled.div`
         font-size: 20px;
         cursor: pointer;
       }
-
     }
     .formulario {
       .form-subcontainer {
@@ -811,6 +825,5 @@ const Container = styled.div`
       align-items: stretch;
       gap: 10px;
     }
-
   }
 `;

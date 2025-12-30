@@ -22,6 +22,9 @@ CREATE TABLE test.empleados (
   professional_number character varying,
   puesto_id bigint,
   termination_date date,
+  last_update timestamp without time zone,
+  update_by text,
+  telephone character varying,
   CONSTRAINT empleados_pkey PRIMARY KEY (id),
   CONSTRAINT empleados_user_id_fkey FOREIGN KEY (user_id) REFERENCES test.perfiles(id),
   CONSTRAINT empleados_empresa_id_fkey FOREIGN KEY (empresa_id) REFERENCES test.empresas(id),
@@ -66,7 +69,6 @@ CREATE TABLE test.empleados_documentos (
 CREATE TABLE test.empleados_licencias (
   id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
   empleado_id bigint,
-  license_type character varying,
   start_date date,
   end_date date,
   days bigint,
@@ -78,9 +80,13 @@ CREATE TABLE test.empleados_licencias (
   approved_by bigint,
   approved_at date,
   rejected_reason text,
+  licencia_tipo_id bigint,
+  document_id bigint,
   CONSTRAINT licencias_empleado_id_fkey FOREIGN KEY (empleado_id) REFERENCES test.empleados(id),
   CONSTRAINT empleados_licencias_created_by_fkey FOREIGN KEY (created_by) REFERENCES test.perfiles(id),
-  CONSTRAINT empleados_licencias_approved_by_fkey FOREIGN KEY (approved_by) REFERENCES test.perfiles(id)
+  CONSTRAINT empleados_licencias_approved_by_fkey FOREIGN KEY (approved_by) REFERENCES test.perfiles(id),
+  CONSTRAINT empleados_licencias_licencia_tipo_fkey FOREIGN KEY (licencia_tipo_id) REFERENCES test.licencias_tipos(id),
+  CONSTRAINT empleados_licencias_document_id_fkey FOREIGN KEY (document_id) REFERENCES test.empleados_documentos(id)
 );
 CREATE TABLE test.empleados_sanciones (
   id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
@@ -108,6 +114,8 @@ CREATE TABLE test.empleados_vacaciones (
   approved_by bigint,
   approved_at date,
   rejected_reason text,
+  last_update timestamp without time zone,
+  update_by text,
   CONSTRAINT empleados_vacaciones_pkey PRIMARY KEY (id),
   CONSTRAINT employee_vacations_employee_id_fkey FOREIGN KEY (empleado_id) REFERENCES test.empleados(id),
   CONSTRAINT empleados_vacaciones_created_by_fkey FOREIGN KEY (created_by) REFERENCES test.perfiles(id),
@@ -119,6 +127,19 @@ CREATE TABLE test.empresas (
   cuit text,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT empresas_pkey PRIMARY KEY (id)
+);
+CREATE TABLE test.licencias_categorias (
+  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  name character varying NOT NULL,
+  CONSTRAINT licencias_categorias_pkey PRIMARY KEY (id)
+);
+CREATE TABLE test.licencias_tipos (
+  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  categoria_licencia_id bigint NOT NULL,
+  name character varying NOT NULL,
+  requires_certificate boolean NOT NULL DEFAULT false,
+  CONSTRAINT licencias_tipos_pkey PRIMARY KEY (id),
+  CONSTRAINT licencias_tipos_categoria_fkey FOREIGN KEY (categoria_licencia_id) REFERENCES test.licencias_categorias(id)
 );
 CREATE TABLE test.perfiles (
   id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,

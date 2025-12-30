@@ -1,5 +1,5 @@
-import styled from "styled-components";
-import { Paginacion, Icono } from "../../../index";
+﻿import styled from "styled-components";
+import { AccionTabla, Paginacion } from "../../../index";
 import { v } from "../../../styles/variables";
 import { useState } from "react";
 import {
@@ -9,100 +9,92 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { Link } from "react-router-dom";
 
-export function TablaEmpleados({ data }) {
+const statusValues = {
+  rejected: "Rechazado",
+  approved: "Aprobado",
+  pending: "Pendiente",
+};
+
+const formatStatus = (value) =>
+  statusValues[String(value ?? "").toLowerCase()] ?? "-";
+
+export function TablaVacaciones({ data, onEdit }) {
   if (data == null) return null;
   const [columnFilters] = useState([]);
-  const [sorting, setSorting] = useState([{ id: "last_name", desc: false }]);
+  const [sorting, setSorting] = useState([{ id: "start_date", desc: true }]);
 
   const columns = [
     {
-      accessorKey: "employee_id_number",
-      header: "Nro Legajo",
+      accessorKey: "start_date",
+      header: "Desde",
       meta: {
-        cardLabel: "Legajo",
-        cardValue: (row) =>
-          row.employee_id_number ?? row.document_number ?? row.id ?? "-",
+        cardLabel: "Desde",
+        cardValue: (row) => formatDate(row.start_date),
       },
       cell: (info) => (
-        <div data-title="Nro Legajo" className="ContentCell">
-          <AccederLink
-            to={`/empleados/${info.row.original.id}`}
-            title="Acceder a empleado"
-            aria-label={`Acceder a empleado ${
-              info.row.original.employee_id_number ??
-              info.row.original.document_number ??
-              info.row.original.id
-            }`}
-          >
-            <span className="legajoValue">
-              {info.row.original.employee_id_number ??
-                info.row.original.document_number ??
-                info.row.original.id}
-            </span>
-          </AccederLink>
+        <div data-title="Desde" className="ContentCell">
+          <span>{formatDate(info.getValue())}</span>
         </div>
       ),
       enableSorting: true,
     },
     {
-      accessorKey: "first_name",
-      header: "Nombre",
+      accessorKey: "end_date",
+      header: "Hasta",
       meta: {
-        cardLabel: "Nombre",
-        cardValue: (row) => row.first_name ?? "-",
+        cardLabel: "Hasta",
+        cardValue: (row) => formatDate(row.end_date),
       },
       cell: (info) => (
-        <div data-title="Nombre" className="ContentCell">
-          <span>{info.getValue() ?? "-"}</span>
+        <div data-title="Hasta" className="ContentCell">
+          <span>{formatDate(info.getValue())}</span>
         </div>
       ),
       enableSorting: true,
     },
     {
-      accessorKey: "last_name",
-      header: "Apellido",
+      accessorKey: "days_taken",
+      header: "Dias",
       meta: {
-        cardLabel: "Apellido",
-        cardValue: (row) => row.last_name ?? "-",
+        cardLabel: "Dias",
+        cardValue: (row) => row.days_taken ?? 0,
       },
       cell: (info) => (
-        <div data-title="Apellido" className="ContentCell">
-          <span>{info.getValue() ?? "-"}</span>
+        <div data-title="Dias" className="ContentCell">
+          <span>{info.getValue() ?? 0}</span>
         </div>
       ),
       enableSorting: true,
     },
     {
-      id: "puesto",
-      accessorFn: (row) => row.puesto?.name ?? "",
-      header: "Puesto",
+      accessorKey: "status",
+      header: "Estado de aprobacion",
       meta: {
-        cardLabel: "Puesto",
-        cardValue: (row) => row.puesto?.name ?? "-",
+        cardLabel: "Estado de aprobacion",
+        cardValue: (row) => formatStatus(row.status),
       },
       cell: (info) => (
-        <div data-title="Puesto" className="ContentCell">
-          <span>{info.row.original.puesto?.name ?? "-"}</span>
+        <div data-title="Estado" className="ContentCell">
+          <span>{formatStatus(info.getValue())}</span>
         </div>
       ),
       enableSorting: true,
-      sortingFn: "alphanumeric",
     },
     {
-      accessorKey: "professional_number",
-      header: "Matricula",
-      meta: {
-        cardLabel: "Matricula",
-        cardValue: (row) => row.professional_number || "-",
-      },
+      id: "acciones",
+      header: "Acciones",
       cell: (info) => (
-        <div data-title="Matricula" className="ContentCell">
-          <span>{info.getValue() || "-"}</span>
+        <div data-title="Acciones" className="ContentCell">
+          <AccionTabla
+            funcion={() => onEdit?.(info.row.original)}
+            fontSize="18px"
+            color="#7d7d7d"
+            icono={<v.iconeditarTabla />}
+          />
         </div>
       ),
-      enableSorting: true,
+      enableSorting: false,
     },
   ];
 
@@ -124,37 +116,35 @@ export function TablaEmpleados({ data }) {
     <Container>
       <div className="cards">
         {table.getRowModel().rows.map((row) => {
-          const empleado = row.original;
+          const vacacion = row.original;
           const cardFields = columns
+            .filter((column) => column.meta?.cardLabel)
             .map((column) => ({
               label: column.meta?.cardLabel,
-              value: column.meta?.cardValue?.(empleado),
-            }))
-            .filter((field) => field.label);
+              value: column.meta?.cardValue?.(vacacion),
+            }));
           return (
-            <CardLink
-              to={`/empleados/${empleado.id}`}
-              key={row.id}
-              aria-label={`Acceder a empleado ${empleado.last_name ?? ""} ${
-                empleado.first_name ?? ""
-              }`}
-            >
-              <article className="card">
-                <div className="cardHeader">
-                  <h3>
-                    {empleado.last_name ?? "-"}, {empleado.first_name ?? "-"}
-                  </h3>
-                </div>
-                <div className="cardBody">
-                  {cardFields.map((field) => (
-                    <div className="cardRow" key={field.label}>
-                      <span className="label">{field.label}</span>
-                      <span className="value">{field.value}</span>
-                    </div>
-                  ))}
-                </div>
-              </article>
-            </CardLink>
+            <article className="card" key={row.id}>
+              <div className="cardHeader">
+                <h3>
+                  {formatDate(vacacion.start_date)} -{" "}
+                  {formatDate(vacacion.end_date)}
+                </h3>
+              </div>
+              <div className="cardBody">
+                {cardFields.map((field) => (
+                  <div className="cardRow" key={field.label}>
+                    <span className="label">{field.label}</span>
+                    <span className="value">{field.value}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="cardActions">
+                <button type="button" onClick={() => onEdit?.(vacacion)}>
+                  Editar
+                </button>
+              </div>
+            </article>
           );
         })}
       </div>
@@ -225,21 +215,23 @@ export function TablaEmpleados({ data }) {
   );
 }
 
+function formatDate(value) {
+  if (!value) return "-";
+  const [year, month, day] = String(value).split("-");
+  if (!year || !month || !day) return value;
+  return `${day}/${month}/${year}`;
+}
+
 const Container = styled.div`
   position: relative;
-
-  margin: 5% 3%;
-  @media (min-width: ${v.bpbart}) {
-    margin: 2%;
-  }
-  @media (min-width: ${v.bphomer}) {
-    margin: 2em auto;
-  }
+  width: 100%;
+  overflow-x: hidden;
 
   .cards {
     display: grid;
     gap: 14px;
     margin-bottom: 1.5em;
+    width: 100%;
 
     @media (min-width: ${v.bpbart}) {
       display: none;
@@ -253,12 +245,14 @@ const Container = styled.div`
     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
     display: grid;
     gap: 12px;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .cardHeader {
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    justify-content: space-between;
     gap: 10px;
     flex-wrap: wrap;
 
@@ -267,6 +261,8 @@ const Container = styled.div`
       font-size: 1rem;
       font-weight: 700;
       color: ${({ theme }) => theme.text};
+      max-width: 100%;
+      word-break: break-word;
     }
   }
 
@@ -280,6 +276,7 @@ const Container = styled.div`
     justify-content: space-between;
     gap: 12px;
     font-size: 0.95rem;
+    flex-wrap: wrap;
 
     .label {
       color: ${({ theme }) => theme.textsecundary};
@@ -288,12 +285,25 @@ const Container = styled.div`
     .value {
       color: ${({ theme }) => theme.text};
       font-weight: 600;
+      max-width: 100%;
+      word-break: break-word;
+      text-align: right;
     }
   }
 
-  .cardLink {
-    text-decoration: none;
-    color: inherit;
+  .cardActions {
+    display: flex;
+    justify-content: flex-end;
+
+    button {
+      border: none;
+      border-radius: 999px;
+      padding: 6px 14px;
+      font-weight: 600;
+      cursor: pointer;
+      background: rgba(31, 141, 255, 0.15);
+      color: ${({ theme }) => theme.color1};
+    }
   }
 
   .responsive-table {
@@ -303,13 +313,6 @@ const Container = styled.div`
 
     @media (max-width: ${v.bpbart}) {
       display: none;
-    }
-
-    @media (min-width: ${v.bpbart}) {
-      font-size: 0.9em;
-    }
-    @media (min-width: ${v.bpmarge}) {
-      font-size: 1em;
     }
 
     thead {
@@ -446,33 +449,5 @@ const Container = styled.div`
         }
       }
     }
-  }
-`;
-
-const AccederLink = styled(Link)`
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: ${({ theme }) => theme.text};
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  font-weight: 700;
-
-  &:hover {
-    color: ${({ theme }) => theme.color1};
-  }
-
-  .legajoValue {
-    letter-spacing: 0.2px;
-  }
-`;
-
-const CardLink = styled(Link)`
-  text-decoration: none;
-  color: inherit;
-
-  &:hover .card {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.12);
   }
 `;
