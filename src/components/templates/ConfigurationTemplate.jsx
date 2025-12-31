@@ -2,9 +2,12 @@ import styled from "styled-components";
 import { Link } from "react-router-dom";
 import { useEffect } from "react";
 import { useModuleSectionStore } from "../../store/ModuleSectionStore";
+import { useAuthStore } from "../../context/AuthStore";
 
 export function ConfigurationTemplate() {
   const { dataModuleSection } = useModuleSectionStore();
+  const { cerrarSesion } = useAuthStore();
+
 
   useEffect(() => {
     const handleMouseMove = (e) => {
@@ -29,6 +32,7 @@ export function ConfigurationTemplate() {
   }, []);
   return (
     <Container>
+      <button onClick={cerrarSesion}>cerrar sesion test</button>
       <div id="cards">
         {dataModuleSection.map((item, index) => {
           return (
