@@ -19,7 +19,7 @@ const statusValues = {
 const formatStatus = (value) =>
   statusValues[String(value ?? "").toLowerCase()] ?? "-";
 
-export function TablaVacaciones({ data, onEdit }) {
+export function TablaVacaciones({ data, onEdit, onDelete }) {
   if (data == null) return null;
   const [columnFilters] = useState([]);
   const [sorting, setSorting] = useState([{ id: "start_date", desc: true }]);
@@ -92,6 +92,12 @@ export function TablaVacaciones({ data, onEdit }) {
             color="#7d7d7d"
             icono={<v.iconeditarTabla />}
           />
+          <AccionTabla
+            funcion={() => onDelete?.(info.row.original)}
+            fontSize="18px"
+            color={v.rojo}
+            icono={<v.iconeliminarTabla />}
+          />
         </div>
       ),
       enableSorting: false,
@@ -142,6 +148,9 @@ export function TablaVacaciones({ data, onEdit }) {
               <div className="cardActions">
                 <button type="button" onClick={() => onEdit?.(vacacion)}>
                   Editar
+                </button>
+                <button type="button" onClick={() => onDelete?.(vacacion)}>
+                  Eliminar
                 </button>
               </div>
             </article>

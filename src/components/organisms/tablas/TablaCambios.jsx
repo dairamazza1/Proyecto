@@ -1,7 +1,11 @@
 import styled from "styled-components";
 import { AccionTabla, Paginacion } from "../../../index";
 import { v } from "../../../styles/variables";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import Swal from "sweetalert2";
+import { saveAs } from "file-saver";
+import Docxtemplater from "docxtemplater";
+import PizZip from "pizzip";
 import {
   flexRender,
   getCoreRowModel,
@@ -19,23 +23,174 @@ const statusValues = {
 const formatStatus = (value) =>
   statusValues[String(value ?? "").toLowerCase()] ?? "-";
 
-export function TablaCambios({ data, onEdit }) {
+const formatNombre = (persona) => {
+  if (!persona) return "-";
+  const firstName = persona.first_name ?? "";
+  const lastName = persona.last_name ?? "";
+  const fullName = `${firstName} ${lastName}`.trim();
+  return fullName || "-";
+};
+
+const formatDurationType = (value) => {
+  if (value === "permanente") return "Permanente";
+  if (value === "transitorio") return "Transitorio";
+  return value ?? "-";
+};
+
+// const formatDni = (empleado) => {
+//   const number = empleado?.document_number ?? "";
+//   const type = empleado?.document_type ?? "";
+//   if (!number && !type) return "-";
+//   return `${type} ${number}`.trim();
+// };
+
+const getSucursalAddress = (empleado) => {
+  const raw = Array.isArray(empleado?.sucursal)
+    ? empleado.sucursal[0]
+    : empleado?.sucursal;
+  return raw?.sucursal?.address || "-";
+};
+
+const formatDateTime = (value) => {
+  if (!value) return "-";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.valueOf())) return String(value);
+  const day = String(parsed.getDate()).padStart(2, "0");
+  const month = String(parsed.getMonth() + 1).padStart(2, "0");
+  const year = parsed.getFullYear();
+  const hours = String(parsed.getHours()).padStart(2, "0");
+  const minutes = String(parsed.getMinutes()).padStart(2, "0");
+  return `${day}/${month}/${year} ${hours}:${minutes}`;
+};
+
+const buildFileDate = (value) => {
+  if (!value) return "sin_fecha";
+  const parsed = new Date(value);
+  if (!Number.isNaN(parsed.valueOf())) {
+    const year = parsed.getFullYear();
+    const month = String(parsed.getMonth() + 1).padStart(2, "0");
+    const day = String(parsed.getDate()).padStart(2, "0");
+    return `${year}${month}${day}`;
+  }
+  const raw = String(value);
+  const [year, month, day] = raw.split("-");
+  if (!year || !month || !day) {
+    return raw.replace(/[^\d]/g, "") || "sin_fecha";
+  }
+  return `${year}${month}${day}`;
+};
+
+const TEMPLATE_URL = "/templates/cambio_template.docx";
+
+const resolveEmpresaNombre = (cambio, empresaNombre) => {
+  const storeName = (empresaNombre ?? "").trim();
+  if (storeName && storeName !== "Empresa") {
+    return storeName;
+  }
+  return cambio?.empleado?.empresa?.name || "Empresa";
+};
+
+const buildTemplateData = (cambio, empresaNombre) => ({
+  empresa_nombre: resolveEmpresaNombre(cambio, empresaNombre),
+  empleado: formatNombre(cambio?.empleado),
+  empleado_reemplazo: formatNombre(cambio?.empleado_reemplazo),
+  start_date: formatDate(cambio?.start_date) ?? "-",
+  end_date: formatDate(cambio?.end_date) ?? "-",
+  duration_type: formatDurationType(cambio?.duration_type),
+  horario_anterior: cambio?.previous_schedule ?? "-",
+  horario_nuevo: cambio?.new_schedule ?? "-",
+  tareas_anteriores: cambio?.previous_tasks ?? "-",
+  tareas_nuevas: cambio?.new_tasks ?? "-",
+  motivo: cambio?.change_reason ?? "-",
+  estado: formatStatus(cambio?.status),
+  created_at: formatDateTime(cambio?.created_at) ?? "-" ,
+  dni: cambio?.empleado?.document_number,
+  puesto: cambio?.empleado?.puesto?.name ?? "-",
+  sucursal_direccion: getSucursalAddress(cambio?.empleado),
+});
+
+export function TablaCambios({ data, onEdit, onDelete, empresaNombre }) {
   if (data == null) return null;
   const [columnFilters] = useState([]);
   const [sorting, setSorting] = useState([
-    { id: "effective_date", desc: true },
+    { id: "start_date", desc: true },
   ]);
+  const [previewCambio, setPreviewCambio] = useState(null);
+  const templateRef = useRef(null);
+
+  const handleOpenPreview = (cambio) => {
+    setPreviewCambio(cambio);
+  };
+
+  const handleClosePreview = () => {
+    setPreviewCambio(null);
+  };
+
+  const loadTemplate = async () => {
+    if (templateRef.current) return templateRef.current;
+    const response = await fetch(TEMPLATE_URL);
+    if (!response.ok) {
+      throw new Error("No se pudo cargar la plantilla Word.");
+    }
+    const arrayBuffer = await response.arrayBuffer();
+    templateRef.current = arrayBuffer;
+    return arrayBuffer;
+  };
+
+  const handleExportDocx = async (cambio) => {
+    try {
+      const template = await loadTemplate();
+      const zip = new PizZip(template);
+      const doc = new Docxtemplater(zip, {
+        paragraphLoop: true,
+        linebreaks: true,
+        delimiters: { start: "{{", end: "}}" },
+      });
+      doc.render(buildTemplateData(cambio, empresaNombre));
+      const blob = doc.getZip().generate({
+        type: "blob",
+        mimeType:
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      });
+      const fileDate = buildFileDate(
+        cambio?.start_date || cambio?.created_at
+      );
+      
+      const fileName = `legajo_cambio_turno_${cambio?.empleado.last_name ?? "registro"}_${fileDate}.docx`;
+      saveAs(blob, fileName);
+    } catch (err) {
+      Swal.fire({
+        icon: "error",
+        title: "Oops...",
+        text: err?.message || "Error al exportar el documento.",
+      });
+    }
+  };
 
   const columns = [
     {
-      accessorKey: "effective_date",
-      header: "Fecha",
+      accessorKey: "start_date",
+      header: "Fecha inicio",
       meta: {
-        cardLabel: "Fecha",
-        cardValue: (row) => formatDate(row.effective_date),
+        cardLabel: "Fecha inicio",
+        cardValue: (row) => formatDate(row.start_date),
       },
       cell: (info) => (
-        <div data-title="Fecha" className="ContentCell">
+        <div data-title="Fecha inicio" className="ContentCell">
+          <span>{formatDate(info.getValue())}</span>
+        </div>
+      ),
+      enableSorting: true,
+    },
+    {
+      accessorKey: "end_date",
+      header: "Fecha fin",
+      meta: {
+        cardLabel: "Fecha fin",
+        cardValue: (row) => formatDate(row.end_date),
+      },
+      cell: (info) => (
+        <div data-title="Fecha fin" className="ContentCell">
           <span>{formatDate(info.getValue())}</span>
         </div>
       ),
@@ -43,13 +198,13 @@ export function TablaCambios({ data, onEdit }) {
     },
     {
       accessorKey: "previous_schedule",
-      header: "Horario anterior",
+      header: "Hora anterior",
       meta: {
-        cardLabel: "Horario anterior",
+        cardLabel: "Hora anterior",
         cardValue: (row) => row.previous_schedule ?? "-",
       },
       cell: (info) => (
-        <div data-title="Horario anterior" className="ContentCell">
+        <div data-title="Hora anterior" className="ContentCell">
           <span>{info.getValue() ?? "-"}</span>
         </div>
       ),
@@ -57,31 +212,75 @@ export function TablaCambios({ data, onEdit }) {
     },
     {
       accessorKey: "new_schedule",
-      header: "Horario nuevo",
+      header: "Hora nueva",
       meta: {
-        cardLabel: "Horario nuevo",
+        cardLabel: "Hora nueva",
         cardValue: (row) => row.new_schedule ?? "-",
       },
       cell: (info) => (
-        <div data-title="Horario nuevo" className="ContentCell">
+        <div data-title="Hora nueva" className="ContentCell">
           <span>{info.getValue() ?? "-"}</span>
         </div>
       ),
       enableSorting: true,
     },
     {
-      accessorKey: "status",
-      header: "Estado",
+      accessorKey: "previous_tasks",
+      header: "Tarea anterior",
       meta: {
-        cardLabel: "Estado",
-        cardValue: (row) => formatStatus(row.status),
+        cardLabel: "Tarea anterior",
+        cardValue: (row) => row.previous_tasks ?? "-",
       },
       cell: (info) => (
-        <div data-title="Estado" className="ContentCell">
-          <span>{formatStatus(info.getValue())}</span>
+        <div data-title="Tarea anterior" className="ContentCell">
+          <span>{info.getValue() ?? "-"}</span>
         </div>
       ),
       enableSorting: true,
+    },
+    {
+      accessorKey: "new_tasks",
+      header: "Tarea nueva",
+      meta: {
+        cardLabel: "Tarea nueva",
+        cardValue: (row) => row.new_tasks ?? "-",
+      },
+      cell: (info) => (
+        <div data-title="Tarea nueva" className="ContentCell">
+          <span>{info.getValue() ?? "-"}</span>
+        </div>
+      ),
+      enableSorting: true,
+    },
+    {
+      accessorKey: "change_reason",
+      header: "Motivo",
+      meta: {
+        cardLabel: "Motivo",
+        cardValue: (row) => row.change_reason ?? "-",
+      },
+      cell: (info) => (
+        <div data-title="Motivo" className="ContentCell">
+          <span>{info.getValue() ?? "-"}</span>
+        </div>
+      ),
+      enableSorting: true,
+    },
+    {
+      id: "empleado_reemplazado",
+      header: "Empleado reemplazado",
+      accessorFn: (row) => formatNombre(row.empleado_reemplazo),
+      meta: {
+        cardLabel: "Empleado reemplazado",
+        cardValue: (row) => formatNombre(row.empleado_reemplazo),
+      },
+      cell: (info) => (
+        <div data-title="Empleado reemplazado" className="ContentCell">
+          <span>{formatNombre(info.row.original.empleado_reemplazo)}</span>
+        </div>
+      ),
+      enableSorting: true,
+      sortingFn: "alphanumeric",
     },
     {
       id: "acciones",
@@ -93,6 +292,18 @@ export function TablaCambios({ data, onEdit }) {
             fontSize="18px"
             color="#7d7d7d"
             icono={<v.iconeditarTabla />}
+          />
+          <AccionTabla
+            funcion={() => onDelete?.(info.row.original)}
+            fontSize="18px"
+            color={v.rojo}
+            icono={<v.iconeliminarTabla />}
+          />
+          <AccionTabla
+            funcion={() => handleOpenPreview(info.row.original)}
+            fontSize="18px"
+            color="#7d7d7d"
+            icono={<v.iconoWord />}
           />
         </div>
       ),
@@ -128,7 +339,11 @@ export function TablaCambios({ data, onEdit }) {
           return (
             <article className="card" key={row.id}>
               <div className="cardHeader">
-                <h3>{formatDate(cambio.effective_date)}</h3>
+                <h3>
+                  {cambio.start_date
+                    ? formatDate(cambio.start_date)
+                    : formatDurationType(cambio.duration_type)}
+                </h3>
               </div>
               <div className="cardBody">
                 {cardFields.map((field) => (
@@ -141,6 +356,12 @@ export function TablaCambios({ data, onEdit }) {
               <div className="cardActions">
                 <button type="button" onClick={() => onEdit?.(cambio)}>
                   Editar
+                </button>
+                <button type="button" onClick={() => handleOpenPreview(cambio)}>
+                  Vista previa
+                </button>
+                <button type="button" onClick={() => onDelete?.(cambio)}>
+                  Eliminar
                 </button>
               </div>
             </article>
@@ -210,6 +431,107 @@ export function TablaCambios({ data, onEdit }) {
         </tbody>
       </table>
       <Paginacion table={table} />
+      {previewCambio && (
+        <PreviewOverlay
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              handleClosePreview();
+            }
+          }}
+        >
+          <PreviewModal>
+            <div className="headers">
+              <section>
+                <h2>Vista previa</h2>
+              </section>
+              <section>
+                <span onClick={handleClosePreview}>x</span>
+              </section>
+            </div>
+            <div className="previewBody">
+              <h3>{resolveEmpresaNombre(previewCambio, empresaNombre)}</h3>
+              <p className="subtitle">ACUERDO DE CAMBIO DE HORRIO Y/O MODIFICACIÓN DE TAREAS</p>
+              <div className="previewGrid">
+                <div className="previewRow">
+                  <span className="label">Empleado</span>
+                  <span className="value">
+                    {formatNombre(previewCambio.empleado)}
+                  </span>
+                </div>
+                <div className="previewRow">
+                  <span className="label">Empleado reemplazado</span>
+                  <span className="value">
+                    {formatNombre(previewCambio.empleado_reemplazo)}
+                  </span>
+                </div>
+             
+                <div className="previewRow">
+                  <span className="label">Tipo de duracion</span>
+                  <span className="value">
+                    {formatDurationType(previewCambio.duration_type)}
+                  </span>
+                </div>
+                <div className="previewRow">
+                  <span className="label">Fecha inicio</span>
+                  <span className="value">
+                    {formatDate(previewCambio.start_date)}
+                  </span>
+                </div>
+                <div className="previewRow">
+                  <span className="label">Fecha fin</span>
+                  <span className="value">
+                    {formatDate(previewCambio.end_date)}
+                  </span>
+                </div>
+                <div className="previewRow">
+                  <span className="label">Horario anterior</span>
+                  <span className="value">
+                    {previewCambio.previous_schedule ?? "-"}
+                  </span>
+                </div>
+                <div className="previewRow">
+                  <span className="label">Horario nuevo</span>
+                  <span className="value">
+                    {previewCambio.new_schedule ?? "-"}
+                  </span>
+                </div>
+                <div className="previewRow">
+                  <span className="label">Tareas anteriores</span>
+                  <span className="value">
+                    {previewCambio.previous_tasks ?? "-"}
+                  </span>
+                </div>
+                <div className="previewRow">
+                  <span className="label">Tareas nuevas</span>
+                  <span className="value">{previewCambio.new_tasks ?? "-"}</span>
+                </div>
+                <div className="previewRow">
+                  <span className="label">Motivo</span>
+                  <span className="value">
+                    {previewCambio.change_reason ?? "-"}
+                  </span>
+                </div>
+          
+              </div>
+            </div>
+            <div className="previewActions">
+              <button
+                type="button"
+                className="secondary"
+                onClick={handleClosePreview}
+              >
+                Cerrar
+              </button>
+              <button
+                type="button"
+                onClick={() => handleExportDocx(previewCambio)}
+              >
+                Descargar Word
+              </button>
+            </div>
+          </PreviewModal>
+        </PreviewOverlay>
+      )}
     </Container>
   );
 }
@@ -293,6 +615,8 @@ const Container = styled.div`
   .cardActions {
     display: flex;
     justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 8px;
 
     button {
       border: none;
@@ -447,6 +771,118 @@ const Container = styled.div`
           content: none;
         }
       }
+    }
+  }
+`;
+
+const PreviewOverlay = styled.div`
+  transition: 0.3s;
+  top: 0;
+  left: 0;
+  position: fixed;
+  background-color: rgba(10, 9, 9, 0.5);
+  display: flex;
+  width: 100%;
+  min-height: 100vh;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+  padding: 16px;
+`;
+
+const PreviewModal = styled.div`
+  position: relative;
+  width: min(720px, 100%);
+  max-width: 100%;
+  border-radius: 18px;
+  background: ${({ theme }) => theme.bgtotal};
+  box-shadow: -10px 15px 30px rgba(10, 9, 9, 0.25);
+  padding: 18px 22px 20px 22px;
+  display: grid;
+  gap: 16px;
+
+  @media (min-width: ${v.bplisa}) {
+    padding: 20px 28px 22px 28px;
+  }
+
+  .headers {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    h2 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    span {
+      font-size: 20px;
+      cursor: pointer;
+    }
+  }
+
+  .previewBody {
+    display: grid;
+    gap: 12px;
+
+    h3 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+      text-align: center;
+    }
+
+    .subtitle {
+      margin: 0;
+      text-align: center;
+      color: ${({ theme }) => theme.textsecundary};
+      font-size: 0.95rem;
+    }
+  }
+
+  .previewGrid {
+    display: grid;
+    gap: 10px;
+  }
+
+  .previewRow {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .label {
+    color: ${({ theme }) => theme.textsecundary};
+  }
+
+  .value {
+    font-weight: 600;
+    color: ${({ theme }) => theme.text};
+    text-align: right;
+    max-width: 100%;
+    word-break: break-word;
+  }
+
+  .previewActions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+
+    button {
+      border: none;
+      border-radius: 999px;
+      padding: 8px 16px;
+      font-weight: 600;
+      cursor: pointer;
+      background: rgba(31, 141, 255, 0.15);
+      color: ${({ theme }) => theme.color1};
+    }
+
+    button.secondary {
+      background: rgba(0, 0, 0, 0.08);
+      color: ${({ theme }) => theme.text};
     }
   }
 `;

@@ -205,6 +205,18 @@ const Main = styled.div`
       $isopen === "true" ? `translateX(173px) rotate(3.142rad)` : `initial`};
     color: ${(props) => props.theme.text};
   }
+
+  @media (max-width: 767px) {
+    .Sidebarbutton {
+      display: none;
+    }
+  }
+
+  @media (max-width: 767px) {
+    top: var(--mobile-topbar-height, 62px);
+    height: calc(100% - var(--mobile-topbar-height, 62px));
+    z-index: 1001;
+  }
 `;
 const Divider = styled.div`
   height: 1px;

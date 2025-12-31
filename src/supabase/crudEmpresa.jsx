@@ -1,6 +1,8 @@
 import Swal from "sweetalert2";
 import { supabase } from "../index";
-const table = "company";
+const table = "empresa";
+const schema = "test";
+
 // export async function insertCompany(p) {
 //   //devuelve un único objeto con maybeSingle en vez de un array
 //   const { data, error } = await supabase
@@ -24,9 +26,12 @@ const table = "company";
 //   return data;
 // }
 
-export async function ShowCompanyByIDUser(p){
-  const {data,error} = await supabase.rpc("mostrarempresaporiduser_deprecated",p)
-  .maybeSingle();  
+export async function ShowEmpresaByIDUser(p) {
+  const authUserId = p?.id_auth ?? p?._auth_user_id ?? null;
+  if (!authUserId) return null;
+  const { data, error } = await supabase
+    .rpc("mostrar_empresa_por_auth_user", { _auth_user_id: authUserId })
+    .maybeSingle();
 
   //   if (error) {
   //   Swal.fire({
@@ -36,5 +41,6 @@ export async function ShowCompanyByIDUser(p){
   //   });
   //   return ;
   // }
+  if (error) throw error;
   return data;
 }

@@ -1,6 +1,12 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { supabase } from "../supabase/supabase.config";
-import { insertCompany, getUsers, getDocType, getRoleByName, insertAdmin } from "../index";
+import {
+  getUsers,
+  getDocType,
+  getRoleByName,
+  insertAdmin,
+  useCompanyStore,
+} from "../index";
 
 const Authcontext = createContext();
 export const AuthContextProvider = ({ children }) => {

@@ -5,14 +5,26 @@ import {
   ModalCambiosForm,
   TablaCambios,
   getCambiosByEmpleadoId,
+  deleteCambio,
   Spinner1,
+  useCompanyStore,
 } from "../../index";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { v } from "../../styles/variables";
+import Swal from "sweetalert2";
 
 export function CambiosSection({ empleadoId }) {
   const [openModal, setOpenModal] = useState(false);
   const [selectedCambio, setSelectedCambio] = useState(null);
+  const { dataCompany } = useCompanyStore();
+  const queryClient = useQueryClient();
+  
+  const empresaNombre =
+    dataCompany?.name ||
+    dataCompany?.business_name ||
+    dataCompany?.razon_social ||
+    dataCompany?.nombre ||
+    "Empresa";
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["cambios", empleadoId],
@@ -29,6 +41,41 @@ export function CambiosSection({ empleadoId }) {
   const handleEditar = (cambio) => {
     setSelectedCambio(cambio);
     setOpenModal(true);
+  };
+
+  const { mutate: doEliminar } = useMutation({
+    mutationFn: deleteCambio,
+    onError: (err) => {
+      Swal.fire({
+        icon: "error",
+        title: "Oops...",
+        text: err?.message || "Error al eliminar cambio.",
+      });
+    },
+    onSuccess: () => {
+      Swal.fire({
+        icon: "success",
+        title: "Cambio eliminado",
+        text: "Se elimino el cambio.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["cambios", empleadoId] });
+    },
+  });
+
+  const handleEliminar = (cambio) => {
+    Swal.fire({
+      title: "ÂEstas seguro(a)?",
+      text: "Una vez eliminado, no podras recuperar este registro.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "Si, eliminar",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        doEliminar(cambio.id);
+      }
+    });
   };
 
   if (isLoading) {
@@ -52,7 +99,12 @@ export function CambiosSection({ empleadoId }) {
       </div>
 
       {data?.length ? (
-        <TablaCambios data={data} onEdit={handleEditar} />
+        <TablaCambios
+          data={data}
+          onEdit={handleEditar}
+          onDelete={handleEliminar}
+          empresaNombre={empresaNombre}
+        />
       ) : (
         <EmptyState>Sin registros por el momento.</EmptyState>
       )}
@@ -92,3 +144,4 @@ const EmptyState = styled.div`
   color: ${({ theme }) => theme.textsecundary};
   text-align: center;
 `;
+

@@ -119,15 +119,17 @@ export function ModalSancionesForm({ empleadoId, sancion, onClose }) {
           <section className="form-subcontainer">
             <article>
               <InputText icono={<v.iconoImportante />}>
-                <input
+                  <select
                   className="form__field"
-                  type="text"
-                  placeholder="tipo"
-                  {...register("sanction_type", {
-                    required: "Campo requerido",
-                  })}
-                />
-                <label className="form__label">tipo sancion</label>
+                  {...register("sanction_type")}
+                >
+                  <option value="Apercibimiento verbal">Apercibimiento verbal</option>
+                  <option value="Apercibimiento escrito">Apercibimiento escrito</option>
+                  <option value="Suspension">Suspension</option>
+                  <option value="Otro">Otro</option>
+                </select>
+
+                <label className="form__label">Tipo de sanción</label>
                 {errors.sanction_type?.message && (
                   <p>{errors.sanction_type.message}</p>
                 )}
@@ -143,7 +145,7 @@ export function ModalSancionesForm({ empleadoId, sancion, onClose }) {
                     required: "Campo requerido",
                   })}
                 />
-                <label className="form__label">fecha inicio</label>
+                <label className="form__label">Fecha inicio</label>
                 {errors.sanction_date_start?.message && (
                   <p>{errors.sanction_date_start.message}</p>
                 )}
@@ -164,7 +166,7 @@ export function ModalSancionesForm({ empleadoId, sancion, onClose }) {
                     },
                   })}
                 />
-                <label className="form__label">fecha fin</label>
+                <label className="form__label">Fecha fin</label>
                 {errors.sanction_date_end?.message && (
                   <p>{errors.sanction_date_end.message}</p>
                 )}
@@ -176,10 +178,12 @@ export function ModalSancionesForm({ empleadoId, sancion, onClose }) {
                 <input
                   className="form__field"
                   type="text"
-                  placeholder="descripcion"
-                  {...register("description")}
+                  placeholder="Descripcion de los hechos"
+                  {...register("description", {
+                    required: "Campo requerido",
+                  })}
                 />
-                <label className="form__label">descripcion</label>
+                <label className="form__label">Descripción de los hechos</label>
               </InputText>
             </article>
 
@@ -188,22 +192,12 @@ export function ModalSancionesForm({ empleadoId, sancion, onClose }) {
                 <input
                   className="form__field"
                   type="text"
-                  placeholder="politica"
-                  {...register("policy_reference")}
+                  placeholder="Politica o norma incumplida"
+                  {...register("policy_reference", {
+                    required: "Campo requerido",
+                  })}
                 />
-                <label className="form__label">politica</label>
-              </InputText>
-            </article>
-
-            <article>
-              <InputText icono={<v.iconoNumbers />}>
-                <input
-                  className="form__field"
-                  type="number"
-                  placeholder="documento"
-                  {...register("document_id", { valueAsNumber: true })}
-                />
-                <label className="form__label">documento</label>
+                <label className="form__label">Politica o norma incumplida</label>
               </InputText>
             </article>
 

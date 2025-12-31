@@ -54,6 +54,7 @@ import { MdLabelImportantOutline } from "react-icons/md";
 import { Md123 } from "react-icons/md";
 import { MdOutlineCheckCircleOutline } from "react-icons/md";
 import { MdCalendarToday } from "react-icons/md";
+import { FaRegFileWord } from "react-icons/fa";
 
 export const v = {
   colorPrincipal: `#99a6ce`,
@@ -82,6 +83,8 @@ export const v = {
   iconoubicacion: MdLocationOn,
   iconoCalendario: MdCalendarToday,
   iconoCheck: MdOutlineCheckCircleOutline ,
+  iconoWord: FaRegFileWord ,
+
 
 
   sidebarWidth: `300px`,

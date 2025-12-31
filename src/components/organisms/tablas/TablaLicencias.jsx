@@ -25,7 +25,7 @@ const getTipoNombre = (licencia) => licencia?.licencia_tipo?.name ?? "-";
 const getCertificadoPath = (licencia) =>
   licencia?.documento?.file_path || licencia?.certificate_url || "";
 
-export function TablaLicencias({ data, onEdit }) {
+export function TablaLicencias({ data, onEdit, onDelete }) {
   if (data == null) return null;
   const [columnFilters] = useState([]);
   const [sorting, setSorting] = useState([{ id: "start_date", desc: true }]);
@@ -133,6 +133,12 @@ export function TablaLicencias({ data, onEdit }) {
             color="#7d7d7d"
             icono={<v.iconeditarTabla />}
           />
+          <AccionTabla
+            funcion={() => onDelete?.(info.row.original)}
+            fontSize="18px"
+            color={v.rojo}
+            icono={<v.iconeliminarTabla />}
+          />
           {getCertificadoPath(info.row.original) && (
             <AccionTabla
               funcion={() => handleOpenCertificate(info.row.original)}
@@ -197,6 +203,9 @@ export function TablaLicencias({ data, onEdit }) {
                 )}
                 <button type="button" onClick={() => onEdit?.(licencia)}>
                   Editar
+                </button>
+                <button type="button" onClick={() => onDelete?.(licencia)}>
+                  Eliminar
                 </button>
               </div>
             </article>

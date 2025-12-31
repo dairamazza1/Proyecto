@@ -98,6 +98,16 @@ export async function updateEmpleadoLicencia(id, payload) {
   return data;
 }
 
+export async function deleteEmpleadoLicencia(id) {
+  const { error } = await supabase
+    .schema(schema)
+    .from(table)
+    .delete()
+    .eq("id", id);
+  if (error) throw error;
+  return true;
+}
+
 export async function insertEmpleadoDocumento(payload) {
   const { data, error } = await supabase
     .schema(schema)

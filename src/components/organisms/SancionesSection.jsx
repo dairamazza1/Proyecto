@@ -5,14 +5,17 @@ import {
   ModalSancionesForm,
   TablaSanciones,
   getSancionesByEmpleadoId,
+  deleteSancion,
   Spinner1,
 } from "../../index";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { v } from "../../styles/variables";
+import Swal from "sweetalert2";
 
 export function SancionesSection({ empleadoId }) {
   const [openModal, setOpenModal] = useState(false);
   const [selectedSancion, setSelectedSancion] = useState(null);
+  const queryClient = useQueryClient();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["sanciones", empleadoId],
@@ -29,6 +32,41 @@ export function SancionesSection({ empleadoId }) {
   const handleEditar = (sancion) => {
     setSelectedSancion(sancion);
     setOpenModal(true);
+  };
+
+  const { mutate: doEliminar } = useMutation({
+    mutationFn: deleteSancion,
+    onError: (err) => {
+      Swal.fire({
+        icon: "error",
+        title: "Oops...",
+        text: err?.message || "Error al eliminar sancion.",
+      });
+    },
+    onSuccess: () => {
+      Swal.fire({
+        icon: "success",
+        title: "Sancion eliminada",
+        text: "Se elimino la sancion.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["sanciones", empleadoId] });
+    },
+  });
+
+  const handleEliminar = (sancion) => {
+    Swal.fire({
+      title: "ÂEstas seguro(a)?",
+      text: "Una vez eliminado, no podras recuperar este registro.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "Si, eliminar",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        doEliminar(sancion.id);
+      }
+    });
   };
 
   if (isLoading) {
@@ -52,7 +90,11 @@ export function SancionesSection({ empleadoId }) {
       </div>
 
       {data?.length ? (
-        <TablaSanciones data={data} onEdit={handleEditar} />
+        <TablaSanciones
+          data={data}
+          onEdit={handleEditar}
+          onDelete={handleEliminar}
+        />
       ) : (
         <EmptyState>Sin registros por el momento.</EmptyState>
       )}
@@ -92,3 +134,4 @@ const EmptyState = styled.div`
   color: ${({ theme }) => theme.textsecundary};
   text-align: center;
 `;
+

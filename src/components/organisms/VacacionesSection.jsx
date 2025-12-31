@@ -5,16 +5,19 @@ import {
   ModalVacacionesForm,
   TablaVacaciones,
   getVacacionesByEmpleadoId,
+  deleteVacacion,
   Spinner1,
 } from "../../index";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { v } from "../../styles/variables";
 import { calcVacationSummary } from "../../utils/vacaciones";
+import Swal from "sweetalert2";
 
 
 export function VacacionesSection({ empleado, empleadoId }) {
   const [openModal, setOpenModal] = useState(false);
   const [selectedVacacion, setSelectedVacacion] = useState(null);
+  const queryClient = useQueryClient();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["vacaciones", empleadoId],
@@ -36,6 +39,41 @@ export function VacacionesSection({ empleado, empleadoId }) {
   const handleEditar = (vacacion) => {
     setSelectedVacacion(vacacion);
     setOpenModal(true);
+  };
+
+  const { mutate: doEliminar } = useMutation({
+    mutationFn: deleteVacacion,
+    onError: (err) => {
+      Swal.fire({
+        icon: "error",
+        title: "Oops...",
+        text: err?.message || "Error al eliminar vacaciones.",
+      });
+    },
+    onSuccess: () => {
+      Swal.fire({
+        icon: "success",
+        title: "Vacaciones eliminadas",
+        text: "Se eliminaron las vacaciones.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["vacaciones", empleadoId] });
+    },
+  });
+
+  const handleEliminar = (vacacion) => {
+    Swal.fire({
+      title: "ÂEstas seguro(a)?",
+      text: "Una vez eliminado, no podras recuperar este registro.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "Si, eliminar",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        doEliminar(vacacion.id);
+      }
+    });
   };
 
   if (isLoading) {
@@ -66,7 +104,11 @@ export function VacacionesSection({ empleado, empleadoId }) {
       </div>
 
       {data?.length ? (
-        <TablaVacaciones data={data} onEdit={handleEditar} />
+        <TablaVacaciones
+          data={data}
+          onEdit={handleEditar}
+          onDelete={handleEliminar}
+        />
       ) : (
         <EmptyState>Sin registros por el momento.</EmptyState>
       )}
@@ -114,3 +156,4 @@ const EmptyState = styled.div`
   color: ${({ theme }) => theme.textsecundary};
   text-align: center;
 `;
+

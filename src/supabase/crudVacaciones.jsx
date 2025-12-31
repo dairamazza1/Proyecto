@@ -38,3 +38,13 @@ export async function updateVacacion(id, payload) {
   if (error) throw error;
   return data;
 }
+
+export async function deleteVacacion(id) {
+  const { error } = await supabase
+    .schema(schema)
+    .from(table)
+    .delete()
+    .eq("id", id);
+  if (error) throw error;
+  return true;
+}

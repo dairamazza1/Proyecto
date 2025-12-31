@@ -1,7 +1,11 @@
 import styled from "styled-components";
 import { AccionTabla, Paginacion } from "../../../index";
 import { v } from "../../../styles/variables";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import Swal from "sweetalert2";
+import { saveAs } from "file-saver";
+import Docxtemplater from "docxtemplater";
+import PizZip from "pizzip";
 import {
   flexRender,
   getCoreRowModel,
@@ -10,12 +14,136 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 
-export function TablaSanciones({ data, onEdit }) {
+const TEMPLATE_URL = "/templates/sancion_template.docx";
+
+const formatNombre = (persona) => {
+  if (!persona) return "-";
+  const firstName = persona.first_name ?? "";
+  const lastName = persona.last_name ?? "";
+  const fullName = `${firstName} ${lastName}`.trim();
+  return fullName || "-";
+};
+
+// const formatDni = (empleado) => {
+//   const type = empleado?.document_type ?? "";
+//   const number = empleado?.document_number ?? "";
+//   const combined = `${type} ${number}`.trim();
+//   return combined || "-";
+// };
+
+const getSucursalAddress = (empleado) => {
+  const raw = Array.isArray(empleado?.sucursal)
+    ? empleado.sucursal[0]
+    : empleado?.sucursal;
+  return raw?.sucursal?.address || "-";
+};
+
+const formatDateRange = (startDate, endDate) => {
+  const startLabel = formatDate(startDate);
+  const endLabel = formatDate(endDate);
+  if (startLabel === "-" && endLabel === "-") return "-";
+  if (startLabel !== "-" && endLabel !== "-") {
+    return `${startLabel} - ${endLabel}`;
+  }
+  return startLabel !== "-" ? startLabel : endLabel;
+};
+
+const formatDateTime = (value) => {
+  if (!value) return "-";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.valueOf())) return String(value);
+  const day = String(parsed.getDate()).padStart(2, "0");
+  const month = String(parsed.getMonth() + 1).padStart(2, "0");
+  const year = parsed.getFullYear();
+  const hours = String(parsed.getHours()).padStart(2, "0");
+  const minutes = String(parsed.getMinutes()).padStart(2, "0");
+  return `${day}/${month}/${year} ${hours}:${minutes}`;
+};
+
+const buildFileDate = (value) => {
+  if (!value) return "sin_fecha";
+  const parsed = new Date(value);
+  if (!Number.isNaN(parsed.valueOf())) {
+    const year = parsed.getFullYear();
+    const month = String(parsed.getMonth() + 1).padStart(2, "0");
+    const day = String(parsed.getDate()).padStart(2, "0");
+    return `${year}${month}${day}`;
+  }
+  const raw = String(value);
+  const [year, month, day] = raw.split("-");
+  if (!year || !month || !day) {
+    return raw.replace(/[^\d]/g, "") || "sin_fecha";
+  }
+  return `${year}${month}${day}`;
+};
+
+const resolveEmpresaNombre = (sancion) =>
+  sancion?.empleado?.empresa?.name || "Empresa";
+
+const buildTemplateData = (sancion) => ({
+  empresa_nombre: resolveEmpresaNombre(sancion),
+  sucursal_direccion: getSucursalAddress(sancion?.empleado),
+  empleado: formatNombre(sancion?.empleado),
+  dni: sancion?.empleado?.document_number,
+  puesto: sancion?.empleado?.puesto?.name ?? "-",
+  created_at: formatDateTime(sancion?.created_at) ?? "-",
+  created_by: sancion?.created_by ?? "-",
+  motivo: sancion?.sanction_type ?? "-",
+  horario_anterior: formatDateRange(
+    sancion?.sanction_date_start,
+    sancion?.sanction_date_end
+  ),
+  tareas_anteriores: sancion?.description ?? "-",
+  policy_reference: sancion?.policy_reference ?? "-",
+});
+
+export function TablaSanciones({ data, onEdit, onDelete }) {
   if (data == null) return null;
   const [columnFilters] = useState([]);
   const [sorting, setSorting] = useState([
     { id: "sanction_date_start", desc: true },
   ]);
+  const templateRef = useRef(null);
+
+  const loadTemplate = async () => {
+    if (templateRef.current) return templateRef.current;
+    const response = await fetch(TEMPLATE_URL);
+    if (!response.ok) {
+      throw new Error("No se pudo cargar la plantilla Word.");
+    }
+    const arrayBuffer = await response.arrayBuffer();
+    templateRef.current = arrayBuffer;
+    return arrayBuffer;
+  };
+
+  const handleExportDocx = async (sancion) => {
+    try {
+      const template = await loadTemplate();
+      const zip = new PizZip(template);
+      const doc = new Docxtemplater(zip, {
+        paragraphLoop: true,
+        linebreaks: true,
+        delimiters: { start: "{{", end: "}}" },
+      });
+      doc.render(buildTemplateData(sancion));
+      const blob = doc.getZip().generate({
+        type: "blob",
+        mimeType:
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      });
+      const fileDate = buildFileDate(
+        sancion?.sanction_date_start || sancion?.created_at
+      );
+      const fileName = `legajo_sancion_${sancion?.empleado?.last_name ?? "registro"}_${fileDate}.docx`;
+      saveAs(blob, fileName);
+    } catch (err) {
+      Swal.fire({
+        icon: "error",
+        title: "Oops...",
+        text: err?.message || "Error al exportar el documento.",
+      });
+    }
+  };
 
   const columns = [
     {
@@ -62,9 +190,9 @@ export function TablaSanciones({ data, onEdit }) {
     },
     {
       accessorKey: "policy_reference",
-      header: "Politica",
+      header: "Politica incumplida",
       meta: {
-        cardLabel: "Politica",
+        cardLabel: "Politica incumplida",
         cardValue: (row) => row.policy_reference ?? "-",
       },
       cell: (info) => (
@@ -84,6 +212,18 @@ export function TablaSanciones({ data, onEdit }) {
             fontSize="18px"
             color="#7d7d7d"
             icono={<v.iconeditarTabla />}
+          />
+          <AccionTabla
+            funcion={() => onDelete?.(info.row.original)}
+            fontSize="18px"
+            color={v.rojo}
+            icono={<v.iconeliminarTabla />}
+          />
+          <AccionTabla
+            funcion={() => handleExportDocx(info.row.original)}
+            fontSize="18px"
+            color="#7d7d7d"
+            icono={<v.iconoWord />}
           />
         </div>
       ),
@@ -132,6 +272,12 @@ export function TablaSanciones({ data, onEdit }) {
               <div className="cardActions">
                 <button type="button" onClick={() => onEdit?.(sancion)}>
                   Editar
+                </button>
+                <button type="button" onClick={() => handleExportDocx(sancion)}>
+                  Descargar Word
+                </button>
+                <button type="button" onClick={() => onDelete?.(sancion)}>
+                  Eliminar
                 </button>
               </div>
             </article>
@@ -284,6 +430,8 @@ const Container = styled.div`
   .cardActions {
     display: flex;
     justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 8px;
 
     button {
       border: none;
