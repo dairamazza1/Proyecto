@@ -45,7 +45,7 @@ export function LoginTemplate() {
     const result = await loginEmailPassword(formData.email, formData.password);
 
     if (result.success) {
-      navigate("/home");
+      navigate("/");
     } else {
       Swal.fire({
         icon: "error",
