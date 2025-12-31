@@ -31,16 +31,16 @@ export const LinksArray = [
     icon: "streamline-flex-color:warehouse-1",
     to: "/",
   },
-  {
-    label: "PACIENTES",
-    icon: "streamline-flex-color:office-building-1-flat",
-    to: "/pos",
-  },
-  {
-    label: "Kardex",
-    icon: "flat-ui:box",
-    to: "/kardex",
-  },
+  // {
+  //   label: "PACIENTES",
+  //   icon: "streamline-flex-color:office-building-1-flat",
+  //   to: "/pos",
+  // },
+  // {
+  //   label: "Kardex",
+  //   icon: "flat-ui:box",
+  //   to: "/kardex",
+  // },
   {
     label: "Reportes",
     icon: "streamline-flex-color:new-sticky-note-flat",
