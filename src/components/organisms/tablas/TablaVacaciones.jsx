@@ -1,6 +1,7 @@
 ﻿import styled from "styled-components";
 import { AccionTabla, Paginacion } from "../../../index";
 import { v } from "../../../styles/variables";
+import { Device, DeviceMax } from "../../../styles/breakpoints";
 import { useState } from "react";
 import {
   flexRender,
@@ -242,7 +243,7 @@ const Container = styled.div`
     margin-bottom: 1.5em;
     width: 100%;
 
-    @media (min-width: ${v.bpbart}) {
+    @media ${Device.tablet} {
       display: none;
     }
   }
@@ -320,7 +321,7 @@ const Container = styled.div`
     margin-bottom: 1.5em;
     border-spacing: 0;
 
-    @media (max-width: ${v.bpbart}) {
+    @media ${DeviceMax.tablet} {
       display: none;
     }
 
@@ -332,7 +333,7 @@ const Container = styled.div`
       width: 1px;
       overflow: hidden;
 
-      @media (min-width: ${v.bpbart}) {
+      @media ${Device.tablet} {
         position: relative;
         height: auto;
         width: auto;
@@ -387,7 +388,7 @@ const Container = styled.div`
     }
 
     tr {
-      @media (min-width: ${v.bpbart}) {
+      @media ${Device.tablet} {
         display: table-row;
       }
     }
@@ -396,28 +397,28 @@ const Container = styled.div`
     td {
       padding: 0.5em;
       vertical-align: middle;
-      @media (min-width: ${v.bplisa}) {
+      @media ${Device.mobile} {
         padding: 0.75em 0.5em;
       }
-      @media (min-width: ${v.bpbart}) {
+      @media ${Device.tablet} {
         display: table-cell;
         padding: 0.5em;
       }
-      @media (min-width: ${v.bpmarge}) {
+      @media ${Device.laptop} {
         padding: 0.75em 0.5em;
       }
-      @media (min-width: ${v.bphomer}) {
+      @media ${Device.desktop} {
         padding: 0.75em;
       }
     }
 
     tbody {
-      @media (min-width: ${v.bpbart}) {
+      @media ${Device.tablet} {
         display: table-row-group;
       }
       tr {
         margin-bottom: 1em;
-        @media (min-width: ${v.bpbart}) {
+        @media ${Device.tablet} {
           display: table-row;
           border-width: 1px;
         }
@@ -433,7 +434,7 @@ const Container = styled.div`
         align-items: center;
         height: 50px;
         border-bottom: 1px solid rgba(161, 161, 161, 0.32);
-        @media (min-width: ${v.bpbart}) {
+        @media ${Device.tablet} {
           justify-content: center;
           border-bottom: none;
         }
@@ -441,7 +442,7 @@ const Container = styled.div`
 
       td {
         text-align: right;
-        @media (min-width: ${v.bpbart}) {
+        @media ${Device.tablet} {
           text-align: center;
         }
       }
@@ -450,10 +451,10 @@ const Container = styled.div`
         content: attr(data-title);
         float: left;
         font-size: 0.8em;
-        @media (min-width: ${v.bplisa}) {
+        @media ${Device.mobile} {
           font-size: 0.9em;
         }
-        @media (min-width: ${v.bpbart}) {
+        @media ${Device.tablet} {
           content: none;
         }
       }

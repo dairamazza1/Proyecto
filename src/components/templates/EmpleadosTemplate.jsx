@@ -1,6 +1,7 @@
 import styled from "styled-components";
 import { Title, Btn1, Buscador, TablaEmpleados, useEmpleadosStore, useSucursalesStore } from "../../index";
 import { v } from "../../styles/variables";
+import { Device, DeviceMax } from "../../styles/breakpoints";
 import { useNavigate } from "react-router-dom";
 // import { useAuthStore } from "../../store/AuthStore";
 
@@ -78,7 +79,7 @@ const Container = styled.div`
     gap: 15px;
     flex-wrap: wrap;
 
-    @media (max-width: ${v.bpbart}) {
+    @media ${DeviceMax.tablet} {
       align-items: stretch;
     }
   }
@@ -89,17 +90,17 @@ const Container = styled.div`
     flex-wrap: wrap;
     justify-content: flex-end;
     width: 100%;
-    @media (min-width: ${v.bpbart}) {
+    @media ${Device.tablet} {
       width: auto;
     }
-    @media (max-width: ${v.bpbart}) {
+    @media ${DeviceMax.tablet} {
       justify-content: stretch;
       gap: 10px;
     }
   }
   .selector-sucursal {
     width: min(240px, 100%);
-    @media (max-width: ${v.bpbart}) {
+    @media ${DeviceMax.tablet} {
       width: 100%;
     }
     
@@ -122,7 +123,7 @@ const Container = styled.div`
   }
   .buscador {
     width: min(340px, 100%);
-    @media (max-width: ${v.bpbart}) {
+    @media ${DeviceMax.tablet} {
       width: 100%;
     }
   }

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import styled from "styled-components";
 import { v } from "../../../styles/variables";
+import { Device, DeviceMax } from "../../../styles/breakpoints";
 import {
   InputText,
   Btn1,
@@ -714,18 +715,18 @@ const Container = styled.div`
   `
       : ""}
 
-  @media (max-width: ${v.bplisa}) {
+  @media ${DeviceMax.mobile} {
     padding: 16px 12px;
   }
 
-  @media (min-width: ${v.bplisa}) {
+  @media ${Device.mobile} {
     padding: 28px 20px;
   }
 
   ${({ $modal }) =>
     $modal
       ? `
-    @media (max-width: ${v.bplisa}) {
+    @media ${DeviceMax.mobile} {
       align-items: flex-start;
       padding: 0;
     }
@@ -749,12 +750,12 @@ const Container = styled.div`
     `
         : ""}
 
-    @media (min-width: ${v.bplisa}) {
+    @media ${Device.mobile} {
       padding: 18px 26px 24px 26px;
       border-radius: 20px;
     }
 
-    @media (max-width: ${v.bplisa}) {
+    @media ${DeviceMax.mobile} {
       border-radius: 16px;
       padding: 14px 14px 18px 14px;
     }
@@ -762,7 +763,7 @@ const Container = styled.div`
     ${({ $modal }) =>
       $modal
         ? `
-      @media (max-width: ${v.bplisa}) {
+      @media ${DeviceMax.mobile} {
         width: 100%;
         height: 100vh;
         max-height: none;
@@ -783,7 +784,7 @@ const Container = styled.div`
         font-weight: 500;
       }
 
-      @media (min-width: ${v.bplisa}) {
+      @media ${Device.mobile} {
         margin-bottom: 20px;
 
         h1 {
@@ -802,12 +803,12 @@ const Container = styled.div`
         display: grid;
         grid-template-columns: 1fr;
 
-        @media (min-width: ${v.bplisa}) {
+        @media ${Device.mobile} {
           grid-template-columns: repeat(2, minmax(0, 1fr));
           gap: 18px 20px;
         }
 
-        @media (min-width: ${v.bpbart}) {
+        @media ${Device.tablet} {
           gap: 20px 24px;
         }
       }
@@ -820,7 +821,7 @@ const Container = styled.div`
     justify-content: flex-end;
     gap: 12px;
 
-    @media (max-width: ${v.bplisa}) {
+    @media ${DeviceMax.mobile} {
       flex-direction: column-reverse;
       align-items: stretch;
       gap: 10px;

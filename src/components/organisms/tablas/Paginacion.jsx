@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { v } from "../../../styles/variables";
+import { DeviceMax } from "../../../styles/breakpoints";
 import styled from "styled-components";
 import { Btn1 } from "../../../index";
 export const Paginacion = ({ table }) => {
@@ -52,7 +53,7 @@ const Container = styled.div`
     margin: 0;
   }
 
-  @media (max-width: ${v.bplisa}) {
+  @media ${DeviceMax.mobile} {
     gap: 8px;
 
     button {

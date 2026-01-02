@@ -11,6 +11,7 @@ import {
 } from "../../index";
 import { useNavigate } from "react-router-dom";
 import { v } from "../../styles/variables";
+import { Device } from "../../styles/breakpoints";
 
 export function EmpleadoTemplate({ id, empleado, isError, sucursalEmpleado }) {
   const navigate = useNavigate();
@@ -229,15 +230,15 @@ const InfoGrid = styled.div`
   gap: 18px 30px;
   grid-template-columns: repeat(1, minmax(0, 1fr));
 
-  @media (min-width: ${v.bplisa}) {
+  @media ${Device.mobile} {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  @media (min-width: ${v.bpbart}) {
+  @media ${Device.tablet} {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  @media (min-width: ${v.bpmarge}) {
+  @media ${Device.laptop} {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 `;

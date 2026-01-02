@@ -10,6 +10,7 @@ import {
 } from "../../../supabase/crudVacaciones";
 import { calcDaysTakenInclusive } from "../../../utils/vacaciones";
 import { v } from "../../../styles/variables";
+import { Device, DeviceMax } from "../../../styles/breakpoints";
 
 export function ModalVacacionesForm({ empleadoId, vacacion, onClose }) {
   const queryClient = useQueryClient();
@@ -214,8 +215,9 @@ const Overlay = styled.div`
   min-height: 100vh;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
-  padding: 16px;
+  z-index: 2000;
+  padding: 24px 16px;
+  overflow: hidden;
 `;
 
 const Modal = styled.div`
@@ -225,10 +227,14 @@ const Modal = styled.div`
   border-radius: 18px;
   background: ${({ theme }) => theme.bgtotal};
   box-shadow: -10px 15px 30px rgba(10, 9, 9, 0.25);
-  padding: 16px 18px 20px 18px;
+  padding: 18px;
+  box-sizing: border-box;
+  max-height: calc(100dvh - 48px);
+  display: flex;
+  flex-direction: column;
 
-  @media (min-width: ${v.bplisa}) {
-    padding: 18px 26px 24px 26px;
+  @media ${Device.mobile} {
+    padding: 24px;
     border-radius: 20px;
   }
 
@@ -236,7 +242,9 @@ const Modal = styled.div`
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 16px;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
 
     h1 {
       font-size: 18px;
@@ -250,12 +258,26 @@ const Modal = styled.div`
   }
 
   .formulario {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    flex: 1;
+    min-height: 0;
+    box-sizing: border-box;
+    overflow-y: auto;
+    padding-right: 12px;
+    scrollbar-gutter: stable;
+
+    @media ${DeviceMax.mobile} {
+      padding-right: 8px;
+    }
+
     .form-subcontainer {
       gap: 16px;
       display: grid;
       grid-template-columns: 1fr;
 
-      @media (min-width: ${v.bplisa}) {
+      @media ${Device.mobile} {
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 18px 20px;
       }
@@ -267,8 +289,9 @@ const Modal = styled.div`
     display: flex;
     justify-content: flex-end;
     gap: 12px;
+    padding-top: 4px;
 
-    @media (max-width: ${v.bplisa}) {
+    @media ${DeviceMax.mobile} {
       flex-direction: column-reverse;
       align-items: stretch;
       gap: 10px;

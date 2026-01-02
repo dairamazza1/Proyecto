@@ -40,7 +40,7 @@ function App() {
                 aria-expanded={sidebarOpen}
                 onClick={() => setSidebarOpen(!sidebarOpen)}
               >
-                {sidebarOpen ? <v.iconocerrar /> : <v.iconobars />}
+                {sidebarOpen ? <v.iconocerrar /> : <v.iconomenu />}
               </button>
               <span className="hamburTitle">Menu</span>
             </section>

@@ -55,6 +55,8 @@ import { Md123 } from "react-icons/md";
 import { MdOutlineCheckCircleOutline } from "react-icons/md";
 import { MdCalendarToday } from "react-icons/md";
 import { FaRegFileWord } from "react-icons/fa";
+import { CgMenu } from "react-icons/cg";
+
 
 export const v = {
   colorPrincipal: `#99a6ce`,
@@ -84,6 +86,7 @@ export const v = {
   iconoCalendario: MdCalendarToday,
   iconoCheck: MdOutlineCheckCircleOutline ,
   iconoWord: FaRegFileWord ,
+  iconomenu: CgMenu ,
 
 
 
