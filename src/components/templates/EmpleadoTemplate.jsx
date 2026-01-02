@@ -11,7 +11,7 @@ import {
 } from "../../index";
 import { useNavigate } from "react-router-dom";
 import { v } from "../../styles/variables";
-import { Device } from "../../styles/breakpoints";
+import { Device, DeviceMax } from "../../styles/breakpoints";
 
 export function EmpleadoTemplate({ id, empleado, isError, sucursalEmpleado }) {
   const navigate = useNavigate();
@@ -45,7 +45,7 @@ export function EmpleadoTemplate({ id, empleado, isError, sucursalEmpleado }) {
             <Btn1
               icono={<v.iconeditarTabla />}
               titulo="Editar"
-              bgcolor="#F9D70B"
+              bgcolor="#99a6ce"
               funcion={() => setOpenEditar(true)}
             />
           </div>
@@ -260,18 +260,33 @@ const InfoItem = styled.div`
 `;
 
 const Tabs = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px;
+  align-items: center;
+
+  @media ${DeviceMax.mobile} {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 
   .tab {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     border-radius: 999px;
-    padding: 8px 16px;
+    padding: 0 12px;
     border: 1px solid ${({ theme }) => theme.color2};
     background: ${({ theme }) => theme.bg};
     color: ${({ theme }) => theme.text};
     font-weight: 600;
     cursor: pointer;
+    width: 100%;
+    height: 52px;
+    min-height: 32px;
+    line-height: 1;
+    box-sizing: border-box;
+    font-size: 0.85rem;
+    text-align: center;
   }
 
   .tab.active {

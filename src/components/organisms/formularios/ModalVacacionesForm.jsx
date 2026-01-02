@@ -131,7 +131,7 @@ export function ModalVacacionesForm({ empleadoId, vacacion, onClose }) {
                   type="date"
                   {...register("start_date", { required: "Campo requerido" })}
                 />
-                <label className="form__label">fecha inicio</label>
+                <label className="form__label">Fecha inicio</label>
                 {errors.start_date?.message && (
                   <p>{errors.start_date.message}</p>
                 )}
@@ -153,7 +153,7 @@ export function ModalVacacionesForm({ empleadoId, vacacion, onClose }) {
                     },
                   })}
                 />
-                <label className="form__label">fecha fin</label>
+                <label className="form__label">Fecha fin</label>
                 {errors.end_date?.message && <p>{errors.end_date.message}</p>}
               </InputText>
             </article>
@@ -167,7 +167,7 @@ export function ModalVacacionesForm({ empleadoId, vacacion, onClose }) {
                     {...register("days_taken")}
                     readOnly
                   />
-                  <label className="form__label">dias</label>
+                  <label className="form__label">Dias</label>
                 </InputText>
               </article>
             )}
