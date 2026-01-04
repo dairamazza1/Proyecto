@@ -32,5 +32,6 @@ export async function getIdAuthSupabase(){
     const {user} = session;
     const idAuth = user.id;
     return idAuth;
-  } 
+  }
+  return null;
 }

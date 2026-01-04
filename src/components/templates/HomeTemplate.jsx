@@ -1,5 +1,6 @@
 import styled from "styled-components";
 import { HomeCards, Title, v } from "../../index";
+import { useAuthStore } from "../../context/AuthStoreWithPermissions";
 
 export function HomeTemplate({ displayName = "Usuario" }) {
   const cards = [

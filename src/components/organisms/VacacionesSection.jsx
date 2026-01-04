@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import styled from "styled-components";
 import {
   Btn1,
@@ -8,6 +8,7 @@ import {
   deleteVacacion,
   Spinner1,
 } from "../../index";
+import { usePermissions } from "../../hooks/usePermissions";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { v } from "../../styles/variables";
 import { calcVacationSummary } from "../../utils/vacaciones";
@@ -18,6 +19,9 @@ export function VacacionesSection({ empleado, empleadoId, title = "Vacaciones" }
   const [openModal, setOpenModal] = useState(false);
   const [selectedVacacion, setSelectedVacacion] = useState(null);
   const queryClient = useQueryClient();
+  
+  // Hook de permisos
+  const { canCreate } = usePermissions();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["vacaciones", empleadoId],

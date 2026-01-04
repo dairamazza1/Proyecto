@@ -3,6 +3,7 @@ import { AccionTabla, Paginacion, getDocumentoSignedUrl } from "../../../index";
 import { v } from "../../../styles/variables";
 import { Device, DeviceMax } from "../../../styles/breakpoints";
 import { useState } from "react";
+import { usePermissions } from "../../../hooks/usePermissions";
 import Swal from "sweetalert2";
 import {
   flexRender,
@@ -30,6 +31,9 @@ export function TablaLicencias({ data, onEdit, onDelete }) {
   if (data == null) return null;
   const [columnFilters] = useState([]);
   const [sorting, setSorting] = useState([{ id: "start_date", desc: true }]);
+  
+  // Hook de permisos
+  const { canUpdate, canDelete } = usePermissions();
 
   const handleOpenCertificate = async (licencia) => {
     const filePath = getCertificadoPath(licencia);
@@ -128,18 +132,22 @@ export function TablaLicencias({ data, onEdit, onDelete }) {
       header: "Acciones",
       cell: (info) => (
         <div data-title="Acciones" className="ContentCell acciones">
-          <AccionTabla
-            funcion={() => onEdit?.(info.row.original)}
-            fontSize="18px"
-            color="#7d7d7d"
-            icono={<v.iconeditarTabla />}
-          />
-          <AccionTabla
-            funcion={() => onDelete?.(info.row.original)}
-            fontSize="18px"
-            color={v.rojo}
-            icono={<v.iconeliminarTabla />}
-          />
+          {canUpdate('licencias') && (
+            <AccionTabla
+              funcion={() => onEdit?.(info.row.original)}
+              fontSize="18px"
+              color="#7d7d7d"
+              icono={<v.iconeditarTabla />}
+            />
+          )}
+          {canDelete('licencias') && (
+            <AccionTabla
+              funcion={() => onDelete?.(info.row.original)}
+              fontSize="18px"
+              color={v.rojo}
+              icono={<v.iconeliminarTabla />}
+            />
+          )}
           {getCertificadoPath(info.row.original) && (
             <AccionTabla
               funcion={() => handleOpenCertificate(info.row.original)}

@@ -2,7 +2,7 @@ import { StrictMode, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App.jsx";
 import { BrowserRouter } from "react-router-dom";
-import { useAuthStore } from "./context/AuthStore.jsx";
+import { useAuthStore } from "./context/AuthStoreWithPermissions.jsx";
 import {
   // useQuery,
   // useMutation,

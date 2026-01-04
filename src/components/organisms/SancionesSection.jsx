@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import styled from "styled-components";
 import {
   Btn1,
@@ -8,6 +8,7 @@ import {
   deleteSancion,
   Spinner1,
 } from "../../index";
+import { usePermissions } from "../../hooks/usePermissions";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { v } from "../../styles/variables";
 import Swal from "sweetalert2";
@@ -16,6 +17,9 @@ export function SancionesSection({ empleadoId, title = "Sanciones" }) {
   const [openModal, setOpenModal] = useState(false);
   const [selectedSancion, setSelectedSancion] = useState(null);
   const queryClient = useQueryClient();
+  
+  // Hook de permisos
+  const { canCreate } = usePermissions();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["sanciones", empleadoId],

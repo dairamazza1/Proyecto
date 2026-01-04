@@ -3,6 +3,7 @@ import { AccionTabla, Paginacion } from "../../../index";
 import { v } from "../../../styles/variables";
 import { Device, DeviceMax } from "../../../styles/breakpoints";
 import { useRef, useState } from "react";
+import { usePermissions } from "../../../hooks/usePermissions";
 import Swal from "sweetalert2";
 import { saveAs } from "file-saver";
 import Docxtemplater from "docxtemplater";
@@ -99,12 +100,14 @@ const buildTemplateData = (sancion) => ({
 });
 
 export function TablaSanciones({ data, onEdit, onDelete }) {
-  if (data == null) return null;
   const [columnFilters] = useState([]);
   const [sorting, setSorting] = useState([
     { id: "sanction_date_start", desc: true },
   ]);
   const templateRef = useRef(null);
+  
+  // Hook de permisos
+  const { canUpdate, canDelete } = usePermissions();
 
   const loadTemplate = async () => {
     if (templateRef.current) return templateRef.current;
@@ -208,18 +211,25 @@ export function TablaSanciones({ data, onEdit, onDelete }) {
       header: "Acciones",
       cell: (info) => (
         <div data-title="Acciones" className="ContentCell">
-          <AccionTabla
-            funcion={() => onEdit?.(info.row.original)}
-            fontSize="18px"
-            color="#7d7d7d"
-            icono={<v.iconeditarTabla />}
-          />
-          <AccionTabla
-            funcion={() => onDelete?.(info.row.original)}
-            fontSize="18px"
-            color={v.rojo}
-            icono={<v.iconeliminarTabla />}
-          />
+          {/* Mostrar botón de editar SOLO si tiene permiso */}
+          {canUpdate('sanciones') && (
+            <AccionTabla
+              funcion={() => onEdit?.(info.row.original)}
+              fontSize="18px"
+              color="#7d7d7d"
+              icono={<v.iconeditarTabla />}
+            />
+          )}
+          {/* Mostrar botón de eliminar SOLO si tiene permiso */}
+          {canDelete('sanciones') && (
+            <AccionTabla
+              funcion={() => onDelete?.(info.row.original)}
+              fontSize="18px"
+              color={v.rojo}
+              icono={<v.iconeliminarTabla />}
+            />
+          )}
+          {/* Botón de exportar visible para todos */}
           <AccionTabla
             funcion={() => handleExportDocx(info.row.original)}
             fontSize="18px"
@@ -233,7 +243,7 @@ export function TablaSanciones({ data, onEdit, onDelete }) {
   ];
 
   const table = useReactTable({
-    data,
+    data: data ?? [],
     columns,
     state: {
       columnFilters,
@@ -245,6 +255,8 @@ export function TablaSanciones({ data, onEdit, onDelete }) {
     getSortedRowModel: getSortedRowModel(),
     columnResizeMode: "onChange",
   });
+
+  if (data == null) return null;
 
   return (
     <Container>
@@ -271,15 +283,22 @@ export function TablaSanciones({ data, onEdit, onDelete }) {
                 ))}
               </div>
               <div className="cardActions">
-                <button type="button" onClick={() => onEdit?.(sancion)}>
-                  Editar
-                </button>
+                {/* Mostrar botón de editar SOLO si tiene permiso */}
+                {canUpdate('sanciones') && (
+                  <button type="button" onClick={() => onEdit?.(sancion)}>
+                    Editar
+                  </button>
+                )}
+                {/* Botón de exportar visible para todos */}
                 <button type="button" onClick={() => handleExportDocx(sancion)}>
                   Descargar Word
                 </button>
-                <button type="button" onClick={() => onDelete?.(sancion)}>
-                  Eliminar
-                </button>
+                {/* Mostrar botón de eliminar SOLO si tiene permiso */}
+                {canDelete('sanciones') && (
+                  <button type="button" onClick={() => onDelete?.(sancion)}>
+                    Eliminar
+                  </button>
+                )}
               </div>
             </article>
           );

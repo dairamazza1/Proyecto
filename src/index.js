@@ -44,7 +44,7 @@ export * from "./components/templates/PerfilTemplate";
 export * from "./components/templates/RegisterTemplate";
 export * from "./components/templates/ReportesTemplate";
 export * from "./context/AuthContent";
-export * from "./context/AuthStore";
+export * from "./context/AuthStoreWithPermissions";
 export * from "./hooks/ProtectedRoute";
 export * from "./main";
 export * from "./pages/Categories";

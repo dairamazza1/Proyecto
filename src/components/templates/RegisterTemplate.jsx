@@ -2,7 +2,13 @@ import styled from "styled-components";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
-import { Title, InputText2, Btn1, Footer, useAuthStore } from "../../index";
+import {
+  Title,
+  InputText2,
+  Btn1,
+  Footer,
+} from "../../index";
+import { useAuthStore } from "../../context/AuthStoreWithPermissions";
 import { v } from "../../styles/variables";
 import { Device } from "../../styles/breakpoints";
 
