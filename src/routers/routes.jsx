@@ -1,4 +1,5 @@
 import { Routes, Route } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import {
   Categories,
   Configurations,
@@ -9,18 +10,14 @@ import {
   ProtectedRoute,
   RegistrarEmpleados,
   Spinner1,
-  UserAuth,
   useUsersStore,
 } from "../index";
-import { useQuery } from "@tanstack/react-query";
 
 export function MyRoutes() {
-  const { user } = UserAuth();
   const { showUsers } = useUsersStore();
-
   const { isLoading, error } = useQuery({
     queryKey: ["mostrar usuarios"],
-    queryFn: showUsers,refetchOnWindowFocus:false
+    queryFn: showUsers, refetchOnWindowFocus: false
   });
 
   if (isLoading) {
@@ -32,8 +29,8 @@ export function MyRoutes() {
 
   return (
     <Routes>
-      //Rutas protegidas
-      <Route element={<ProtectedRoute user={user} redirectTo="/login" />}>
+      {/* Rutas protegidas */}
+      <Route element={<ProtectedRoute redirectTo="/login" />}>
         <Route path="/" element={<Home />} />
         <Route path="/empleados/nuevo" element={<RegistrarEmpleados />} />
         <Route path="/empleados/:id" element={<Empleado />} />

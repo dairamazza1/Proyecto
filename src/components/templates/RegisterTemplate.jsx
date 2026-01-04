@@ -7,8 +7,8 @@ import {
   InputText2,
   Btn1,
   Footer,
-  useAuthStore,
 } from "../../index";
+import { useAuthStore } from "../../context/AuthStoreWithPermissions";
 import { v } from "../../styles/variables";
 import { Device } from "../../styles/breakpoints";
 

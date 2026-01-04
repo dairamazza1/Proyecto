@@ -9,6 +9,7 @@ import {
   CambiosSection,
   SancionesSection,
 } from "../../index";
+import { usePermissions } from "../../hooks/usePermissions";
 import { useNavigate } from "react-router-dom";
 import { v } from "../../styles/variables";
 import { Device, DeviceMax } from "../../styles/breakpoints";
@@ -17,6 +18,10 @@ export function EmpleadoTemplate({ id, empleado, isError, sucursalEmpleado }) {
   const navigate = useNavigate();
   const [openEditar, setOpenEditar] = useState(false);
   const [activeTab, setActiveTab] = useState("vacaciones");
+  
+  // Hook de permisos
+  const { canUpdate, isEmployee } = usePermissions();
+  
   const fullName = [empleado?.first_name, empleado?.last_name]
     .filter(Boolean)
     .join(" ");
@@ -42,12 +47,14 @@ export function EmpleadoTemplate({ id, empleado, isError, sucursalEmpleado }) {
             <StatusPill className={empleado?.is_active ? "activo" : "inactivo"}>
               Estado: {statusLabel}
             </StatusPill>
-            <Btn1
-              icono={<v.iconeditarTabla />}
-              titulo="Editar"
-              bgcolor="#99a6ce"
-              funcion={() => setOpenEditar(true)}
-            />
+            {canUpdate('empleados') && (
+              <Btn1
+                icono={<v.iconeditarTabla />}
+                titulo="Editar"
+                bgcolor="#99a6ce"
+                funcion={() => setOpenEditar(true)}
+              />
+            )}
           </div>
         )}
       </Header>
@@ -60,6 +67,13 @@ export function EmpleadoTemplate({ id, empleado, isError, sucursalEmpleado }) {
 
       {id && empleado && (
         <>
+          {/* Mensaje informativo para empleados */}
+          {isEmployee() && (
+            <InfoBanner>
+              📖 Estás en modo solo lectura. Contacta a RRHH para modificaciones.
+            </InfoBanner>
+          )}
+          
           <InfoCard>
             <InfoGrid>
               <InfoItem>
@@ -294,6 +308,19 @@ const Tabs = styled.div`
     color: ${({ theme }) => theme.color1};
     background: rgba(31, 141, 255, 0.08);
   }
+`;
+
+const InfoBanner = styled.div`
+  background: rgba(255, 193, 7, 0.1);
+  border: 1px solid rgba(255, 193, 7, 0.3);
+  border-radius: 8px;
+  padding: 12px 16px;
+  color: ${({ theme }) => theme.text};
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 `;
 
 const EmptyState = styled.div`

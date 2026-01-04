@@ -8,6 +8,7 @@ import {
   deleteEmpleadoLicencia,
   Spinner1,
 } from "../../index";
+import { usePermissions } from "../../hooks/usePermissions";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { v } from "../../styles/variables";
 import Swal from "sweetalert2";
@@ -16,6 +17,9 @@ export function LicenciasSection({ empleadoId }) {
   const [openModal, setOpenModal] = useState(false);
   const [selectedLicencia, setSelectedLicencia] = useState(null);
   const queryClient = useQueryClient();
+  
+  // Hook de permisos
+  const { canCreate } = usePermissions();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["licencias", empleadoId],
@@ -55,7 +59,7 @@ export function LicenciasSection({ empleadoId }) {
 
   const handleEliminar = (licencia) => {
     Swal.fire({
-      title: "ÂEstas seguro(a)?",
+      title: "ï¿½Estas seguro(a)?",
       text: "Una vez eliminado, no podras recuperar este registro.",
       icon: "warning",
       showCancelButton: true,
@@ -81,12 +85,14 @@ export function LicenciasSection({ empleadoId }) {
     <Section>
       <div className="sectionHeader">
         <h3>Licencias</h3>
-        <Btn1
-          icono={<v.iconoagregar />}
-          titulo="nuevo"
-          bgcolor={v.colorPrincipal}
-          funcion={handleNuevo}
-        />
+        {canCreate('licencias') && (
+          <Btn1
+            icono={<v.iconoagregar />}
+            titulo="nuevo"
+            bgcolor={v.colorPrincipal}
+            funcion={handleNuevo}
+          />
+        )}
       </div>
 
       {data?.length ? (

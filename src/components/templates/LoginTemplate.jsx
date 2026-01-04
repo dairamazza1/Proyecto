@@ -7,8 +7,8 @@ import {
   InputText2,
   Btn1,
   Footer,
-  useAuthStore,
 } from "../../index";
+import { useAuthStore } from "../../context/AuthStoreWithPermissions";
 import { v } from "../../styles/variables";
 import { Device } from "../../styles/breakpoints";
 
@@ -45,7 +45,7 @@ export function LoginTemplate() {
     const result = await loginEmailPassword(formData.email, formData.password);
 
     if (result.success) {
-      navigate("/");
+      navigate("/"); 
     } else {
       Swal.fire({
         icon: "error",

@@ -1,13 +1,19 @@
 import styled from "styled-components";
 import { Link } from "react-router-dom";
 import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useModuleSectionStore } from "../../store/ModuleSectionStore";
-import { useAuthStore } from "../../context/AuthStore";
+import { useAuthStore } from "../../context/AuthStoreWithPermissions";
 
 export function ConfigurationTemplate() {
   const { dataModuleSection } = useModuleSectionStore();
   const { cerrarSesion } = useAuthStore();
+  const navigate = useNavigate();
 
+  const handleLogout = async () => {
+    await cerrarSesion();
+    navigate("/login");
+  };
 
   useEffect(() => {
     const handleMouseMove = (e) => {
@@ -32,7 +38,7 @@ export function ConfigurationTemplate() {
   }, []);
   return (
     <Container>
-      <button onClick={cerrarSesion}>cerrar sesion test</button>
+      <button onClick={handleLogout}>cerrar sesion test</button>
       <div id="cards">
         {dataModuleSection.map((item, index) => {
           return (

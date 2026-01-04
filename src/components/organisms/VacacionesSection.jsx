@@ -8,6 +8,7 @@ import {
   deleteVacacion,
   Spinner1,
 } from "../../index";
+import { usePermissions } from "../../hooks/usePermissions";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { v } from "../../styles/variables";
 import { calcVacationSummary } from "../../utils/vacaciones";
@@ -18,6 +19,9 @@ export function VacacionesSection({ empleado, empleadoId }) {
   const [openModal, setOpenModal] = useState(false);
   const [selectedVacacion, setSelectedVacacion] = useState(null);
   const queryClient = useQueryClient();
+  
+  // Hook de permisos
+  const { canCreate } = usePermissions();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["vacaciones", empleadoId],
@@ -62,7 +66,7 @@ export function VacacionesSection({ empleado, empleadoId }) {
 
   const handleEliminar = (vacacion) => {
     Swal.fire({
-      title: "ÂEstas seguro(a)?",
+      title: "ï¿½Estas seguro(a)?",
       text: "Una vez eliminado, no podras recuperar este registro.",
       icon: "warning",
       showCancelButton: true,
@@ -88,12 +92,14 @@ export function VacacionesSection({ empleado, empleadoId }) {
     <Section>
       <div className="sectionHeader">
         <h3>Vacaciones</h3>
-        <Btn1
-          icono={<v.iconoagregar />}
-          titulo="nuevo"
-          bgcolor={v.colorPrincipal}
-          funcion={handleNuevo}
-        />
+        {canCreate('vacaciones') && (
+          <Btn1
+            icono={<v.iconoagregar />}
+            titulo="nuevo"
+            bgcolor={v.colorPrincipal}
+            funcion={handleNuevo}
+          />
+        )}
       </div>
 
       <div className="sectionMeta">

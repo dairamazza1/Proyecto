@@ -9,6 +9,7 @@ import {
   Spinner1,
   useCompanyStore,
 } from "../../index";
+import { usePermissions } from "../../hooks/usePermissions";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { v } from "../../styles/variables";
 import Swal from "sweetalert2";
@@ -18,6 +19,9 @@ export function CambiosSection({ empleadoId }) {
   const [selectedCambio, setSelectedCambio] = useState(null);
   const { dataCompany } = useCompanyStore();
   const queryClient = useQueryClient();
+  
+  // Hook de permisos
+  const { canCreate } = usePermissions();
   
   const empresaNombre =
     dataCompany?.name ||
@@ -64,7 +68,7 @@ export function CambiosSection({ empleadoId }) {
 
   const handleEliminar = (cambio) => {
     Swal.fire({
-      title: "ÂEstas seguro(a)?",
+      title: "ï¿½Estas seguro(a)?",
       text: "Una vez eliminado, no podras recuperar este registro.",
       icon: "warning",
       showCancelButton: true,
@@ -90,12 +94,14 @@ export function CambiosSection({ empleadoId }) {
     <Section>
       <div className="sectionHeader">
         <h3>Cambios de turnos</h3>
-        <Btn1
-          icono={<v.iconoagregar />}
-          titulo="nuevo"
-          bgcolor={v.colorPrincipal}
-          funcion={handleNuevo}
-        />
+        {canCreate('cambios') && (
+          <Btn1
+            icono={<v.iconoagregar />}
+            titulo="nuevo"
+            bgcolor={v.colorPrincipal}
+            funcion={handleNuevo}
+          />
+        )}
       </div>
 
       {data?.length ? (

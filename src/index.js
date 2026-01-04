@@ -38,7 +38,7 @@ export * from "./components/templates/HomeTemplate";
 export * from "./components/templates/LoginTemplate";
 export * from "./components/templates/RegisterTemplate";
 export * from "./context/AuthContent";
-export * from "./context/AuthStore";
+export * from "./context/AuthStoreWithPermissions";
 export * from "./hooks/ProtectedRoute";
 export * from "./main";
 export * from "./pages/Categories";

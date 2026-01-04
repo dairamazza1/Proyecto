@@ -3,6 +3,7 @@ import { AccionTabla, Paginacion } from "../../../index";
 import { v } from "../../../styles/variables";
 import { Device, DeviceMax } from "../../../styles/breakpoints";
 import { useRef, useState } from "react";
+import { usePermissions } from "../../../hooks/usePermissions";
 import Swal from "sweetalert2";
 import { saveAs } from "file-saver";
 import Docxtemplater from "docxtemplater";
@@ -118,6 +119,9 @@ export function TablaCambios({ data, onEdit, onDelete, empresaNombre }) {
   ]);
   const [previewCambio, setPreviewCambio] = useState(null);
   const templateRef = useRef(null);
+  
+  // Hook de permisos
+  const { canUpdate, canDelete } = usePermissions();
 
   const handleOpenPreview = (cambio) => {
     setPreviewCambio(cambio);
@@ -288,18 +292,22 @@ export function TablaCambios({ data, onEdit, onDelete, empresaNombre }) {
       header: "Acciones",
       cell: (info) => (
         <div data-title="Acciones" className="ContentCell">
-          <AccionTabla
-            funcion={() => onEdit?.(info.row.original)}
-            fontSize="18px"
-            color="#7d7d7d"
-            icono={<v.iconeditarTabla />}
-          />
-          <AccionTabla
-            funcion={() => onDelete?.(info.row.original)}
-            fontSize="18px"
-            color={v.rojo}
-            icono={<v.iconeliminarTabla />}
-          />
+          {canUpdate('cambios') && (
+            <AccionTabla
+              funcion={() => onEdit?.(info.row.original)}
+              fontSize="18px"
+              color="#7d7d7d"
+              icono={<v.iconeditarTabla />}
+            />
+          )}
+          {canDelete('cambios') && (
+            <AccionTabla
+              funcion={() => onDelete?.(info.row.original)}
+              fontSize="18px"
+              color={v.rojo}
+              icono={<v.iconeliminarTabla />}
+            />
+          )}
           <AccionTabla
             funcion={() => handleOpenPreview(info.row.original)}
             fontSize="18px"
