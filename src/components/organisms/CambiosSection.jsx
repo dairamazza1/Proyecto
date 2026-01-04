@@ -68,11 +68,7 @@ export function CambiosSection({ empleadoId, title = "Cambios de turnos" }) {
 
   const handleEliminar = (cambio) => {
     Swal.fire({
-<<<<<<< HEAD
       title: "ÂEstas seguro(a)?",
-=======
-      title: "�Estas seguro(a)?",
->>>>>>> permisos
       text: "Una vez eliminado, no podras recuperar este registro.",
       icon: "warning",
       showCancelButton: true,
@@ -97,7 +93,6 @@ export function CambiosSection({ empleadoId, title = "Cambios de turnos" }) {
   return (
     <Section>
       <div className="sectionHeader">
-<<<<<<< HEAD
         <h3>{title}</h3>
         <Btn1
           icono={<v.iconoagregar />}
@@ -105,17 +100,6 @@ export function CambiosSection({ empleadoId, title = "Cambios de turnos" }) {
           bgcolor={v.colorPrincipal}
           funcion={handleNuevo}
         />
-=======
-        <h3>Cambios de turnos</h3>
-        {canCreate('cambios') && (
-          <Btn1
-            icono={<v.iconoagregar />}
-            titulo="nuevo"
-            bgcolor={v.colorPrincipal}
-            funcion={handleNuevo}
-          />
-        )}
->>>>>>> permisos
       </div>
 
       {data?.length ? (
