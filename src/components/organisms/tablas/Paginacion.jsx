@@ -11,14 +11,15 @@ export const Paginacion = ({ table }) => {
       <Btn1
         disabled={!table.getCanPreviousPage()}
         funcion={() => table.setPageIndex(0)}
-        bgcolor="#F3D20C"
+        bgcolor="#99a6ce;
+"
         icono={<v.iconotodos />}
       />
 
       <Btn1
         disabled={!table.getCanPreviousPage()}
         funcion={() => table.previousPage()}
-        bgcolor="#F3D20C"
+        bgcolor="#99a6ce"
         icono={<v.iconoflechaizquierda />}
       />
 
@@ -28,7 +29,7 @@ export const Paginacion = ({ table }) => {
       <Btn1
         disabled={!table.getCanNextPage()}
         funcion={() => table.nextPage()}
-        bgcolor="#F3D20C"
+        bgcolor="#99a6ce"
         icono={<v.iconoflechaderecha />}
       />
       

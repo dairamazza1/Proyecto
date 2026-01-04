@@ -1,14 +1,14 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  HomeTemplate,
+  PerfilTemplate,
   Spinner1,
   UserAuth,
   getEmpleadoByPerfil,
   getPerfilActual,
 } from "../index";
 
-export function Home() {
+export function Perfil() {
   const { user } = UserAuth();
 
   const {
@@ -44,7 +44,6 @@ export function Home() {
   if (isPerfilLoading || isEmpleadoLoading) {
     return <Spinner1 />;
   }
-
   if (perfilError || empleadoError) {
     return (
       <span>
@@ -53,5 +52,12 @@ export function Home() {
     );
   }
 
-  return <HomeTemplate displayName={displayName} />;
+  return (
+    <PerfilTemplate
+      perfil={perfil}
+      empleado={empleado}
+      displayName={displayName}
+      userEmail={user?.email}
+    />
+  );
 }

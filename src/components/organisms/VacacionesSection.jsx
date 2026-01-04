@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 import styled from "styled-components";
 import {
   Btn1,
@@ -14,7 +14,7 @@ import { calcVacationSummary } from "../../utils/vacaciones";
 import Swal from "sweetalert2";
 
 
-export function VacacionesSection({ empleado, empleadoId }) {
+export function VacacionesSection({ empleado, empleadoId, title = "Vacaciones" }) {
   const [openModal, setOpenModal] = useState(false);
   const [selectedVacacion, setSelectedVacacion] = useState(null);
   const queryClient = useQueryClient();
@@ -62,7 +62,7 @@ export function VacacionesSection({ empleado, empleadoId }) {
 
   const handleEliminar = (vacacion) => {
     Swal.fire({
-      title: "�Estas seguro(a)?",
+      title: "ÂEstas seguro(a)?",
       text: "Una vez eliminado, no podras recuperar este registro.",
       icon: "warning",
       showCancelButton: true,
@@ -87,7 +87,7 @@ export function VacacionesSection({ empleado, empleadoId }) {
   return (
     <Section>
       <div className="sectionHeader">
-        <h3>Vacaciones</h3>
+        <h3>{title}</h3>
         <Btn1
           icono={<v.iconoagregar />}
           titulo="nuevo"
@@ -156,4 +156,5 @@ const EmptyState = styled.div`
   color: ${({ theme }) => theme.textsecundary};
   text-align: center;
 `;
+
 

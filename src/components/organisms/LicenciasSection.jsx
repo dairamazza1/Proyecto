@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import styled from "styled-components";
 import {
   Btn1,
@@ -12,7 +12,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { v } from "../../styles/variables";
 import Swal from "sweetalert2";
 
-export function LicenciasSection({ empleadoId }) {
+export function LicenciasSection({ empleadoId, title = "Licencias" }) {
   const [openModal, setOpenModal] = useState(false);
   const [selectedLicencia, setSelectedLicencia] = useState(null);
   const queryClient = useQueryClient();
@@ -55,7 +55,7 @@ export function LicenciasSection({ empleadoId }) {
 
   const handleEliminar = (licencia) => {
     Swal.fire({
-      title: "�Estas seguro(a)?",
+      title: "ÂEstas seguro(a)?",
       text: "Una vez eliminado, no podras recuperar este registro.",
       icon: "warning",
       showCancelButton: true,
@@ -80,7 +80,7 @@ export function LicenciasSection({ empleadoId }) {
   return (
     <Section>
       <div className="sectionHeader">
-        <h3>Licencias</h3>
+        <h3>{title}</h3>
         <Btn1
           icono={<v.iconoagregar />}
           titulo="nuevo"
@@ -134,4 +134,5 @@ const EmptyState = styled.div`
   color: ${({ theme }) => theme.textsecundary};
   text-align: center;
 `;
+
 

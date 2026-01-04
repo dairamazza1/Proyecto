@@ -2,40 +2,34 @@ import styled from "styled-components";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
-import {
-  Title,
-  InputText2,
-  Btn1,
-  Footer,
-  useAuthStore,
-} from "../../index";
+import { Title, InputText2, Btn1, Footer, useAuthStore } from "../../index";
 import { v } from "../../styles/variables";
 import { Device } from "../../styles/breakpoints";
 
 export function RegisterTemplate() {
   const navigate = useNavigate();
   const { registerUser, loading, error } = useAuthStore();
-  
+
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     password: "",
-    confirmPassword: ""
+    confirmPassword: "",
   });
 
   const [validationErrors, setValidationErrors] = useState({});
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
     // Limpiar error del campo cuando el usuario empieza a escribir
     if (validationErrors[name]) {
-      setValidationErrors(prev => ({
+      setValidationErrors((prev) => ({
         ...prev,
-        [name]: ""
+        [name]: "",
       }));
     }
   };
@@ -92,7 +86,7 @@ export function RegisterTemplate() {
         icon: "success",
         title: "¡Registro exitoso!",
         text: "Tu cuenta ha sido creada. Por favor verifica tu email.",
-        confirmButtonText: "Aceptar"
+        confirmButtonText: "Aceptar",
       });
       navigate("/");
     } else {
@@ -100,7 +94,7 @@ export function RegisterTemplate() {
         icon: "error",
         title: "Error al registrar",
         text: result.error || "Ocurrió un error. Intenta nuevamente.",
-        confirmButtonText: "Aceptar"
+        confirmButtonText: "Aceptar",
       });
     }
   };
@@ -110,7 +104,9 @@ export function RegisterTemplate() {
       <div className="card">
         <ContentLogo>
           <img src={v.logo} alt="Logo" />
-          <span>Proyecto de prueba</span>
+          <span>
+            Clínica de Salud Mental <br /> Dr. Gutierrez Walker
+          </span>
         </ContentLogo>
         <Title $paddingbottom="20px">Crear cuenta</Title>
         <form onSubmit={handleSubmit}>
@@ -127,7 +123,7 @@ export function RegisterTemplate() {
               <ErrorText>{validationErrors.name}</ErrorText>
             )}
           </InputText2>
-          
+
           <InputText2>
             <input
               className="form__field"
@@ -141,7 +137,7 @@ export function RegisterTemplate() {
               <ErrorText>{validationErrors.email}</ErrorText>
             )}
           </InputText2>
-          
+
           <InputText2>
             <input
               className="form__field"
@@ -155,7 +151,7 @@ export function RegisterTemplate() {
               <ErrorText>{validationErrors.password}</ErrorText>
             )}
           </InputText2>
-          
+
           <InputText2>
             <input
               className="form__field"
@@ -180,7 +176,7 @@ export function RegisterTemplate() {
             width="100%"
             disabled={loading}
           />
-          
+
           <LoginLink onClick={() => navigate("/")}>
             ¿Ya tienes cuenta? <strong>Inicia sesión</strong>
           </LoginLink>
@@ -200,7 +196,7 @@ const Container = styled.div`
   flex-direction: column;
   padding: 0 10px;
   color: ${({ theme }) => theme.text};
-  
+
   .card {
     display: flex;
     flex-direction: column;
@@ -239,11 +235,11 @@ const LoginLink = styled.p`
   margin-top: 20px;
   cursor: pointer;
   color: ${({ theme }) => theme.text};
-  
+
   &:hover {
     color: rgb(143, 191, 250);
   }
-  
+
   strong {
     color: rgb(143, 191, 250);
   }

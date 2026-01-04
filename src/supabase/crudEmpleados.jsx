@@ -163,3 +163,21 @@ export async function getEmpleadoById(id) {
   if (error) throw error;
   return data;
 }
+
+export async function getActiveEmpleados({ empresa_id } = {}) {
+  let query = supabase
+    .schema(schema)
+    .from(table)
+    .select("id, first_name, last_name, employee_id_number, is_active, empresa_id")
+    .eq("is_active", true)
+    .order("last_name", { ascending: true })
+    .order("first_name", { ascending: true });
+
+  if (empresa_id) {
+    query = query.eq("empresa_id", empresa_id);
+  }
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return data ?? [];
+}

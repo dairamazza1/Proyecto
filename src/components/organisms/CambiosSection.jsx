@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import styled from "styled-components";
 import {
   Btn1,
@@ -13,7 +13,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { v } from "../../styles/variables";
 import Swal from "sweetalert2";
 
-export function CambiosSection({ empleadoId }) {
+export function CambiosSection({ empleadoId, title = "Cambios de turnos" }) {
   const [openModal, setOpenModal] = useState(false);
   const [selectedCambio, setSelectedCambio] = useState(null);
   const { dataCompany } = useCompanyStore();
@@ -64,7 +64,7 @@ export function CambiosSection({ empleadoId }) {
 
   const handleEliminar = (cambio) => {
     Swal.fire({
-      title: "�Estas seguro(a)?",
+      title: "ÂEstas seguro(a)?",
       text: "Una vez eliminado, no podras recuperar este registro.",
       icon: "warning",
       showCancelButton: true,
@@ -89,7 +89,7 @@ export function CambiosSection({ empleadoId }) {
   return (
     <Section>
       <div className="sectionHeader">
-        <h3>Cambios de turnos</h3>
+        <h3>{title}</h3>
         <Btn1
           icono={<v.iconoagregar />}
           titulo="nuevo"
@@ -144,4 +144,5 @@ const EmptyState = styled.div`
   color: ${({ theme }) => theme.textsecundary};
   text-align: center;
 `;
+
 

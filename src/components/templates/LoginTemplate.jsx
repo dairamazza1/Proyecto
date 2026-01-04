@@ -2,30 +2,25 @@ import styled from "styled-components";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
-import {
-  Title,
-  InputText2,
-  Btn1,
-  Footer,
-  useAuthStore,
-} from "../../index";
+import { Title, InputText2, Btn1, Footer, useAuthStore } from "../../index";
 import { v } from "../../styles/variables";
 import { Device } from "../../styles/breakpoints";
 
 export function LoginTemplate() {
   const navigate = useNavigate();
   const { loginEmailPassword, loading, error } = useAuthStore();
-  
+
   const [formData, setFormData] = useState({
     email: "",
-    password: ""
+    password: "",
   });
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   };
 
@@ -37,7 +32,7 @@ export function LoginTemplate() {
         icon: "warning",
         title: "Campos requeridos",
         text: "Por favor ingresa email y contraseña",
-        confirmButtonText: "Aceptar"
+        confirmButtonText: "Aceptar",
       });
       return;
     }
@@ -51,7 +46,7 @@ export function LoginTemplate() {
         icon: "error",
         title: "Error al iniciar sesión",
         text: result.error || "Credenciales incorrectas",
-        confirmButtonText: "Aceptar"
+        confirmButtonText: "Aceptar",
       });
     }
   };
@@ -61,7 +56,9 @@ export function LoginTemplate() {
       <div className="card">
         <ContentLogo>
           <img src={v.logo} alt="Logo" />
-          <span>Proyecto de prueba</span>
+          <span>
+            Clínica de Salud Mental <br /> Dr. Gutierrez Walker
+          </span>
         </ContentLogo>
         <Title $paddingbottom="20px">Ingresar</Title>
         <form onSubmit={handleSubmit}>
@@ -77,17 +74,26 @@ export function LoginTemplate() {
           </InputText2>
           <InputText2>
             <input
-              className="form__field"
+              className="form__field passwordField"
               placeholder="Contraseña"
-              type="password"
+              type={showPassword ? "text" : "password"}
               name="password"
               value={formData.password}
               onChange={handleChange}
             />
+            <button
+              type="button"
+              className="passwordToggle"
+              onClick={() => setShowPassword((prev) => !prev)}
+              aria-label={showPassword ? "Ocultar clave" : "Mostrar clave"}
+              aria-pressed={showPassword}
+            >
+              {showPassword ? "Ocultar" : "Ver"}
+            </button>
           </InputText2>
-          
+
           {error && <ErrorText>{error}</ErrorText>}
-          
+
           <Btn1
             tipo="submit"
             titulo={loading ? "INGRESANDO..." : "INGRESAR"}
@@ -96,7 +102,7 @@ export function LoginTemplate() {
             width="100%"
             disabled={loading}
           />
-          
+
           <RegisterLink onClick={() => navigate("/register")}>
             ¿No tienes cuenta? <strong>Regístrate</strong>
           </RegisterLink>
@@ -128,6 +134,30 @@ const Container = styled.div`
       width: 400px;
     }
   }
+
+  /* .passwordField {
+    padding-right: 64px;
+  } */
+
+  .passwordToggle {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    border: none;
+    background: transparent;
+    color: ${({ theme }) => theme.text};
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    padding: 4px 6px;
+  }
+
+  .passwordToggle:focus {
+    outline: 2px solid ${({ theme }) => theme.color1};
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
 `;
 
 const ContentLogo = styled.section`
@@ -154,12 +184,13 @@ const RegisterLink = styled.p`
   margin-top: 20px;
   cursor: pointer;
   color: ${({ theme }) => theme.text};
-  
+
   &:hover {
     color: rgb(143, 191, 250);
   }
-  
+
   strong {
     color: rgb(143, 191, 250);
   }
 `;
+

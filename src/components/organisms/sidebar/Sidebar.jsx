@@ -54,7 +54,7 @@ export function Sidebar({ state, setState }) {
             </NavLink>
           </div>
         ))}
-        <div className={state ? "LinkContainer active" : "LinkContainer"}>
+        {/* <div className={state ? "LinkContainer active" : "LinkContainer"}>
           <div className="Links">
             <section className={state ? "content open" : "content"}>
               <Icon
@@ -65,7 +65,7 @@ export function Sidebar({ state, setState }) {
               <span className={state ? "label_ver" : "label_oculto"}>MÁS</span>
             </section>
           </div>
-        </div>
+        </div> */}
 
         <ToggleTema />
       </Container>

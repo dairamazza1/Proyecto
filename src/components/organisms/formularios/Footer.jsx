@@ -6,17 +6,17 @@ export function Footer() {
       <section className="lock">
         <GiPadlock />
         <span>
-          Esta es una página segura de XXXX. Si tienes dudas sobre la
-          autenticidad de la web, comunícate con
-          <br /> nosotros al XXXX-XXXX o a través de nuestros medios digitales.
+          Este es un sitio web institucional de la Clínica de salud mental Dr. Gutierrez Walker.
+          <br />La información aquí contenida es confidencial y se encuentra protegida conforme a la Ley 25.326 de Protección de Datos Personales y normativa vigente en la República Argentina.
+          
         </span>
       </section>
       <section className="derechos">
-        <span>Ada369 S.A - RUC: 20100047218</span>
+        {/* <span>Ada369 S.A - RUC: 20100047218</span> */}
         <div className="separador"></div>
         <span>Todos los derechos reservados</span>
         <div className="separador"></div>
-        <span>© 2023 codigo369.com</span>
+        {/* <span>© 2026 codigo369.com</span> */}
       </section>
     </Container>
   );

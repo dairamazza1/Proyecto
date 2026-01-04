@@ -3,8 +3,11 @@ import {
   Categories,
   Configurations,
   Empleado,
+  Empleados,
   Home,
   Login,
+  Perfil,
+  Reportes,
   Register,
   ProtectedRoute,
   RegistrarEmpleados,
@@ -35,8 +38,11 @@ export function MyRoutes() {
       //Rutas protegidas
       <Route element={<ProtectedRoute user={user} redirectTo="/login" />}>
         <Route path="/" element={<Home />} />
+        <Route path="/empleados" element={<Empleados />} />
         <Route path="/empleados/nuevo" element={<RegistrarEmpleados />} />
         <Route path="/empleados/:id" element={<Empleado />} />
+        <Route path="/reportes" element={<Reportes />} />
+        <Route path="/perfil" element={<Perfil />} />
         <Route path="/configuracion" element={<Configurations />} />
         <Route path="/configuracion/categorias" element={<Categories />} />
       </Route>
