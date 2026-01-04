@@ -9,7 +9,6 @@ import {
   Spinner1,
   useCompanyStore,
 } from "../../index";
-import { usePermissions } from "../../hooks/usePermissions";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { v } from "../../styles/variables";
 import Swal from "sweetalert2";
@@ -20,8 +19,6 @@ export function CambiosSection({ empleadoId, title = "Cambios de turnos" }) {
   const { dataCompany } = useCompanyStore();
   const queryClient = useQueryClient();
   
-  // Hook de permisos
-  const { canCreate } = usePermissions();
   
   const empresaNombre =
     dataCompany?.name ||
