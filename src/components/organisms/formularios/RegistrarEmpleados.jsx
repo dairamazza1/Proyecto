@@ -237,7 +237,7 @@ export function RegistrarEmpleados({
         if (onClose) {
           onClose();
         } else {
-          navigate("/");
+          navigate("/empleados");
         }
       }
     ),
@@ -280,12 +280,12 @@ export function RegistrarEmpleados({
       employee_id_number: data.employee_id_number,
     });
 
-    // if (documentExists) {
-    //   throw new Error("El numero de documento ya existe.");
-    // }
-    // if (legajoExists) {
-    //   throw new Error("El numero de legajo ya existe.");
-    // }
+    if (documentExists) {
+      throw new Error("El numero de documento ya existe.");
+    }
+    if (legajoExists) {
+      throw new Error("El numero de legajo ya existe.");
+    }
 
     const payload = {
       user_id: null,

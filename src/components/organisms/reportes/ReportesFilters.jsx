@@ -1,22 +1,6 @@
 import styled from "styled-components";
 import { Device } from "../../../styles/breakpoints";
 
-const MONTHS = [
-  { value: "", label: "Mes" },
-  { value: "1", label: "Enero" },
-  { value: "2", label: "Febrero" },
-  { value: "3", label: "Marzo" },
-  { value: "4", label: "Abril" },
-  { value: "5", label: "Mayo" },
-  { value: "6", label: "Junio" },
-  { value: "7", label: "Julio" },
-  { value: "8", label: "Agosto" },
-  { value: "9", label: "Septiembre" },
-  { value: "10", label: "Octubre" },
-  { value: "11", label: "Noviembre" },
-  { value: "12", label: "Diciembre" },
-];
-
 export function ReportesFilters({
   filters,
   onChange,
@@ -26,39 +10,22 @@ export function ReportesFilters({
   return (
     <Container>
       <Field>
-        <label htmlFor="reporte-dia">Dia</label>
+        <label htmlFor="reporte-desde">Desde</label>
         <input
-          id="reporte-dia"
-          type="number"
-          min="1"
-          max="31"
-          value={filters.day ?? ""}
-          onChange={(e) => onChange("day", e.target.value)}
+          id="reporte-desde"
+          type="date"
+          value={filters.fromDate ?? ""}
+          onChange={(e) => onChange("fromDate", e.target.value)}
         />
       </Field>
       <Field>
-        <label htmlFor="reporte-mes">Mes</label>
-        <select
-          id="reporte-mes"
-          value={filters.month ?? ""}
-          onChange={(e) => onChange("month", e.target.value)}
-        >
-          {MONTHS.map((month) => (
-            <option key={month.value || "none"} value={month.value}>
-              {month.label}
-            </option>
-          ))}
-        </select>
-      </Field>
-      <Field>
-        <label htmlFor="reporte-anio">Ano</label>
+        <label htmlFor="reporte-hasta">Hasta</label>
         <input
-          id="reporte-anio"
-          type="number"
-          min="2000"
-          max="2100"
-          value={filters.year ?? ""}
-          onChange={(e) => onChange("year", e.target.value)}
+          id="reporte-hasta"
+          type="date"
+          min={filters.fromDate || undefined}
+          value={filters.toDate ?? ""}
+          onChange={(e) => onChange("toDate", e.target.value)}
         />
       </Field>
       <Field className="field-span">
@@ -87,6 +54,7 @@ export function ReportesFilters({
 
 const Container = styled.div`
   display: grid;
+  height: fit-content;
   gap: 12px;
   grid-template-columns: repeat(1, minmax(0, 1fr));
 
@@ -95,7 +63,7 @@ const Container = styled.div`
   }
 
   @media ${Device.tablet} {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 `;
 
@@ -125,7 +93,7 @@ const Field = styled.div`
       grid-column: span 2;
     }
     @media ${Device.tablet} {
-      grid-column: span 2;
+      grid-column: auto;
     }
   }
 `;

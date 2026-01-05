@@ -58,6 +58,7 @@ export function EmpleadosTemplate() {
           )}
         </div>
       </section>
+      <ResultsCard>
       <section className="main">
         {dataEmpleados?.length ? (
           <TablaEmpleados data={dataEmpleados} />
@@ -65,9 +66,24 @@ export function EmpleadosTemplate() {
           <EmptyState>No hay empleados para mostrar.</EmptyState>
         )}
       </section>
+    </ResultsCard>
     </Container>
   );
 }
+
+const ResultsCard = styled.section`
+  background: ${({ theme }) => theme.bg};
+  border-radius: 18px;
+  padding: 18px 20px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+
+  @media ${DeviceMax.mobile} {
+    background: transparent;
+    border-radius: 0;
+    padding: 0;
+    box-shadow: none;
+  }
+`;
 
 const Container = styled.div`
   height: calc(100dvh - 30px);

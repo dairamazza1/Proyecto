@@ -25,6 +25,9 @@ const Grid = styled.div`
   display: grid;
   gap: 16px;
   grid-template-columns: 1fr;
+  align-items: start;
+  align-content: start;
+  grid-auto-rows: max-content;
 
   @media ${Device.tablet} {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -32,6 +35,7 @@ const Grid = styled.div`
 
   @media ${Device.desktop} {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
   }
 `;
 
@@ -46,6 +50,7 @@ const Card = styled(Link)`
   grid-template-columns: auto 1fr;
   gap: 14px;
   align-items: center;
+  align-self: start;
   transition: transform 160ms ease, box-shadow 160ms ease;
 
   &:hover {
@@ -78,6 +83,37 @@ const Card = styled(Link)`
       margin: 0;
       color: ${({ theme }) => theme.textsecundary};
       font-weight: 500;
+    }
+  }
+
+  @media ${Device.desktop} {
+    padding: 12px 14px;
+    border-radius: 14px;
+    box-shadow: none;
+    border: 1px solid ${({ theme }) => theme.color2};
+    min-height: 20px;
+
+    .icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      font-size: 18px;
+    }
+
+    .content {
+      gap: 4px;
+
+      h3 {
+        font-size: 0.98rem;
+      }
+
+      p {
+        font-size: 0.92rem;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
     }
   }
 `;

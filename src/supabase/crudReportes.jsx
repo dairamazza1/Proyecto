@@ -2,41 +2,30 @@ import { supabase } from "../index";
 
 const schema = "test";
 
-function pad(value) {
-  return String(value).padStart(2, "0");
-}
+function applyDateRange(query, field, { fromDate, toDate } = {}) {
+  let start = fromDate ? String(fromDate).trim() : "";
+  let end = toDate ? String(toDate).trim() : "";
 
-function applyDateFilters(query, field, { year, month, day } = {}) {
-  const numericYear = year ? Number(year) : null;
-  const numericMonth = month ? Number(month) : null;
-  const numericDay = day ? Number(day) : null;
-
-  if (numericYear && numericMonth && numericDay) {
-    const dateValue = `${numericYear}-${pad(numericMonth)}-${pad(numericDay)}`;
-    return query.eq(field, dateValue);
+  if (start && end && start > end) {
+    const temp = start;
+    start = end;
+    end = temp;
   }
 
-  if (numericYear && numericMonth) {
-    const start = `${numericYear}-${pad(numericMonth)}-01`;
-    const nextMonth = numericMonth === 12 ? 1 : numericMonth + 1;
-    const nextYear = numericMonth === 12 ? numericYear + 1 : numericYear;
-    const end = `${nextYear}-${pad(nextMonth)}-01`;
-    return query.gte(field, start).lt(field, end);
+  if (start) {
+    query = query.gte(field, start);
   }
 
-  if (numericYear) {
-    const start = `${numericYear}-01-01`;
-    const end = `${numericYear + 1}-01-01`;
-    return query.gte(field, start).lt(field, end);
+  if (end) {
+    query = query.lte(field, end);
   }
 
   return query;
 }
 
 export async function getReportVacaciones({
-  year,
-  month,
-  day,
+  fromDate,
+  toDate,
   empleado_id,
   empresa_id,
 } = {}) {
@@ -52,7 +41,7 @@ export async function getReportVacaciones({
       days_taken,
       status,
       created_at,
-      empleado:empleados!inner(
+      empleado:empleados!empleado_id!inner(
         id,
         first_name,
         last_name,
@@ -71,7 +60,7 @@ export async function getReportVacaciones({
     query = query.eq("empleado.empresa_id", empresa_id);
   }
 
-  query = applyDateFilters(query, "start_date", { year, month, day });
+  query = applyDateRange(query, "start_date", { fromDate, toDate });
 
   const { data, error } = await query;
   if (error) throw error;
@@ -79,9 +68,8 @@ export async function getReportVacaciones({
 }
 
 export async function getReportLicencias({
-  year,
-  month,
-  day,
+  fromDate,
+  toDate,
   empleado_id,
   empresa_id,
 } = {}) {
@@ -117,7 +105,7 @@ export async function getReportLicencias({
     query = query.eq("empleado.empresa_id", empresa_id);
   }
 
-  query = applyDateFilters(query, "start_date", { year, month, day });
+  query = applyDateRange(query, "start_date", { fromDate, toDate });
 
   const { data, error } = await query;
   if (error) throw error;
@@ -125,9 +113,8 @@ export async function getReportLicencias({
 }
 
 export async function getReportCambios({
-  year,
-  month,
-  day,
+  fromDate,
+  toDate,
   empleado_id,
   empresa_id,
 } = {}) {
@@ -145,13 +132,18 @@ export async function getReportCambios({
       end_date,
       status,
       created_at,
-      empleado:empleados!inner(
+      empleado:empleados!empleado_id!inner(
         id,
         first_name,
         last_name,
         employee_id_number,
         is_active,
         empresa_id
+      ),
+      empleado_reemplazo:empleados!empleado_replace_id(
+        id,
+        first_name,
+        last_name
       )
     `
     )
@@ -164,7 +156,7 @@ export async function getReportCambios({
     query = query.eq("empleado.empresa_id", empresa_id);
   }
 
-  query = applyDateFilters(query, "start_date", { year, month, day });
+  query = applyDateRange(query, "start_date", { fromDate, toDate });
 
   const { data, error } = await query;
   if (error) throw error;
@@ -172,9 +164,8 @@ export async function getReportCambios({
 }
 
 export async function getReportSanciones({
-  year,
-  month,
-  day,
+  fromDate,
+  toDate,
   empleado_id,
   empresa_id,
 } = {}) {
@@ -208,7 +199,7 @@ export async function getReportSanciones({
     query = query.eq("empleado.empresa_id", empresa_id);
   }
 
-  query = applyDateFilters(query, "sanction_date_start", { year, month, day });
+  query = applyDateRange(query, "sanction_date_start", { fromDate, toDate });
 
   const { data, error } = await query;
   if (error) throw error;

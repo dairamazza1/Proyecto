@@ -51,4 +51,4 @@ const doc = new Document({
 const buffer = await Packer.toBuffer(doc);
 await mkdir(dirname(outputPath), { recursive: true });
 await writeFile(outputPath, buffer);
-console.log(`Template generado en ${outputPath}`);
+// console.log(`Template generado en ${outputPath}`);

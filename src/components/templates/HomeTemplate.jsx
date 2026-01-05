@@ -6,7 +6,7 @@ export function HomeTemplate({ displayName = "Usuario" }) {
   const cards = [
     {
       title: "Empleados",
-      description: "Gestiona el listado y perfiles del personal.",
+      description: "Gestiona los perfiles de los empleados.",
       to: "/empleados",
       icon: v.iconoempresa,
     },
@@ -27,7 +27,7 @@ export function HomeTemplate({ displayName = "Usuario" }) {
   return (
     <Container>
       <Header>
-        <Title>Bienvenido {displayName}</Title>
+        <Title>Bienvenido/a {displayName}</Title>
         <p>Accesos rapidos para continuar tu trabajo.</p>
       </Header>
       <HomeCards cards={cards} />
@@ -40,6 +40,8 @@ const Container = styled.div`
   padding: 24px;
   display: grid;
   gap: 24px;
+  align-content: start;
+  align-items: start;
   background: ${({ theme }) => theme.bgtotal};
 `;
 

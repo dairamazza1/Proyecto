@@ -30,7 +30,8 @@ export async function ShowEmpresaByIDUser(p) {
   const authUserId = p?.id_auth ?? p?._auth_user_id ?? null;
   if (!authUserId) return null;
   const { data, error } = await supabase
-    .rpc("mostrar_empresa_por_auth_user", { _auth_user_id: authUserId })
+    .schema(schema)
+    .rpc("mostrar_empresa_por_auth_user", { id_auth: authUserId })
     .maybeSingle();
 
   //   if (error) {

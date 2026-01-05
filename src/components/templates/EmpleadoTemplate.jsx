@@ -156,18 +156,20 @@ export function EmpleadoTemplate({ id, empleado, isError, sucursalEmpleado }) {
             </button>
           </Tabs>
 
-          {activeTab === "vacaciones" && (
-            <VacacionesSection empleado={empleado} empleadoId={id} />
-          )}
-          {activeTab === "licencias" && (
-            <LicenciasSection empleadoId={id} />
-          )}
-          {activeTab === "cambios" && (
-            <CambiosSection empleadoId={id} />
-          )}
-          {activeTab === "sanciones" && (
-            <SancionesSection empleadoId={id} />
-          )}
+          <ResultsCard>
+            {activeTab === "vacaciones" && (
+              <VacacionesSection empleado={empleado} empleadoId={id} embedded />
+            )}
+            {activeTab === "licencias" && (
+              <LicenciasSection empleadoId={id} embedded />
+            )}
+            {activeTab === "cambios" && (
+              <CambiosSection empleadoId={id} embedded />
+            )}
+            {activeTab === "sanciones" && (
+              <SancionesSection empleadoId={id} embedded />
+            )}
+          </ResultsCard>
         </>
       )}
 
@@ -233,6 +235,13 @@ const StatusPill = styled.span`
 `;
 
 const InfoCard = styled.section`
+  background: ${({ theme }) => theme.bg};
+  border-radius: 18px;
+  padding: 20px 24px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+`;
+
+const ResultsCard = styled.section`
   background: ${({ theme }) => theme.bg};
   border-radius: 18px;
   padding: 20px 24px;

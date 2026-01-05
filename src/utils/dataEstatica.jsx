@@ -22,12 +22,24 @@ export const DesplegableUser = [
   },
 ];
 
+export const TABS = [
+  { id: "vacaciones", label: "Vacaciones" },
+  { id: "licencias", label: "Licencias" },
+  { id: "cambios", label: "Cambios de turnos" },
+  { id: "sanciones", label: "Sanciones" },
+];
+
+export const statusValues = {
+  rejected: "Rechazado",
+  approved: "Aprobado",
+  pending: "Pendiente",
+};
 
 
 //data SIDEBAR
 export const LinksArray = [
   {
-    label: "Home",
+    label: "Inicio",
     icon: "streamline-flex:home-2",
     to: "/",
   },

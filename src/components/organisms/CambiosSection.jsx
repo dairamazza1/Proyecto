@@ -13,7 +13,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { v } from "../../styles/variables";
 import Swal from "sweetalert2";
 
-export function CambiosSection({ empleadoId, title = "Cambios de turnos" }) {
+export function CambiosSection({
+  empleadoId,
+  title = "Cambios de turnos",
+  embedded = false,
+}) {
   const [openModal, setOpenModal] = useState(false);
   const [selectedCambio, setSelectedCambio] = useState(null);
   const { dataCompany } = useCompanyStore();
@@ -88,7 +92,7 @@ export function CambiosSection({ empleadoId, title = "Cambios de turnos" }) {
   }
 
   return (
-    <Section>
+    <Section $embedded={embedded}>
       <div className="sectionHeader">
         <h3>{title}</h3>
         <Btn1
@@ -122,10 +126,11 @@ export function CambiosSection({ empleadoId, title = "Cambios de turnos" }) {
 }
 
 const Section = styled.section`
-  background: ${({ theme }) => theme.bg};
-  border-radius: 18px;
-  padding: 20px 24px;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+  background: ${({ theme, $embedded }) => ($embedded ? "transparent" : theme.bg)};
+  border-radius: ${({ $embedded }) => ($embedded ? "0" : "18px")};
+  padding: ${({ $embedded }) => ($embedded ? "0" : "20px 24px")};
+  box-shadow: ${({ $embedded }) =>
+    $embedded ? "none" : "0 6px 18px rgba(0, 0, 0, 0.08)"};
   display: grid;
   gap: 14px;
 

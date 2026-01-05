@@ -15,7 +15,8 @@ export function Sidebar({ state, setState }) {
           <div className="imgcontent">
             <img src={v.logo} />
           </div>
-          <h2>Proyecto</h2>
+          {/* <h2>Clínica de Salud Mental
+              Dr. Gutierrez Walker</h2> */}
         </div>
         {LinksArray.map(({ icon, label, to }) => (
           <div
@@ -95,7 +96,7 @@ const Container = styled.div`
   }
 
   &.active {
-    width: 260px;
+    width: 200px;
   }
   .Logocontent {
     display: flex;
@@ -129,7 +130,7 @@ const Container = styled.div`
     transition: all 0.3s ease-in-out;
     position: relative;
     text-transform: uppercase;
-    font-weight: 700;
+    font-weight: 500;
   }
 
   .Links {
@@ -148,7 +149,7 @@ const Container = styled.div`
       align-items: center;
       .Linkicon {
         display: flex;
-        font-size: 33px;
+        font-size: 20px;
 
         svg {
           font-size: 25px;
@@ -180,7 +181,7 @@ const Container = styled.div`
       background: ${(props) => props.theme.bg6};
       border: 2px solid ${(props) => props.theme.bg5};
       color: ${(props) => props.theme.color1};
-      font-weight: 600;
+      font-weight: 500;
     }
   }
 `;

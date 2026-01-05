@@ -23,13 +23,14 @@ export const useAuthStore = create((set, get) => ({
   user: null,
   session: null,
   profile: null,  // ← NUEVO: Contiene { id, email, app_role, ... }
-  loading: false,
+  loading: true,
   error: null,
 
   // ============================================
   // Inicializar sesión al cargar la app
   // ============================================
   initializeAuth: async () => {
+    set({ loading: true, error: null });
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
@@ -44,6 +45,7 @@ export const useAuthStore = create((set, get) => ({
       console.error('Error al inicializar autenticación:', error);
       set({ error: error.message });
     }
+    set({ loading: false });
   },
 
   // ============================================

@@ -312,7 +312,7 @@ const Container = styled.div`
   }
 
   .card {
-    background: ${({ theme }) => theme.bgtotal};
+    background: ${({ theme }) => theme.bg};
     border-radius: 14px;
     padding: 14px 16px;
     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
