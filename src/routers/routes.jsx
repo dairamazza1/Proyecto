@@ -1,7 +1,7 @@
 import { Routes, Route } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
-  Categories,
+  // Categories,
   Configurations,
   Empleado,
   Empleados,
@@ -10,6 +10,7 @@ import {
   Perfil,
   Reportes,
   Register,
+  SetPassword,
   ProtectedRoute,
   RegistrarEmpleados,
   Spinner1,
@@ -41,10 +42,11 @@ export function MyRoutes() {
         <Route path="/reportes" element={<Reportes />} />
         <Route path="/perfil" element={<Perfil />} />
         <Route path="/configuracion" element={<Configurations />} />
-        <Route path="/configuracion/categorias" element={<Categories />} />
+        {/* <Route path="/configuracion/categorias" element={<Categories />} /> */}
       </Route>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/set-password" element={<SetPassword />} />
     </Routes>
   );
 }

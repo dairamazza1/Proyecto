@@ -1,5 +1,13 @@
 import styled from "styled-components";
-import { Title, Btn1, Buscador, TablaEmpleados, useEmpleadosStore, useSucursalesStore } from "../../index";
+import {
+  Title,
+  Btn1,
+  Buscador,
+  InvitacionesSection,
+  TablaEmpleados,
+  useEmpleadosStore,
+  useSucursalesStore,
+} from "../../index";
 import { usePermissions } from "../../hooks/usePermissions";
 import { v } from "../../styles/variables";
 import { Device, DeviceMax } from "../../styles/breakpoints";
@@ -14,7 +22,10 @@ export function EmpleadosTemplate() {
   const { dataSucursales, sucursalSeleccionada, setSucursalSeleccionada } = useSucursalesStore();
   
   // Hook de permisos
-  const { canCreate } = usePermissions();
+  const { canCreate, profile } = usePermissions();
+  const canInvite = ["rrhh", "admin", "superadmin"].includes(
+    String(profile?.app_role ?? "")
+  );
 
   function nuevoRegistro() {
     navigate("/empleados/nuevo");
@@ -67,6 +78,7 @@ export function EmpleadosTemplate() {
         )}
       </section>
     </ResultsCard>
+    {canInvite && <InvitacionesSection />}
     </Container>
   );
 }

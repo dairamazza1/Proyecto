@@ -1,11 +1,10 @@
 import { supabase } from "../index";
 
-const schema = "test";
 
 // Obtener todas las sucursales de una empresa
 export async function getSucursales({ empresa_id } = {}) {
   let query = supabase
-    .schema(schema)
+    
     .from("sucursales")
     .select("id, name, address, zone, province, tel")
     .order("name", { ascending: true });
@@ -22,7 +21,7 @@ export async function getSucursales({ empresa_id } = {}) {
 // Relacionar empleado con sucursal en la tabla sucursales_empleados
 export async function insertSucursalEmpleado(payload) {
   const { data, error } = await supabase
-    .schema(schema)
+    
     .from("sucursales_empleados")
     .insert(payload)
     .select()
@@ -33,7 +32,7 @@ export async function insertSucursalEmpleado(payload) {
 
 export async function getSucursalEmpleado(empleado_id) {
   const { data, error } = await supabase
-    .schema(schema)
+    
     .from("sucursales_empleados")
     .select("id, empleado_id, sucursal_id")
     .eq("empleado_id", empleado_id)
@@ -46,7 +45,7 @@ export async function upsertSucursalEmpleado({ empleado_id, sucursal_id }) {
   const existing = await getSucursalEmpleado(empleado_id);
   if (existing?.id) {
     const { data, error } = await supabase
-      .schema(schema)
+      
       .from("sucursales_empleados")
       .update({ sucursal_id })
       .eq("id", existing.id)
@@ -57,7 +56,7 @@ export async function upsertSucursalEmpleado({ empleado_id, sucursal_id }) {
   }
 
   const { data, error } = await supabase
-    .schema(schema)
+    
     .from("sucursales_empleados")
     .insert({ empleado_id, sucursal_id })
     .select()
@@ -74,7 +73,7 @@ export async function getEmpleadosBySucursal({
   ascending = true
 } = {}) {
   let query = supabase
-    .schema(schema)
+    
     .from("sucursales_empleados")
     .select(
       `

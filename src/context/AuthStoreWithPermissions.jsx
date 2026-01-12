@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { supabase } from "../supabase/supabase.config.jsx";
 import { getUsers } from "../supabase/crudUsers";
+import { getEmpleadoByPerfil } from "../index.js";
 
 /**
  * ============================================
@@ -29,15 +30,28 @@ export const useAuthStore = create((set, get) => ({
   // ============================================
   // Inicializar sesión al cargar la app
   // ============================================
-  initializeAuth: async () => {
+  initializeAuth: async ({ skipProfileCheck } = {}) => {
     set({ loading: true, error: null });
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session?.user) {
-        set({ session, user: session.user });
-        // Cargar perfil con el rol
-        await get().loadUserProfile(session.user.id);
+        if (skipProfileCheck) {
+          set({ session, user: session.user });
+        } else {
+          const validation = await get().validateUserAccess(session.user.id);
+          if (!validation.ok) {
+            await supabase.auth.signOut();
+            set({
+              session: null,
+              user: null,
+              profile: null,
+              error: validation.reason,
+            });
+          } else {
+            set({ session, user: session.user });
+          }
+        }
       } else {
         set({ session: null, user: null, profile: null });
       }
@@ -54,6 +68,9 @@ export const useAuthStore = create((set, get) => ({
   loadUserProfile: async (authUserId) => {
     try {
       const profile = await getUsers({ id_auth: authUserId });
+      console.log(authUserId);
+      
+      console.log(profile);
       
       if (profile) {
         set({ profile });
@@ -68,6 +85,24 @@ export const useAuthStore = create((set, get) => ({
       set({ error: error.message });
       return null;
     }
+  },
+
+  // ============================================
+  // Validar perfil y empleado activo
+  // ============================================
+  validateUserAccess: async (authUserId) => {
+    const profile = await get().loadUserProfile(authUserId);
+    if (!profile?.id) {
+      return { ok: false, reason: "Perfil no encontrado" };
+    }
+
+    const empleado = await getEmpleadoByPerfil({ perfilId: profile.id });
+    
+    if ((!empleado || !empleado.is_active) && (profile.app_role == "employee") ) {
+      return { ok: false, reason: "Empleado no activo" };
+    }
+
+    return { ok: true, profile, empleado };
   },
 
   // ============================================
@@ -109,7 +144,7 @@ export const useAuthStore = create((set, get) => ({
   },
 
   // ============================================
-  // Login con email y contraseña
+  // Login con email y contrase??a
   // ============================================
   loginEmailPassword: async (email, password) => {
     set({ loading: true, error: null, profile: null });
@@ -118,26 +153,31 @@ export const useAuthStore = create((set, get) => ({
         email,
         password,
       });
-
       if (error) throw error;
-
+      if (!data.user) {
+        throw new Error("Usuario no encontrado.");
+      }
+      const validation = await get().validateUserAccess(data.user.id);
+      if (!validation.ok) {
+        await supabase.auth.signOut();
+        set({
+          user: null,
+          session: null,
+          profile: null,
+          loading: false,
+          error: validation.reason,
+        });
+        return { success: false, error: validation.reason };
+      }
       set({
         user: data.user,
         session: data.session,
         loading: false,
         error: null,
-        profile: null // Limpiar perfil antes de cargar el nuevo
       });
-
-      // Cargar perfil después del login
-      if (data.user) {
-        await get().loadUserProfile(data.user.id);
-      }
-
       return { success: true, data };
     } catch (error) {
-      let errorMsg = 'Error al iniciar sesión';
-
+      let errorMsg = 'Error al iniciar sesi??n';
       if (error.message.includes('Invalid login credentials')) {
         errorMsg = 'Credenciales incorrectas';
       } else if (error.message.includes('Email not confirmed')) {
@@ -145,13 +185,10 @@ export const useAuthStore = create((set, get) => ({
       } else {
         errorMsg = error.message;
       }
-
       set({ loading: false, error: errorMsg, profile: null });
       return { success: false, error: errorMsg };
     }
-  },
-
-  // ============================================
+  },  // ============================================
   // Cerrar sesión
   // ============================================
   cerrarSesion: async () => {
@@ -192,3 +229,11 @@ export const useAuthStore = create((set, get) => ({
   // Limpiar errores
   clearError: () => set({ error: null })
 }));
+
+
+
+
+
+
+
+

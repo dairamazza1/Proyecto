@@ -7,7 +7,6 @@ export const useUsersStore = create((set) => ({
         const idAuth = await getIdAuthSupabase()
 
         if (!idAuth) {
-            console.warn('No hay usuario autenticado');
             set({ dataUsers: null });
             return null;
         }

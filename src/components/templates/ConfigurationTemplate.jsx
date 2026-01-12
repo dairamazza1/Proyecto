@@ -1,12 +1,8 @@
 import styled from "styled-components";
-import { Link } from "react-router-dom";
-import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useModuleSectionStore } from "../../store/ModuleSectionStore";
 import { useAuthStore } from "../../context/AuthStoreWithPermissions";
 
 export function ConfigurationTemplate() {
-  const { dataModuleSection } = useModuleSectionStore();
   const { cerrarSesion } = useAuthStore();
   const navigate = useNavigate();
 
@@ -15,57 +11,9 @@ export function ConfigurationTemplate() {
     navigate("/login");
   };
 
-  useEffect(() => {
-    const handleMouseMove = (e) => {
-      document.querySelectorAll(".card").forEach((card) => {
-        const rect = card.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-
-        card.style.setProperty("--mouse-x", `${x}px`);
-        card.style.setProperty("--mouse-y", `${y}px`);
-      });
-    };
-
-    const cardsContainer = document.getElementById("cards");
-    if (cardsContainer) {
-      cardsContainer.addEventListener("mousemove", handleMouseMove);
-
-      return () => {
-        cardsContainer.removeEventListener("mousemove", handleMouseMove);
-      };
-    }
-  }, []);
   return (
     <Container>
       <button onClick={handleLogout}>cerrar sesion test</button>
-      <div id="cards">
-        {dataModuleSection.map((item, index) => {
-          return (
-            <Link
-              to={item.link}
-              className={item.state ? "card" : "card false"}
-              key={index}
-            >
-              <div className="card-content">
-                <div className="card-image">
-                  <img src={item.icon} />
-                </div>
-
-                <div className="card-info-wrapper">
-                  <div className="card-info">
-                    <i className="fa-duotone fa-unicorn"></i>
-                    <div className="card-info-title">
-                      <h3>{item.name}</h3>
-                      <h4>{item.description}</h4>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </Link>
-          );
-        })}
-      </div>
     </Container>
   );
 }

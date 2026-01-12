@@ -1,6 +1,5 @@
 import { supabase } from "../index";
 
-const schema = "test";
 
 function applyDateRange(query, field, { fromDate, toDate } = {}) {
   let start = fromDate ? String(fromDate).trim() : "";
@@ -30,7 +29,7 @@ export async function getReportVacaciones({
   empresa_id,
 } = {}) {
   let query = supabase
-    .schema(schema)
+    
     .from("empleados_vacaciones")
     .select(
       `
@@ -74,7 +73,7 @@ export async function getReportLicencias({
   empresa_id,
 } = {}) {
   let query = supabase
-    .schema(schema)
+    
     .from("empleados_licencias")
     .select(
       `
@@ -119,7 +118,7 @@ export async function getReportCambios({
   empresa_id,
 } = {}) {
   let query = supabase
-    .schema(schema)
+    
     .from("empleados_cambios_actividades")
     .select(
       `
@@ -170,7 +169,7 @@ export async function getReportSanciones({
   empresa_id,
 } = {}) {
   let query = supabase
-    .schema(schema)
+    
     .from("empleados_sanciones")
     .select(
       `

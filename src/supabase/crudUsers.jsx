@@ -1,12 +1,11 @@
 import Swal from "sweetalert2";
 import { supabase } from "../index";
-const schema = "test";
 const table = "perfiles";
 
 
 export async function getUsers(p) {
   const { data } = await supabase
-    .schema(schema)
+    
     .from(table)
     .select()
     .eq("auth_user_id", p.id_auth)
@@ -16,7 +15,7 @@ export async function getUsers(p) {
 
 export async function insertAdmin(p) {
      
-    const {error} = await supabase.schema(schema).from(table).insert(p);
+    const {error} = await supabase.from(table).insert(p);
      if (error) {
         Swal.fire({
           icon: "error",

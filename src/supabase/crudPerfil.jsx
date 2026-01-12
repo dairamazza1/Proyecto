@@ -1,6 +1,5 @@
 import { supabase } from "../index";
 
-const schema = "test";
 const table = "perfiles";
 
 export async function getPerfilActual({ authUserId } = {}) {
@@ -14,7 +13,7 @@ export async function getPerfilActual({ authUserId } = {}) {
   if (!resolvedAuthId) return null;
 
   const { data, error } = await supabase
-    .schema(schema)
+    
     .from(table)
     .select("*")
     .eq("auth_user_id", resolvedAuthId)
@@ -34,7 +33,7 @@ export async function getEmpleadoByPerfil({ perfilId } = {}) {
   if (!isNumericId) return null;
 
   const { data, error } = await supabase
-    .schema(schema)
+    
     .from("empleados")
     .select(selectFields)
     .eq("user_id", perfilId)

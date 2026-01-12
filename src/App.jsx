@@ -22,7 +22,9 @@ function App() {
     <ThemeProvider theme={themeStyle}>
       <AuthContextProvider>
          <GlobalStyles />
-        {pathname !== "/login" && pathname !== "/register" ? (
+        {pathname !== "/login" &&
+        pathname !== "/register" &&
+        pathname !== "/set-password" ? (
           <Container className={sidebarOpen ? "active" : ""}>
            
             <section className="contentSidebar">

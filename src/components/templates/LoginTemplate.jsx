@@ -9,6 +9,7 @@ import {
   Footer,
 } from "../../index";
 import { useAuthStore } from "../../context/AuthStoreWithPermissions";
+import { supabase } from "../../supabase/supabase.config.jsx";
 import { v } from "../../styles/variables";
 import { Device } from "../../styles/breakpoints";
 
@@ -57,6 +58,42 @@ export function LoginTemplate() {
     }
   };
 
+  const handleForgotPassword = async () => {
+    const { value: email } = await Swal.fire({
+      title: "Recuperar contrasena",
+      input: "email",
+      inputLabel: "Email",
+      inputPlaceholder: "tu@email.com",
+      showCancelButton: true,
+      confirmButtonText: "Enviar",
+      cancelButtonText: "Cancelar",
+    });
+
+    if (!email) return;
+
+    const redirectTo = `${window.location.origin}/set-password`;
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(
+      email,
+      { redirectTo }
+    );
+
+    if (resetError) {
+      Swal.fire({
+        icon: "error",
+        title: "No se pudo enviar",
+        text: resetError.message || "Error al enviar el correo.",
+        confirmButtonText: "Aceptar",
+      });
+      return;
+    }
+
+    Swal.fire({
+      icon: "success",
+      title: "Correo enviado",
+      text: "Revisa tu email para continuar.",
+      confirmButtonText: "Aceptar",
+    });
+  };
   return (
     <Container>
       <div className="card">
@@ -108,6 +145,10 @@ export function LoginTemplate() {
             width="100%"
             disabled={loading}
           />
+
+          <ForgotPassword type="button" onClick={handleForgotPassword}>
+            Olvide mi contrasena
+          </ForgotPassword>
 
           <RegisterLink onClick={() => navigate("/register")}>
             ¿No tienes cuenta? <strong>Regístrate</strong>
@@ -186,6 +227,21 @@ const ErrorText = styled.span`
   margin-bottom: 10px;
 `;
 
+const ForgotPassword = styled.button`
+  margin-top: 12px;
+  background: transparent;
+  border: none;
+  color: ${({ theme }) => theme.text};
+  cursor: pointer;
+  font-size: 0.9rem;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+
+  &:hover {
+    color: rgb(143, 191, 250);
+  }
+`;
+
 const RegisterLink = styled.p`
   margin-top: 20px;
   cursor: pointer;
@@ -199,4 +255,5 @@ const RegisterLink = styled.p`
     color: rgb(143, 191, 250);
   }
 `;
+
 

@@ -1,10 +1,9 @@
 import { supabase } from "../index";
 
-const schema = "test";
 
 export async function getAreasLaborales() {
   const { data, error } = await supabase
-    .schema(schema)
+    
     .from("areas_laborales")
     .select("id, name")
     .order("name");
@@ -14,7 +13,7 @@ export async function getAreasLaborales() {
 
 export async function getPuestosByArea(areaId) {
   const { data, error } = await supabase
-    .schema(schema)
+    
     .from("puestos_laborales")
     .select("id, name, requires_professional_number")
     .eq("id_area", areaId)
@@ -26,7 +25,7 @@ export async function getPuestosByArea(areaId) {
 
 export async function getPuestoById(puestoId) {
   const { data, error } = await supabase
-    .schema(schema)
+    
     .from("puestos_laborales")
     .select("id, id_area, requires_professional_number")
     .eq("id", puestoId)
