@@ -24,9 +24,13 @@ export function Btn1({
         <Icono $color={color}>{icono}</Icono>
         {titulo && (
           <span className="btn">
-            <a href={url} target="_blank">
-              {titulo}
-            </a>
+            {url ? (
+              <a href={url} target="_blank" rel="noreferrer">
+                {titulo}
+              </a>
+            ) : (
+              <span>{titulo}</span>
+            )}
           </span>
         )}
       </section>
@@ -46,7 +50,7 @@ const Container = styled.button`
   cursor: pointer;
   transition: 0.2s;
   transition-timing-function: linear;
-  color: rgb(${(props) => props.$color});
+  color: ${({ theme }) => theme.text};
   align-items: center;
   justify-content: center;
   width: ${(props) => props.$width};

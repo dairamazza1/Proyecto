@@ -41,14 +41,14 @@ const createTheme = (mode) => {
       ? "var(--palette-shadow-detail-11)"
       : "var(--palette-detail-0)",
     "--bg-surface-muted": isDark
-      ? "var(--palette-detail-10)"
+      ? "var(--palette-detail-9)"
       : "var(--palette-detail-2)",
 
     "--text-primary": isDark
       ? "var(--palette-detail-1)"
       : "var(--palette-detail-10)",
     "--text-secondary": isDark
-      ? "var(--palette-detail-2)"
+      ? "var(--palette-detail-5)"
       : "var(--palette-detail-8)",
 
     "--border-subtle": isDark
@@ -59,7 +59,7 @@ const createTheme = (mode) => {
       : "var(--palette-detail-3)",
 
     "--color-accent": isDark
-      ? "var(--palette-detail-8)"
+      ? "var(--palette-detail-7)"
       : "var(--palette-detail-8)",
     "--color-accent-strong": isDark
       ? "var(--palette-detail-9)"
