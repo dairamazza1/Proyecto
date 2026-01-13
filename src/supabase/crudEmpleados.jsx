@@ -1,6 +1,5 @@
 import { supabase } from "../index";
 
-const schema = "test";
 const table = "empleados";
 const selectFields =
   "id, document_number, first_name, last_name, puesto:puestos_laborales(name), empresa_id, employee_id_number,professional_number,telephone";
@@ -10,7 +9,7 @@ export async function getEmpleados({
   ascending = true
 } = {}) {
   let query = supabase
-    .schema(schema)
+    
     .from(table)
     .select(selectFields)
     .order(orderBy, { ascending });
@@ -35,7 +34,7 @@ export async function searchEmpleados({
   const isNumeric = /^\d+$/.test(term);
 
   let q = supabase
-    .schema(schema)
+    
     .from(table)
     .select(selectFields)
     .order(orderBy, { ascending })
@@ -67,7 +66,7 @@ export async function searchEmpleados({
 
   // 2) Busqueda por puesto (tabla relacionada)
   let puestoQuery = supabase
-    .schema(schema)
+    
     .from("empleados")
     .select(
       "id, document_number, first_name, last_name, puesto:puestos_laborales!inner(name), empresa_id, employee_id_number, professional_number"
@@ -91,7 +90,7 @@ export async function searchEmpleados({
 
 export async function insertEmpleado(payload) {
   const { data, error } = await supabase
-    .schema(schema)
+    
     .from(table)
     .insert(payload)
     .select()
@@ -102,7 +101,7 @@ export async function insertEmpleado(payload) {
 
 export async function updateEmpleado(id, payload) {
   const { data, error } = await supabase
-    .schema(schema)
+    
     .from(table)
     .update(payload)
     .eq("id", id)
@@ -122,7 +121,7 @@ export async function checkEmpleadoDuplicate({
 
   if (document_number) {
     let query = supabase
-      .schema(schema)
+      
       .from(table)
       .select("id")
       .eq("document_number", document_number)
@@ -137,7 +136,7 @@ export async function checkEmpleadoDuplicate({
 
   if (employee_id_number) {
     let query = supabase
-      .schema(schema)
+      
       .from(table)
       .select("id")
       .eq("employee_id_number", employee_id_number)
@@ -155,11 +154,50 @@ export async function checkEmpleadoDuplicate({
 
 export async function getEmpleadoById(id) {
   const { data, error } = await supabase
-    .schema(schema)
+    
     .from(table)
     .select("*, puesto:puestos_laborales(name)")
     .eq("id", id)
     .maybeSingle();
   if (error) throw error;
   return data;
+}
+
+export async function getActiveEmpleados({ empresa_id } = {}) {
+  let query = supabase
+    
+    .from(table)
+    .select("id, first_name, last_name, employee_id_number, is_active, empresa_id")
+    .eq("is_active", true)
+    .order("last_name", { ascending: true })
+    .order("first_name", { ascending: true });
+
+  if (empresa_id) {
+    query = query.eq("empresa_id", empresa_id);
+  }
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function getAvailableEmpleados({ empresa_id } = {}) {
+  let query = supabase
+    
+    .from(table)
+    .select(
+      "id, first_name, last_name, employee_id_number, is_active, empresa_id, user_id"
+    )
+    .eq("is_active", true)
+    .is("user_id", null)
+    .order("last_name", { ascending: true })
+    .order("first_name", { ascending: true });
+
+  if (empresa_id) {
+    query = query.eq("empresa_id", empresa_id);
+  }
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return data ?? [];
 }

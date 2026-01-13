@@ -3,6 +3,7 @@ import { AccionTabla, Paginacion, getDocumentoSignedUrl } from "../../../index";
 import { v } from "../../../styles/variables";
 import { Device, DeviceMax } from "../../../styles/breakpoints";
 import { useState } from "react";
+import { usePermissions } from "../../../hooks/usePermissions";
 import Swal from "sweetalert2";
 import {
   flexRender,
@@ -27,9 +28,12 @@ const getCertificadoPath = (licencia) =>
   licencia?.documento?.file_path || licencia?.certificate_url || "";
 
 export function TablaLicencias({ data, onEdit, onDelete }) {
-  if (data == null) return null;
+  const safeData = data ?? [];
   const [columnFilters] = useState([]);
   const [sorting, setSorting] = useState([{ id: "start_date", desc: true }]);
+  
+  // Hook de permisos
+  const { canUpdate, canDelete } = usePermissions();
 
   const handleOpenCertificate = async (licencia) => {
     const filePath = getCertificadoPath(licencia);
@@ -128,18 +132,22 @@ export function TablaLicencias({ data, onEdit, onDelete }) {
       header: "Acciones",
       cell: (info) => (
         <div data-title="Acciones" className="ContentCell acciones">
-          <AccionTabla
-            funcion={() => onEdit?.(info.row.original)}
-            fontSize="18px"
-            color="#7d7d7d"
-            icono={<v.iconeditarTabla />}
-          />
-          <AccionTabla
-            funcion={() => onDelete?.(info.row.original)}
-            fontSize="18px"
-            color={v.rojo}
-            icono={<v.iconeliminarTabla />}
-          />
+          {canUpdate('licencias') && (
+            <AccionTabla
+              funcion={() => onEdit?.(info.row.original)}
+              fontSize="18px"
+              color="#7d7d7d"
+              icono={<v.iconeditarTabla />}
+            />
+          )}
+          {canDelete('licencias') && (
+            <AccionTabla
+              funcion={() => onDelete?.(info.row.original)}
+              fontSize="18px"
+              color={v.rojo}
+              icono={<v.iconeliminarTabla />}
+            />
+          )}
           {getCertificadoPath(info.row.original) && (
             <AccionTabla
               funcion={() => handleOpenCertificate(info.row.original)}
@@ -155,7 +163,7 @@ export function TablaLicencias({ data, onEdit, onDelete }) {
   ];
 
   const table = useReactTable({
-    data,
+    data: safeData,
     columns,
     state: {
       columnFilters,
@@ -167,6 +175,8 @@ export function TablaLicencias({ data, onEdit, onDelete }) {
     getSortedRowModel: getSortedRowModel(),
     columnResizeMode: "onChange",
   });
+
+  if (data == null) return null;
 
   return (
     <Container>
@@ -304,10 +314,10 @@ const Container = styled.div`
   }
 
   .card {
-    background: ${({ theme }) => theme.bgtotal};
+    background: ${({ theme }) => theme.bg};
     border-radius: 14px;
     padding: 14px 16px;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+    box-shadow: var(--shadow-elev-1);
     display: grid;
     gap: 12px;
     width: 100%;
@@ -368,12 +378,12 @@ const Container = styled.div`
       padding: 6px 14px;
       font-weight: 600;
       cursor: pointer;
-      background: rgba(31, 141, 255, 0.15);
+      background: var(--bg-accent-soft-strong);
       color: ${({ theme }) => theme.color1};
     }
 
     button.secondary {
-      background: rgba(0, 0, 0, 0.08);
+      background: var(--bg-surface-muted);
       color: ${({ theme }) => theme.text};
     }
   }
@@ -495,7 +505,7 @@ const Container = styled.div`
         justify-content: space-between;
         align-items: center;
         height: 50px;
-        border-bottom: 1px solid rgba(161, 161, 161, 0.32);
+        border-bottom: 1px solid var(--border-subtle);
         @media ${Device.tablet} {
           justify-content: center;
           border-bottom: none;

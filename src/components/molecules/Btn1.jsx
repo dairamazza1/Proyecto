@@ -24,9 +24,13 @@ export function Btn1({
         <Icono $color={color}>{icono}</Icono>
         {titulo && (
           <span className="btn">
-            <a href={url} target="_blank">
-              {titulo}
-            </a>
+            {url ? (
+              <a href={url} target="_blank" rel="noreferrer">
+                {titulo}
+              </a>
+            ) : (
+              <span>{titulo}</span>
+            )}
           </span>
         )}
       </section>
@@ -40,13 +44,13 @@ const Container = styled.button`
   padding: 10px 25px;
   border-radius: 16px;
   background-color: ${(props) => props.$bgcolor};
-  border: 2px solid rgba(50, 50, 50, 0.2);
-  border-bottom: 5px solid rgba(50, 50, 50, 0.2);
+  border: 2px solid var(--border-strong);
+  border-bottom: 5px solid var(--border-strong);
   transform: translate(0, -3px);
   cursor: pointer;
   transition: 0.2s;
   transition-timing-function: linear;
-  color: rgb(${(props) => props.$color});
+  color: ${({ theme }) => theme.text};
   align-items: center;
   justify-content: center;
   width: ${(props) => props.$width};
@@ -56,10 +60,12 @@ const Container = styled.button`
   }
   &:active {
     transform: translate(0, 0);
-    border-bottom: 2px solid rgba(50, 50, 50, 0.2);
+    border-bottom: 2px solid var(--border-strong);
   }
   &[disabled] {
-    background-color: #646464;
+    background-color: var(--bg-surface-muted);
+    color: var(--text-secondary);
+    border-color: var(--border-subtle);
     cursor: no-drop;
     box-shadow: none;
   }

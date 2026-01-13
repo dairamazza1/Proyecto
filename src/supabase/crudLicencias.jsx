@@ -1,6 +1,5 @@
 import { supabase } from "../index";
 
-const schema = "test";
 const table = "empleados_licencias";
 const tableCategorias = "licencias_categorias";
 const tableTipos = "licencias_tipos";
@@ -34,7 +33,7 @@ function buildDocumentPath(empleadoId, fileName) {
 
 export async function getLicenciasCategorias() {
   const { data, error } = await supabase
-    .schema(schema)
+    
     .from(tableCategorias)
     .select("id, name")
     .order("name", { ascending: true });
@@ -44,7 +43,7 @@ export async function getLicenciasCategorias() {
 
 export async function getLicenciasTiposByCategoria(categoriaId) {
   const { data, error } = await supabase
-    .schema(schema)
+    
     .from(tableTipos)
     .select("id, name, requires_certificate, categoria_licencia_id")
     .eq("categoria_licencia_id", categoriaId)
@@ -55,7 +54,7 @@ export async function getLicenciasTiposByCategoria(categoriaId) {
 
 export async function getLicenciaTipoById(tipoId) {
   const { data, error } = await supabase
-    .schema(schema)
+    
     .from(tableTipos)
     .select("id, name, requires_certificate, categoria_licencia_id")
     .eq("id", tipoId)
@@ -66,7 +65,7 @@ export async function getLicenciaTipoById(tipoId) {
 
 export async function getLicenciasByEmpleadoId(empleadoId) {
   const { data, error } = await supabase
-    .schema(schema)
+    
     .from(table)
     .select(selectFields)
     .eq("empleado_id", empleadoId)
@@ -77,7 +76,7 @@ export async function getLicenciasByEmpleadoId(empleadoId) {
 
 export async function insertEmpleadoLicencia(payload) {
   const { data, error } = await supabase
-    .schema(schema)
+    
     .from(table)
     .insert(payload)
     .select()
@@ -88,7 +87,7 @@ export async function insertEmpleadoLicencia(payload) {
 
 export async function updateEmpleadoLicencia(id, payload) {
   const { data, error } = await supabase
-    .schema(schema)
+    
     .from(table)
     .update(payload)
     .eq("id", id)
@@ -100,7 +99,7 @@ export async function updateEmpleadoLicencia(id, payload) {
 
 export async function deleteEmpleadoLicencia(id) {
   const { error } = await supabase
-    .schema(schema)
+    
     .from(table)
     .delete()
     .eq("id", id);
@@ -110,7 +109,7 @@ export async function deleteEmpleadoLicencia(id) {
 
 export async function insertEmpleadoDocumento(payload) {
   const { data, error } = await supabase
-    .schema(schema)
+    
     .from(tableDocumentos)
     .insert(payload)
     .select()

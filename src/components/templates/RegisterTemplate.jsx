@@ -7,35 +7,35 @@ import {
   InputText2,
   Btn1,
   Footer,
-  useAuthStore,
 } from "../../index";
+import { useAuthStore } from "../../context/AuthStoreWithPermissions";
 import { v } from "../../styles/variables";
 import { Device } from "../../styles/breakpoints";
 
 export function RegisterTemplate() {
   const navigate = useNavigate();
   const { registerUser, loading, error } = useAuthStore();
-  
+
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     password: "",
-    confirmPassword: ""
+    confirmPassword: "",
   });
 
   const [validationErrors, setValidationErrors] = useState({});
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
     // Limpiar error del campo cuando el usuario empieza a escribir
     if (validationErrors[name]) {
-      setValidationErrors(prev => ({
+      setValidationErrors((prev) => ({
         ...prev,
-        [name]: ""
+        [name]: "",
       }));
     }
   };
@@ -92,7 +92,7 @@ export function RegisterTemplate() {
         icon: "success",
         title: "¡Registro exitoso!",
         text: "Tu cuenta ha sido creada. Por favor verifica tu email.",
-        confirmButtonText: "Aceptar"
+        confirmButtonText: "Aceptar",
       });
       navigate("/");
     } else {
@@ -100,7 +100,7 @@ export function RegisterTemplate() {
         icon: "error",
         title: "Error al registrar",
         text: result.error || "Ocurrió un error. Intenta nuevamente.",
-        confirmButtonText: "Aceptar"
+        confirmButtonText: "Aceptar",
       });
     }
   };
@@ -110,7 +110,9 @@ export function RegisterTemplate() {
       <div className="card">
         <ContentLogo>
           <img src={v.logo} alt="Logo" />
-          <span>Proyecto de prueba</span>
+          <span>
+            Clínica de Salud Mental <br /> Dr. Gutierrez Walker
+          </span>
         </ContentLogo>
         <Title $paddingbottom="20px">Crear cuenta</Title>
         <form onSubmit={handleSubmit}>
@@ -127,7 +129,7 @@ export function RegisterTemplate() {
               <ErrorText>{validationErrors.name}</ErrorText>
             )}
           </InputText2>
-          
+
           <InputText2>
             <input
               className="form__field"
@@ -141,7 +143,7 @@ export function RegisterTemplate() {
               <ErrorText>{validationErrors.email}</ErrorText>
             )}
           </InputText2>
-          
+
           <InputText2>
             <input
               className="form__field"
@@ -155,7 +157,7 @@ export function RegisterTemplate() {
               <ErrorText>{validationErrors.password}</ErrorText>
             )}
           </InputText2>
-          
+
           <InputText2>
             <input
               className="form__field"
@@ -175,12 +177,12 @@ export function RegisterTemplate() {
           <Btn1
             tipo="submit"
             titulo={loading ? "REGISTRANDO..." : "REGISTRAR"}
-            bgcolor="rgb(143, 191, 250)"
+            bgcolor={v.colorPrincipal}
             color="255,255,255"
             width="100%"
             disabled={loading}
           />
-          
+
           <LoginLink onClick={() => navigate("/")}>
             ¿Ya tienes cuenta? <strong>Inicia sesión</strong>
           </LoginLink>
@@ -200,7 +202,7 @@ const Container = styled.div`
   flex-direction: column;
   padding: 0 10px;
   color: ${({ theme }) => theme.text};
-  
+
   .card {
     display: flex;
     flex-direction: column;
@@ -228,7 +230,7 @@ const ContentLogo = styled.section`
 `;
 
 const ErrorText = styled.span`
-  color: #ff4444;
+  color: var(--color-danger);
   font-size: 12px;
   display: block;
   margin-top: 5px;
@@ -239,12 +241,12 @@ const LoginLink = styled.p`
   margin-top: 20px;
   cursor: pointer;
   color: ${({ theme }) => theme.text};
-  
+
   &:hover {
-    color: rgb(143, 191, 250);
+    color: ${({ theme }) => theme.color1};
   }
-  
+
   strong {
-    color: rgb(143, 191, 250);
+    color: ${({ theme }) => theme.color1};
   }
 `;

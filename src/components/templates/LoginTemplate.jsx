@@ -7,25 +7,27 @@ import {
   InputText2,
   Btn1,
   Footer,
-  useAuthStore,
 } from "../../index";
+import { useAuthStore } from "../../context/AuthStoreWithPermissions";
+import { supabase } from "../../supabase/supabase.config.jsx";
 import { v } from "../../styles/variables";
 import { Device } from "../../styles/breakpoints";
 
 export function LoginTemplate() {
   const navigate = useNavigate();
   const { loginEmailPassword, loading, error } = useAuthStore();
-  
+
   const [formData, setFormData] = useState({
     email: "",
-    password: ""
+    password: "",
   });
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   };
 
@@ -37,7 +39,7 @@ export function LoginTemplate() {
         icon: "warning",
         title: "Campos requeridos",
         text: "Por favor ingresa email y contraseña",
-        confirmButtonText: "Aceptar"
+        confirmButtonText: "Aceptar",
       });
       return;
     }
@@ -45,23 +47,61 @@ export function LoginTemplate() {
     const result = await loginEmailPassword(formData.email, formData.password);
 
     if (result.success) {
-      navigate("/");
+      navigate("/"); 
     } else {
       Swal.fire({
         icon: "error",
         title: "Error al iniciar sesión",
         text: result.error || "Credenciales incorrectas",
-        confirmButtonText: "Aceptar"
+        confirmButtonText: "Aceptar",
       });
     }
   };
 
+  const handleForgotPassword = async () => {
+    const { value: email } = await Swal.fire({
+      title: "Recuperar contrasena",
+      input: "email",
+      inputLabel: "Email",
+      inputPlaceholder: "tu@email.com",
+      showCancelButton: true,
+      confirmButtonText: "Enviar",
+      cancelButtonText: "Cancelar",
+    });
+
+    if (!email) return;
+
+    const redirectTo = `${window.location.origin}/set-password`;
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(
+      email,
+      { redirectTo }
+    );
+
+    if (resetError) {
+      Swal.fire({
+        icon: "error",
+        title: "No se pudo enviar",
+        text: resetError.message || "Error al enviar el correo.",
+        confirmButtonText: "Aceptar",
+      });
+      return;
+    }
+
+    Swal.fire({
+      icon: "success",
+      title: "Correo enviado",
+      text: "Revisa tu email para continuar.",
+      confirmButtonText: "Aceptar",
+    });
+  };
   return (
     <Container>
       <div className="card">
         <ContentLogo>
           <img src={v.logo} alt="Logo" />
-          <span>Proyecto de prueba</span>
+          <span>
+            Clínica de Salud Mental <br /> Dr. Gutierrez Walker
+          </span>
         </ContentLogo>
         <Title $paddingbottom="20px">Ingresar</Title>
         <form onSubmit={handleSubmit}>
@@ -77,26 +117,39 @@ export function LoginTemplate() {
           </InputText2>
           <InputText2>
             <input
-              className="form__field"
+              className="form__field passwordField"
               placeholder="Contraseña"
-              type="password"
+              type={showPassword ? "text" : "password"}
               name="password"
               value={formData.password}
               onChange={handleChange}
             />
+            <button
+              type="button"
+              className="passwordToggle"
+              onClick={() => setShowPassword((prev) => !prev)}
+              aria-label={showPassword ? "Ocultar clave" : "Mostrar clave"}
+              aria-pressed={showPassword}
+            >
+              {showPassword ? "Ocultar" : "Ver"}
+            </button>
           </InputText2>
-          
+
           {error && <ErrorText>{error}</ErrorText>}
-          
+
           <Btn1
             tipo="submit"
             titulo={loading ? "INGRESANDO..." : "INGRESAR"}
-            bgcolor="rgb(143, 191, 250)"
+            bgcolor={v.colorPrincipal}
             color="255,255,255"
             width="100%"
             disabled={loading}
           />
-          
+
+          <ForgotPassword type="button" onClick={handleForgotPassword}>
+            Olvide mi contrasena
+          </ForgotPassword>
+
           <RegisterLink onClick={() => navigate("/register")}>
             ¿No tienes cuenta? <strong>Regístrate</strong>
           </RegisterLink>
@@ -128,6 +181,30 @@ const Container = styled.div`
       width: 400px;
     }
   }
+
+  /* .passwordField {
+    padding-right: 64px;
+  } */
+
+  .passwordToggle {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    border: none;
+    background: transparent;
+    color: ${({ theme }) => theme.text};
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    padding: 4px 6px;
+  }
+
+  .passwordToggle:focus {
+    outline: 2px solid ${({ theme }) => theme.color1};
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
 `;
 
 const ContentLogo = styled.section`
@@ -144,22 +221,39 @@ const ContentLogo = styled.section`
 `;
 
 const ErrorText = styled.span`
-  color: #ff4444;
+  color: var(--color-danger);
   font-size: 14px;
   display: block;
   margin-bottom: 10px;
+`;
+
+const ForgotPassword = styled.button`
+  margin-top: 12px;
+  background: transparent;
+  border: none;
+  color: ${({ theme }) => theme.text};
+  cursor: pointer;
+  font-size: 0.9rem;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+
+  &:hover {
+    color: ${({ theme }) => theme.color1};
+  }
 `;
 
 const RegisterLink = styled.p`
   margin-top: 20px;
   cursor: pointer;
   color: ${({ theme }) => theme.text};
-  
+
   &:hover {
-    color: rgb(143, 191, 250);
+    color: ${({ theme }) => theme.color1};
   }
-  
+
   strong {
-    color: rgb(143, 191, 250);
+    color: ${({ theme }) => theme.color1};
   }
 `;
+
+

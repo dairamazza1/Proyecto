@@ -2,6 +2,9 @@ import styled from "styled-components";
 import { AccionTabla } from "../../../index";
 import { v } from "../../../styles/variables";
 import { Icon } from "@iconify/react";
+
+const _V = v;
+
 export function ContentAccionesTabla({funcionEditar, funcionEliminar}) {
   return (
     <Container>

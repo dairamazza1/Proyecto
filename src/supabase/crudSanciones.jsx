@@ -1,6 +1,5 @@
 import { supabase } from "../index";
 
-const schema = "test";
 const table = "empleados_sanciones";
 const selectFields = `
   id,
@@ -29,7 +28,7 @@ const selectFields = `
 
 export async function getSancionesByEmpleadoId(empleadoId) {
   const { data, error } = await supabase
-    .schema(schema)
+    
     .from(table)
     .select(selectFields)
     .eq("empleado_id", empleadoId)
@@ -40,7 +39,7 @@ export async function getSancionesByEmpleadoId(empleadoId) {
 
 export async function insertSancion(payload) {
   const { data, error } = await supabase
-    .schema(schema)
+    
     .from(table)
     .insert(payload)
     .select()
@@ -51,7 +50,7 @@ export async function insertSancion(payload) {
 
 export async function updateSancion(id, payload) {
   const { data, error } = await supabase
-    .schema(schema)
+    
     .from(table)
     .update(payload)
     .eq("id", id)
@@ -63,7 +62,7 @@ export async function updateSancion(id, payload) {
 
 export async function deleteSancion(id) {
   const { error } = await supabase
-    .schema(schema)
+    
     .from(table)
     .delete()
     .eq("id", id);

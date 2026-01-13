@@ -4,14 +4,14 @@ import {  ShowEmpresaByIDUser } from "../index";
 export const useCompanyStore = create((set) => ({
     dataCompany: [],
     showCompany: async(p) => {
-        console.log(p);
+        // console.log(p);
         
         const response = await ShowEmpresaByIDUser(p)
         set({dataCompany: response});
 
-        console.log("test");
+        // console.log("test");
         
-        console.log(response);
+        // console.log(response);
         
         return response;
     }

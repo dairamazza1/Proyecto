@@ -1,54 +1,54 @@
-import { create } from "zustand"
-import { deleteModule, editModule, getModule, InsertModule, searchModule } from "../index"
+// import { create } from "zustand"
+// import { deleteModule, editModule, getModule, InsertModule, searchModule } from "../index"
 
-export const useModulesStore = create((set,get) => ({
-    buscador: "",
-    setBuscador: (p) => {
-        set({ buscador : p});
-    },
-    dataModules : [],
-    moduleItemSelected: [],
-    params : {},
-    showModules: async (p) =>{
-        const response = await getModule(p);
-        set({params : p});
-        set({dataModules: response})
-        set({moduleItemSelected : response.length ? response[0] : null})
-        return response;
-    },
+// export const useModulesStore = create((set,get) => ({
+//     buscador: "",
+//     setBuscador: (p) => {
+//         set({ buscador : p});
+//     },
+//     dataModules : [],
+//     moduleItemSelected: [],
+//     params : {},
+//     showModules: async (p) =>{
+//         const response = await getModule(p);
+//         set({params : p});
+//         set({dataModules: response})
+//         set({moduleItemSelected : response.length ? response[0] : null})
+//         return response;
+//     },
 
-    selectModule : (p) => {
-        set({moduleItemSelected: p});
-    },
-    insertModule : async(p,file) =>{
-        await InsertModule(p,file);
-        const {showModules} = get();
-        const {params} = get();
+//     selectModule : (p) => {
+//         set({moduleItemSelected: p});
+//     },
+//     insertModule : async(p,file) =>{
+//         await InsertModule(p,file);
+//         const {showModules} = get();
+//         const {params} = get();
 
-        //set(showModules(params));
-        await showModules(params);
-    },
-    deleteModule: async(p) =>{
-        await deleteModule(p);
+//         //set(showModules(params));
+//         await showModules(params);
+//     },
+//     deleteModule: async(p) =>{
+//         await deleteModule(p);
 
-        const {showModules} = get();
-        const {params} = get();
+//         const {showModules} = get();
+//         const {params} = get();
 
-        set(showModules(params));
-    },
-    editModule: async(p, fileOld, fileNew) =>{
+//         set(showModules(params));
+//     },
+//     editModule: async(p, fileOld, fileNew) =>{
 
-        await editModule(p,fileOld,fileNew);
+//         await editModule(p,fileOld,fileNew);
 
-        const {showModules} = get();
-        const {params} = get();
+//         const {showModules} = get();
+//         const {params} = get();
 
-        set(showModules(params));
-    },
-    searchModule: async(p) =>{
-        const response = await searchModule(p);
+//         set(showModules(params));
+//     },
+//     searchModule: async(p) =>{
+//         const response = await searchModule(p);
 
-        set({dataModules : response});
-        return response;
-    }
-}))
+//         set({dataModules : response});
+//         return response;
+//     }
+// }))

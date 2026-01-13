@@ -8,16 +8,25 @@ import {
   deleteVacacion,
   Spinner1,
 } from "../../index";
+import { usePermissions } from "../../hooks/usePermissions";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { v } from "../../styles/variables";
 import { calcVacationSummary } from "../../utils/vacaciones";
 import Swal from "sweetalert2";
 
 
-export function VacacionesSection({ empleado, empleadoId }) {
+export function VacacionesSection({
+  empleado,
+  empleadoId,
+  title = "Vacaciones",
+  embedded = false,
+}) {
   const [openModal, setOpenModal] = useState(false);
   const [selectedVacacion, setSelectedVacacion] = useState(null);
   const queryClient = useQueryClient();
+  
+  // Hook de permisos
+  const { canCreate } = usePermissions();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["vacaciones", empleadoId],
@@ -62,12 +71,12 @@ export function VacacionesSection({ empleado, empleadoId }) {
 
   const handleEliminar = (vacacion) => {
     Swal.fire({
-      title: "ÂEstas seguro(a)?",
+      title: "Ã‚Estas seguro(a)?",
       text: "Una vez eliminado, no podras recuperar este registro.",
       icon: "warning",
       showCancelButton: true,
-      confirmButtonColor: "#3085d6",
-      cancelButtonColor: "#d33",
+      confirmButtonColor: v.colorPrincipal,
+      cancelButtonColor: v.rojo,
       confirmButtonText: "Si, eliminar",
     }).then((result) => {
       if (result.isConfirmed) {
@@ -85,15 +94,17 @@ export function VacacionesSection({ empleado, empleadoId }) {
   }
 
   return (
-    <Section>
+    <Section $embedded={embedded}>
       <div className="sectionHeader">
-        <h3>Vacaciones</h3>
-        <Btn1
-          icono={<v.iconoagregar />}
-          titulo="nuevo"
-          bgcolor={v.colorPrincipal}
-          funcion={handleNuevo}
-        />
+        <h3>{title}</h3>
+        {canCreate("vacaciones") && (
+          <Btn1
+            icono={<v.iconoagregar />}
+            titulo="nuevo"
+            bgcolor={v.colorPrincipal}
+            funcion={handleNuevo}
+          />
+        )}
       </div>
 
       <div className="sectionMeta">
@@ -125,10 +136,11 @@ export function VacacionesSection({ empleado, empleadoId }) {
 }
 
 const Section = styled.section`
-  background: ${({ theme }) => theme.bg};
-  border-radius: 18px;
-  padding: 20px 24px;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+  background: ${({ theme}) => (theme.bg)};
+  border-radius: ${({ $embedded }) => ($embedded ? "0" : "18px")};
+  padding: ${({ $embedded }) => ($embedded ? "0" : "20px 24px")};
+  box-shadow: ${({ $embedded }) =>
+    $embedded ? "none" : "var(--shadow-elev-1)"};
   display: grid;
   gap: 14px;
 
@@ -156,4 +168,5 @@ const EmptyState = styled.div`
   color: ${({ theme }) => theme.textsecundary};
   text-align: center;
 `;
+
 

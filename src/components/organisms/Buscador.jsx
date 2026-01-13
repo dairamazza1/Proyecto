@@ -1,6 +1,8 @@
 import styled from "styled-components";
 import {v} from "../../styles/variables"
 
+const _V = v;
+
 export function Buscador({setBuscador}) {
   function buscar(e) {
     setBuscador(e.target.value)
@@ -9,7 +11,7 @@ export function Buscador({setBuscador}) {
     <Container>
       <section className="content">
         <v.iconoBuscar className="icono"/>
-            <input placeholder="...buscar" onChange={buscar}/>
+            <input placeholder="Buscar" onChange={buscar}/>
       </section>
     </Container>
   );

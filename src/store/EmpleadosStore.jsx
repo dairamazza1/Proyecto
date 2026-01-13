@@ -6,7 +6,7 @@ import {
   updateEmpleado,
 } from "../index";
 
-export const useEmpleadosStore = create((set, get) => ({
+export const useEmpleadosStore = create((set) => ({
   buscador: "",
   setBuscador: (p) => {
     set({ buscador: p });

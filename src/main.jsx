@@ -1,8 +1,8 @@
-import { StrictMode, useEffect } from "react";
+import { StrictMode, useEffect, useRef } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App.jsx";
-import { BrowserRouter } from "react-router-dom";
-import { useAuthStore } from "./context/AuthStore.jsx";
+import { BrowserRouter, useLocation } from "react-router-dom";
+import { useAuthStore } from "./context/AuthStoreWithPermissions.jsx";
 import {
   // useQuery,
   // useMutation,
@@ -16,10 +16,18 @@ const queryClient = new QueryClient();
 // Wrapper para inicializar autenticación
 function AppWrapper() {
   const { initializeAuth } = useAuthStore();
+  const { pathname } = useLocation();
+  const initialPath = useRef(null);
+
+  if (initialPath.current === null) {
+    initialPath.current = pathname;
+  }
 
   useEffect(() => {
-    // Inicializar sesión al cargar la aplicación
-    initializeAuth();
+    // Inicializar sesi?n al cargar la aplicaci?n
+    initializeAuth({
+      skipProfileCheck: initialPath.current === "/set-password",
+    });
   }, [initializeAuth]);
 
   return <App />;
@@ -36,3 +44,5 @@ createRoot(document.getElementById("root")).render(
     </QueryClientProvider>
   </StrictMode>
 );
+
+

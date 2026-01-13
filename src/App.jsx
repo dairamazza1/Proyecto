@@ -13,6 +13,8 @@ import { useLocation } from "react-router-dom";
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { v } from "./styles/variables";
 
+const _V = v;
+
 function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { themeStyle } = useThemeStore();
@@ -22,7 +24,9 @@ function App() {
     <ThemeProvider theme={themeStyle}>
       <AuthContextProvider>
          <GlobalStyles />
-        {pathname !== "/login" && pathname !== "/register" ? (
+        {pathname !== "/login" &&
+        pathname !== "/register" &&
+        pathname !== "/set-password" ? (
           <Container className={sidebarOpen ? "active" : ""}>
            
             <section className="contentSidebar">
@@ -130,7 +134,7 @@ const Container = styled.main`
   .sidebarOverlay {
     position: fixed;
     inset: 0;
-    background: rgba(10, 9, 9, 0.35);
+    background: var(--overlay-backdrop-soft);
     z-index: 1000;
   }
 

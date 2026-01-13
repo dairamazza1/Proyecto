@@ -3,6 +3,8 @@ import { LazyLoadImage } from "react-lazy-load-image-component";
 import "react-lazy-load-image-component/src/effects/blur.css";
 import {v} from "../../styles/variables"
 
+const _V = v;
+
 export function ImageContent({ imagen }) {
   return (
     <Container>

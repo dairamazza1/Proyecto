@@ -4,6 +4,8 @@ import {
   AiOutlineSetting,
 } from "react-icons/ai";
 
+const _V = v;
+
 export const DesplegableUser = [
   {
     text: "Mi perfil",
@@ -22,20 +24,32 @@ export const DesplegableUser = [
   },
 ];
 
+export const TABS = [
+  { id: "vacaciones", label: "Vacaciones" },
+  { id: "licencias", label: "Licencias" },
+  { id: "cambios", label: "Cambios de turnos" },
+  { id: "sanciones", label: "Sanciones" },
+];
+
+export const statusValues = {
+  rejected: "Rechazado",
+  approved: "Aprobado",
+  pending: "Pendiente",
+};
 
 
 //data SIDEBAR
 export const LinksArray = [
   {
-    label: "Home",
-    icon: "streamline-flex-color:warehouse-1",
+    label: "Inicio",
+    icon: "streamline-flex:home-2",
     to: "/",
   },
-  // {
-  //   label: "PACIENTES",
-  //   icon: "streamline-flex-color:office-building-1-flat",
-  //   to: "/pos",
-  // },
+  {
+    label: "Empleados",
+    icon: "streamline-flex:office-building-1",
+    to: "/empleados",
+  },
   // {
   //   label: "Kardex",
   //   icon: "flat-ui:box",
@@ -43,7 +57,7 @@ export const LinksArray = [
   // },
   {
     label: "Reportes",
-    icon: "streamline-flex-color:new-sticky-note-flat",
+    icon: "streamline-flex:new-sticky-note",
     to: "/reportes",
   },
  
@@ -52,27 +66,33 @@ export const SecondarylinksArray = [
  
   {
     label: "Configuración",
-    icon:"streamline-flex-color:cog",
+    icon:"streamline-flex:sun",
     to: "/configuracion",
-    color:"#CE82FF"
+    // color:"#CE82FF"
   },
+  {
+    label: "Mi perfil",
+    icon:"streamline-flex:user-circle-single",
+    to: "/perfil",
+    // color:"#b63473"
+  }
   
   
 
 ];
-//temas
-export const TemasData = [
-  {
-    icono: "🌞",
-    descripcion: "light",
+// //temas
+// export const TemasData = [
+//   {
+//     icono: "🌞",
+//     descripcion: "light",
    
-  },
-  {
-    icono: "🌚",
-    descripcion: "dark",
+//   },
+//   {
+//     icono: "🌚",
+//     descripcion: "dark",
     
-  },
-];
+//   },
+// ];
 
 //data configuracion
 export const DataModulosConfiguracion =[
@@ -114,29 +134,29 @@ export const DataModulosConfiguracion =[
   },
 
 ]
-//tipo usuario
-export const TipouserData = [
-  {
-    descripcion: "empleado",
-    icono: "🪖",
-  },
-  {
-    descripcion: "administrador",
-    icono: "👑",
-  },
-];
-//tipodoc
-export const TipoDocData = [
-  {
-    descripcion: "Dni",
-    icono: "🪖",
-  },
-  {
-    descripcion: "Libreta electoral",
-    icono: "👑",
-  },
-  {
-    descripcion: "Otros",
-    icono: "👑",
-  },
-];
+// //tipo usuario
+// export const TipouserData = [
+//   {
+//     descripcion: "empleado",
+//     icono: "🪖",
+//   },
+//   {
+//     descripcion: "administrador",
+//     icono: "👑",
+//   },
+// ];
+// //tipodoc
+// export const TipoDocData = [
+//   {
+//     descripcion: "Dni",
+//     icono: "🪖",
+//   },
+//   {
+//     descripcion: "Libreta electoral",
+//     icono: "👑",
+//   },
+//   {
+//     descripcion: "Otros",
+//     icono: "👑",
+//   },
+//];

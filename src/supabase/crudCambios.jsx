@@ -1,6 +1,5 @@
 import { supabase } from "../index";
 
-const schema = "test";
 const table = "empleados_cambios_actividades";
 const selectFields = `
   id,
@@ -40,7 +39,7 @@ const selectFields = `
 export async function getEmpleadoCambioContext(empleadoId) {
   if (!empleadoId) return null;
   const { data, error } = await supabase
-    .schema(schema)
+    
     .from("empleados")
     .select(
       `
@@ -78,7 +77,7 @@ export async function getEmpleadosReemplazoOptions({ empleadoId }) {
   }
 
   const { data, error } = await supabase
-    .schema(schema)
+    
     .from("empleados")
     .select(
       `
@@ -116,7 +115,7 @@ export async function getEmpleadosReemplazoOptions({ empleadoId }) {
 
 export async function getCambiosByEmpleadoId(empleadoId) {
   const { data, error } = await supabase
-    .schema(schema)
+    
     .from(table)
     .select(selectFields)
     .eq("empleado_id", empleadoId)
@@ -127,7 +126,7 @@ export async function getCambiosByEmpleadoId(empleadoId) {
 
 export async function insertCambio(payload) {
   const { data, error } = await supabase
-    .schema(schema)
+    
     .from(table)
     .insert(payload)
     .select()
@@ -138,7 +137,7 @@ export async function insertCambio(payload) {
 
 export async function updateCambio(id, payload) {
   const { data, error } = await supabase
-    .schema(schema)
+    
     .from(table)
     .update(payload)
     .eq("id", id)
@@ -150,7 +149,7 @@ export async function updateCambio(id, payload) {
 
 export async function deleteCambio(id) {
   const { error } = await supabase
-    .schema(schema)
+    
     .from(table)
     .delete()
     .eq("id", id);
