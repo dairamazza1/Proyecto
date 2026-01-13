@@ -48,6 +48,6 @@ const Tabs = styled.div`
   .tab.active {
     border-color: ${({ theme }) => theme.color1};
     color: ${({ theme }) => theme.color1};
-    background: rgba(31, 141, 255, 0.08);
+    background: var(--bg-accent-soft);
   }
 `;

@@ -1,26 +1,45 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import styled from "styled-components";
+import { useQuery } from "@tanstack/react-query";
 import {
   Btn1,
+  ModalInvitarUsuario,
   RegistrarEmpleados,
   Title,
+  UserAuth,
   VacacionesSection,
   LicenciasSection,
   CambiosSection,
   SancionesSection,
+  useCompanyStore,
 } from "../../index";
 import { usePermissions } from "../../hooks/usePermissions";
-import { useNavigate } from "react-router-dom";
 import { v } from "../../styles/variables";
 import { Device, DeviceMax } from "../../styles/breakpoints";
 
 export function EmpleadoTemplate({ id, empleado, isError, sucursalEmpleado }) {
-  const navigate = useNavigate();
   const [openEditar, setOpenEditar] = useState(false);
+  const [openInvitar, setOpenInvitar] = useState(false);
   const [activeTab, setActiveTab] = useState("vacaciones");
   
   // Hook de permisos
-  const { canUpdate, isEmployee } = usePermissions();
+  const { canUpdate, isEmployee, userRole } = usePermissions();
+  const canInvite = useMemo(
+    () => ["rrhh", "admin", "superadmin"].includes(String(userRole ?? "")),
+    [userRole]
+  );
+
+  const { user } = UserAuth();
+  const { dataCompany, showCompany } = useCompanyStore();
+
+  useQuery({
+    queryKey: ["empresa", user?.id],
+    queryFn: () => showCompany({ id_auth: user?.id }),
+    enabled: Boolean(user?.id) && !dataCompany?.id,
+    refetchOnWindowFocus: false,
+  });
+
+  const empresaId = dataCompany?.id ?? null;
   
   const fullName = [empleado?.first_name, empleado?.last_name]
     .filter(Boolean)
@@ -35,6 +54,14 @@ export function EmpleadoTemplate({ id, empleado, isError, sucursalEmpleado }) {
 
   const terminationDate = formatDate(empleado?.termination_date);
 
+  const hasUser = Boolean(empleado?.user_id);
+
+  const empleadoInviteLabel = useMemo(() => {
+    const name = fullName || (empleado ? `Empleado ${empleado.id}` : "Empleado");
+    const legajoLabel = legajo ? ` - ${legajo}` : "";
+    return `${name}${legajoLabel}`;
+  }, [empleado, fullName, legajo]);
+
   return (
     <Container>
       <Header>
@@ -47,11 +74,21 @@ export function EmpleadoTemplate({ id, empleado, isError, sucursalEmpleado }) {
             <StatusPill className={empleado?.is_active ? "activo" : "inactivo"}>
               Estado: {statusLabel}
             </StatusPill>
+            {canInvite && (
+              <Btn1
+                icono={<v.iconoagregar />}
+                titulo={hasUser ? "Usuario ya creado" : "Crear usuario"}
+                bgcolor={v.colorPrincipal}
+                funcion={() => setOpenInvitar(true)}
+                disabled={hasUser || !empresaId}
+                tipo="button"
+              />
+            )}
             {canUpdate('empleados') && (
               <Btn1
                 icono={<v.iconeditarTabla />}
                 titulo="Editar"
-                bgcolor="#99a6ce"
+                bgcolor={v.colorPrincipal}
                 funcion={() => setOpenEditar(true)}
               />
             )}
@@ -182,6 +219,15 @@ export function EmpleadoTemplate({ id, empleado, isError, sucursalEmpleado }) {
           onClose={() => setOpenEditar(false)}
         />
       )}
+
+      {openInvitar && id && empleado && (
+        <ModalInvitarUsuario
+          empresaId={empresaId}
+          empleadoId={id}
+          empleadoLabel={empleadoInviteLabel}
+          onClose={() => setOpenInvitar(false)}
+        />
+      )}
     </Container>
   );
 }
@@ -225,12 +271,12 @@ const StatusPill = styled.span`
   border-radius: 999px;
   font-weight: 600;
   font-size: 0.9rem;
-  background: rgba(31, 166, 94, 0.15);
-  color: #1f8f5c;
+  background: var(--bg-success-soft);
+  color: var(--color-success);
 
   &.inactivo {
-    background: rgba(220, 53, 69, 0.15);
-    color: #c82333;
+    background: var(--bg-danger-soft);
+    color: var(--color-danger);
   }
 `;
 
@@ -238,14 +284,14 @@ const InfoCard = styled.section`
   background: ${({ theme }) => theme.bg};
   border-radius: 18px;
   padding: 20px 24px;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-elev-1);
 `;
 
 const ResultsCard = styled.section`
   background: ${({ theme }) => theme.bg};
   border-radius: 18px;
   padding: 20px 24px;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-elev-1);
 `;
 
 const InfoGrid = styled.div`
@@ -315,13 +361,13 @@ const Tabs = styled.div`
   .tab.active {
     border-color: ${({ theme }) => theme.color1};
     color: ${({ theme }) => theme.color1};
-    background: rgba(31, 141, 255, 0.08);
+    background: var(--bg-accent-soft);
   }
 `;
 
 const InfoBanner = styled.div`
-  background: rgba(255, 193, 7, 0.1);
-  border: 1px solid rgba(255, 193, 7, 0.3);
+  background: var(--bg-warning-soft);
+  border: 1px solid var(--border-warning-soft);
   border-radius: 8px;
   padding: 12px 16px;
   color: ${({ theme }) => theme.text};

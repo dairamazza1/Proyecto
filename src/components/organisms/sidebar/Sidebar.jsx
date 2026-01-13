@@ -119,7 +119,7 @@ const Container = styled.div`
       }
     }
     h2 {
-      color: rgb(65, 71, 213);
+      color: var(--color-accent-strong);
       display: ${({ $isopen }) => ($isopen === "true" ? `block` : `none`)};
     }
   }

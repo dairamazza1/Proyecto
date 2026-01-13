@@ -28,7 +28,7 @@ const getCertificadoPath = (licencia) =>
   licencia?.documento?.file_path || licencia?.certificate_url || "";
 
 export function TablaLicencias({ data, onEdit, onDelete }) {
-  if (data == null) return null;
+  const safeData = data ?? [];
   const [columnFilters] = useState([]);
   const [sorting, setSorting] = useState([{ id: "start_date", desc: true }]);
   
@@ -163,7 +163,7 @@ export function TablaLicencias({ data, onEdit, onDelete }) {
   ];
 
   const table = useReactTable({
-    data,
+    data: safeData,
     columns,
     state: {
       columnFilters,
@@ -175,6 +175,8 @@ export function TablaLicencias({ data, onEdit, onDelete }) {
     getSortedRowModel: getSortedRowModel(),
     columnResizeMode: "onChange",
   });
+
+  if (data == null) return null;
 
   return (
     <Container>
@@ -315,7 +317,7 @@ const Container = styled.div`
     background: ${({ theme }) => theme.bg};
     border-radius: 14px;
     padding: 14px 16px;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+    box-shadow: var(--shadow-elev-1);
     display: grid;
     gap: 12px;
     width: 100%;
@@ -376,12 +378,12 @@ const Container = styled.div`
       padding: 6px 14px;
       font-weight: 600;
       cursor: pointer;
-      background: rgba(31, 141, 255, 0.15);
+      background: var(--bg-accent-soft-strong);
       color: ${({ theme }) => theme.color1};
     }
 
     button.secondary {
-      background: rgba(0, 0, 0, 0.08);
+      background: var(--bg-surface-muted);
       color: ${({ theme }) => theme.text};
     }
   }
@@ -503,7 +505,7 @@ const Container = styled.div`
         justify-content: space-between;
         align-items: center;
         height: 50px;
-        border-bottom: 1px solid rgba(161, 161, 161, 0.32);
+        border-bottom: 1px solid var(--border-subtle);
         @media ${Device.tablet} {
           justify-content: center;
           border-bottom: none;

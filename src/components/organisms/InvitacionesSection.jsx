@@ -192,7 +192,7 @@ export function InvitacionesSection() {
         </div>
         <Btn1
           icono={<v.iconoagregar />}
-          titulo="Invitar usuario"
+          titulo="Invitar empleado"
           bgcolor={v.colorPrincipal}
           funcion={() => setOpenModal(true)}
         />
@@ -265,7 +265,7 @@ const Section = styled.section`
   background: ${({ theme }) => theme.bg};
   border-radius: 18px;
   padding: 20px 24px;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-elev-1);
   display: grid;
   gap: 16px;
   margin-top: 16px;

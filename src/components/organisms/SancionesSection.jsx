@@ -89,12 +89,14 @@ export function SancionesSection({
     <Section $embedded={embedded}>
       <div className="sectionHeader">
         <h3>{title}</h3>
-        <Btn1
-          icono={<v.iconoagregar />}
-          titulo="nuevo"
-          bgcolor={v.colorPrincipal}
-          funcion={handleNuevo}
-        />
+        {canCreate("sanciones") && (
+          <Btn1
+            icono={<v.iconoagregar />}
+            titulo="nuevo"
+            bgcolor={v.colorPrincipal}
+            funcion={handleNuevo}
+          />
+        )}
       </div>
 
       {data?.length ? (
@@ -119,11 +121,11 @@ export function SancionesSection({
 }
 
 const Section = styled.section`
-  background: ${({ theme, $embedded }) => ($embedded ? "transparent" : theme.bg)};
+  background: ${({ theme}) => (theme.bg)};
   border-radius: ${({ $embedded }) => ($embedded ? "0" : "18px")};
   padding: ${({ $embedded }) => ($embedded ? "0" : "20px 24px")};
   box-shadow: ${({ $embedded }) =>
-    $embedded ? "none" : "0 6px 18px rgba(0, 0, 0, 0.08)"};
+    $embedded ? "none" : "var(--shadow-elev-1)"};
   display: grid;
   gap: 14px;
 

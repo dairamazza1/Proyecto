@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import styled from "styled-components";
 import { v } from "../../../styles/variables";
 import { Device, DeviceMax } from "../../../styles/breakpoints";
+
+const _V = v;
+
 import {
   InputText,
   Btn1,
@@ -330,12 +333,12 @@ export function RegistrarEmpleados({
         excludeId: empleadoId,
       });
 
-      // if (documentExists) {
-      //   throw new Error("El numero de documento ya existe.");
-      // }
-      // if (legajoExists) {
-      //   throw new Error("El numero de legajo ya existe.");
-      // }
+      if (documentExists) {
+        throw new Error("El numero de documento ya existe.");
+      }
+      if (legajoExists) {
+        throw new Error("El numero de legajo ya existe.");
+      }
     }
 
     const isActiveBool = String(data.is_active) === "true";
@@ -678,14 +681,14 @@ export function RegistrarEmpleados({
               <Btn1
                 icono={<v.iconocerrar />}
                 titulo="Cancelar"
-                bgcolor="rgb(183, 183, 182)"
+                bgcolor="var(--bg-surface-muted)"
                 funcion={cancelar}
                 tipo="button"
               />
               <Btn1
                 icono={<v.iconoguardar />}
                 titulo="Guardar"
-                bgcolor="#F9D70B"
+                bgcolor={v.colorPrincipal}
               />
             </div>
           </section>
@@ -710,7 +713,7 @@ const Container = styled.div`
     top: 0;
     left: 0;
     min-height: 100vh;
-    background-color: rgba(10, 9, 9, 0.5);
+    background-color: var(--overlay-backdrop);
     z-index: 1000;
   `
       : ""}
@@ -739,7 +742,7 @@ const Container = styled.div`
     max-width: 100%;
     border-radius: 18px;
     background: ${({ theme }) => theme.bgtotal};
-    box-shadow: -10px 15px 30px rgba(10, 9, 9, 0.25);
+    box-shadow: var(--shadow-elev-2);
     padding: 16px 18px 20px 18px;
 
     ${({ $modal }) =>

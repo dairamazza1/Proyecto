@@ -1,6 +1,4 @@
-import Swal from "sweetalert2";
 import { supabase } from "../index";
-const table = "empresa";
 
 // export async function insertCompany(p) {
 //   //devuelve un único objeto con maybeSingle en vez de un array

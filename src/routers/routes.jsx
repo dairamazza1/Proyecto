@@ -6,6 +6,7 @@ import {
   Empleado,
   Empleados,
   Home,
+  InvitacionesConfig,
   Login,
   Perfil,
   Reportes,
@@ -42,6 +43,9 @@ export function MyRoutes() {
         <Route path="/reportes" element={<Reportes />} />
         <Route path="/perfil" element={<Perfil />} />
         <Route path="/configuracion" element={<Configurations />} />
+        <Route path="/configuración" element={<Configurations />} />
+        <Route path="/configuracion/invitaciones" element={<InvitacionesConfig />} />
+        <Route path="/configuración/invitaciones" element={<InvitacionesConfig />} />
         {/* <Route path="/configuracion/categorias" element={<Categories />} /> */}
       </Route>
       <Route path="/login" element={<Login />} />

@@ -140,7 +140,7 @@ export function LoginTemplate() {
           <Btn1
             tipo="submit"
             titulo={loading ? "INGRESANDO..." : "INGRESAR"}
-            bgcolor="rgb(143, 191, 250)"
+            bgcolor={v.colorPrincipal}
             color="255,255,255"
             width="100%"
             disabled={loading}
@@ -221,7 +221,7 @@ const ContentLogo = styled.section`
 `;
 
 const ErrorText = styled.span`
-  color: #ff4444;
+  color: var(--color-danger);
   font-size: 14px;
   display: block;
   margin-bottom: 10px;
@@ -238,7 +238,7 @@ const ForgotPassword = styled.button`
   text-underline-offset: 4px;
 
   &:hover {
-    color: rgb(143, 191, 250);
+    color: ${({ theme }) => theme.color1};
   }
 `;
 
@@ -248,11 +248,11 @@ const RegisterLink = styled.p`
   color: ${({ theme }) => theme.text};
 
   &:hover {
-    color: rgb(143, 191, 250);
+    color: ${({ theme }) => theme.color1};
   }
 
   strong {
-    color: rgb(143, 191, 250);
+    color: ${({ theme }) => theme.color1};
   }
 `;
 

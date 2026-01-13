@@ -1,6 +1,5 @@
 import styled from "styled-components";
-import { Paginacion, Icono } from "../../../index";
-import { v } from "../../../styles/variables";
+import { Paginacion } from "../../../index";
 import { Device, DeviceMax } from "../../../styles/breakpoints";
 import { useState } from "react";
 import {
@@ -13,7 +12,7 @@ import {
 import { Link } from "react-router-dom";
 
 export function TablaEmpleados({ data }) {
-  if (data == null) return null;
+  const safeData = Array.isArray(data) ? data : [];
   const [columnFilters] = useState([]);
   const [sorting, setSorting] = useState([{ id: "last_name", desc: false }]);
 
@@ -108,7 +107,7 @@ export function TablaEmpleados({ data }) {
   ];
 
   const table = useReactTable({
-    data,
+    data: safeData,
     columns,
     state: {
       columnFilters,
@@ -120,6 +119,8 @@ export function TablaEmpleados({ data }) {
     getSortedRowModel: getSortedRowModel(),
     columnResizeMode: "onChange",
   });
+
+  if (data == null) return null;
 
   return (
     <Container>
@@ -228,19 +229,14 @@ export function TablaEmpleados({ data }) {
 
 const Container = styled.div`
   position: relative;
-
-  margin: 5% 3%;
-  @media ${Device.tablet} {
-    margin: 2%;
-  }
-  @media ${Device.desktop} {
-    margin: 2em auto;
-  }
+  width: 100%;
+  overflow-x: hidden;
 
   .cards {
     display: grid;
     gap: 14px;
     margin-bottom: 1.5em;
+    width: 100%;
 
     @media ${Device.tablet} {
       display: none;
@@ -251,9 +247,11 @@ const Container = styled.div`
     background: ${({ theme }) => theme.bg};
     border-radius: 14px;
     padding: 14px 16px;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+    box-shadow: var(--shadow-elev-1);
     display: grid;
     gap: 12px;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .cardHeader {
@@ -268,6 +266,8 @@ const Container = styled.div`
       font-size: 1rem;
       font-weight: 700;
       color: ${({ theme }) => theme.text};
+      max-width: 100%;
+      word-break: break-word;
     }
   }
 
@@ -281,6 +281,7 @@ const Container = styled.div`
     justify-content: space-between;
     gap: 12px;
     font-size: 0.95rem;
+    flex-wrap: wrap;
 
     .label {
       color: ${({ theme }) => theme.textsecundary};
@@ -289,6 +290,9 @@ const Container = styled.div`
     .value {
       color: ${({ theme }) => theme.text};
       font-weight: 600;
+      max-width: 100%;
+      word-break: break-word;
+      text-align: right;
     }
   }
 
@@ -306,13 +310,6 @@ const Container = styled.div`
       display: none;
     }
 
-    @media ${Device.tablet} {
-      font-size: 0.9em;
-    }
-    @media ${Device.laptop} {
-      font-size: 1em;
-    }
-
     thead {
       position: absolute;
       padding: 0;
@@ -323,7 +320,7 @@ const Container = styled.div`
 
       @media ${Device.tablet} {
         position: relative;
-        height: auto;
+        /* height: auto; */
         width: auto;
         overflow: auto;
       }
@@ -421,7 +418,7 @@ const Container = styled.div`
         justify-content: space-between;
         align-items: center;
         height: 50px;
-        border-bottom: 1px solid rgba(161, 161, 161, 0.32);
+        border-bottom: 1px solid var(--border-subtle);
         @media ${Device.tablet} {
           justify-content: center;
           border-bottom: none;
@@ -474,6 +471,6 @@ const CardLink = styled(Link)`
 
   &:hover .card {
     transform: translateY(-2px);
-    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.12);
+    box-shadow: var(--shadow-elev-2);
   }
 `;

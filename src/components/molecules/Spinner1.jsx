@@ -4,7 +4,7 @@ import { BeatLoader } from "react-spinners";
 export function Spinner1() {
   return (
     <Container>
-      <BeatLoader color="#3646d7" size={60} />
+      <BeatLoader color="var(--color-accent-strong)" size={60} />
     </Container>
   );
 }

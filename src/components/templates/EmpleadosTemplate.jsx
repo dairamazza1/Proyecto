@@ -3,7 +3,6 @@ import {
   Title,
   Btn1,
   Buscador,
-  InvitacionesSection,
   TablaEmpleados,
   useEmpleadosStore,
   useSucursalesStore,
@@ -22,10 +21,7 @@ export function EmpleadosTemplate() {
   const { dataSucursales, sucursalSeleccionada, setSucursalSeleccionada } = useSucursalesStore();
   
   // Hook de permisos
-  const { canCreate, profile } = usePermissions();
-  const canInvite = ["rrhh", "admin", "superadmin"].includes(
-    String(profile?.app_role ?? "")
-  );
+  const { canCreate } = usePermissions();
 
   function nuevoRegistro() {
     navigate("/empleados/nuevo");
@@ -48,7 +44,7 @@ export function EmpleadosTemplate() {
               onChange={handleSucursalChange}
               className="select-sucursal"
             >
-              <option value="">Todas las sucursales</option>
+              <option value="">Sucursales</option>
               {dataSucursales?.map((sucursal) => (
                 <option key={sucursal.id} value={sucursal.id}>
                   {sucursal.name}
@@ -60,12 +56,14 @@ export function EmpleadosTemplate() {
             <Buscador setBuscador={setBuscador}></Buscador>
           </div>
           {canCreate('empleados') && (
-            <Btn1
-              funcion={nuevoRegistro}
-              bgcolor={v.colorPrincipal}
-              titulo="nuevo"
-              icono={<v.iconoagregar />}
-            ></Btn1>
+            <div className="btn-nuevo">
+              <Btn1
+                funcion={nuevoRegistro}
+                bgcolor={v.colorPrincipal}
+                titulo="nuevo"
+                icono={<v.iconoagregar />}
+              ></Btn1>
+            </div>
           )}
         </div>
       </section>
@@ -78,7 +76,6 @@ export function EmpleadosTemplate() {
         )}
       </section>
     </ResultsCard>
-    {canInvite && <InvitacionesSection />}
     </Container>
   );
 }
@@ -86,8 +83,8 @@ export function EmpleadosTemplate() {
 const ResultsCard = styled.section`
   background: ${({ theme }) => theme.bg};
   border-radius: 18px;
-  padding: 18px 20px;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+  padding: 18px 20px 28px;
+  box-shadow: var(--shadow-elev-1);
 
   @media ${DeviceMax.mobile} {
     background: transparent;
@@ -98,8 +95,9 @@ const ResultsCard = styled.section`
 `;
 
 const Container = styled.div`
-  height: calc(100dvh - 30px);
+  min-height: calc(100dvh - 30px);
   padding: 15px;
+  padding-bottom: 28px;
   display: grid;
   grid-template:
     "header" auto
@@ -112,16 +110,18 @@ const Container = styled.div`
     align-items: center;
     gap: 15px;
     flex-wrap: wrap;
+    padding: 12px;
 
     @media ${DeviceMax.tablet} {
       align-items: stretch;
     }
   }
+
   .acciones {
     display: flex;
     align-items: center;
     gap: 15px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     justify-content: flex-end;
     width: 100%;
     @media ${Device.tablet} {
@@ -159,6 +159,15 @@ const Container = styled.div`
     width: min(340px, 100%);
     @media ${DeviceMax.tablet} {
       width: 100%;
+    }
+  }
+  .btn-nuevo {
+    display: flex;
+    align-items: stretch;
+
+    > button {
+      height: 60px;
+      transform: none;
     }
   }
   .main {

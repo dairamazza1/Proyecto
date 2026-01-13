@@ -9,6 +9,7 @@ import {
   Title,
   VacacionesSection,
 } from "../../index";
+import { v } from "../../styles/variables";
 import { supabase } from "../../supabase/supabase.config.jsx";
 
 export function PerfilTemplate({ perfil, empleado, displayName, userEmail }) {
@@ -203,7 +204,7 @@ export function PerfilTemplate({ perfil, empleado, displayName, userEmail }) {
           <Btn1
             tipo="submit"
             titulo={isPending ? "GUARDANDO..." : "GUARDAR"}
-            bgcolor="rgb(143, 191, 250)"
+            bgcolor={v.colorPrincipal}
             color="255,255,255"
             width="100%"
             disabled={isPending || !email}
@@ -263,7 +264,7 @@ const InfoCard = styled.section`
   background: ${({ theme }) => theme.bg};
   border-radius: 18px;
   padding: 20px 24px;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-elev-1);
 `;
 
 const InfoGrid = styled.div`
@@ -293,7 +294,7 @@ const PasswordCard = styled.section`
   background: ${({ theme }) => theme.bg};
   border-radius: 18px;
   padding: 20px 24px;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-elev-1);
   display: grid;
   gap: 16px;
 
@@ -323,7 +324,7 @@ const PasswordCard = styled.section`
 `;
 
 const ErrorText = styled.span`
-  color: #ff4444;
+  color: var(--color-danger);
   font-size: 12px;
   display: block;
   margin-top: 5px;
@@ -331,7 +332,7 @@ const ErrorText = styled.span`
 `;
 
 const SuccessText = styled.span`
-  color: #2eaf5d;
+  color: var(--color-success);
   font-size: 12px;
   display: block;
   margin-top: 5px;

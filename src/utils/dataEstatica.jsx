@@ -4,6 +4,8 @@ import {
   AiOutlineSetting,
 } from "react-icons/ai";
 
+const _V = v;
+
 export const DesplegableUser = [
   {
     text: "Mi perfil",

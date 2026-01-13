@@ -484,7 +484,7 @@ export function ReportesTemplate() {
 }
 
 const Container = styled.div`
-  min-height: calc(100dvh - 30px);
+  /* min-height: calc(100dvh - 30px); */
   padding: 20px 22px 28px;
   display: grid;
   gap: 16px;
@@ -503,14 +503,14 @@ const FiltersCard = styled.section`
   background: ${({ theme }) => theme.bg};
   border-radius: 18px;
   padding: 18px 20px;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-elev-1);
 `;
 
 const ResultsCard = styled.section`
   background: ${({ theme }) => theme.bg};
   border-radius: 18px;
   padding: 18px 20px;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-elev-1);
 `;
 
 const EmptyState = styled.div`

@@ -75,8 +75,8 @@ export function VacacionesSection({
       text: "Una vez eliminado, no podras recuperar este registro.",
       icon: "warning",
       showCancelButton: true,
-      confirmButtonColor: "#3085d6",
-      cancelButtonColor: "#d33",
+      confirmButtonColor: v.colorPrincipal,
+      cancelButtonColor: v.rojo,
       confirmButtonText: "Si, eliminar",
     }).then((result) => {
       if (result.isConfirmed) {
@@ -97,12 +97,14 @@ export function VacacionesSection({
     <Section $embedded={embedded}>
       <div className="sectionHeader">
         <h3>{title}</h3>
-        <Btn1
-          icono={<v.iconoagregar />}
-          titulo="nuevo"
-          bgcolor={v.colorPrincipal}
-          funcion={handleNuevo}
-        />
+        {canCreate("vacaciones") && (
+          <Btn1
+            icono={<v.iconoagregar />}
+            titulo="nuevo"
+            bgcolor={v.colorPrincipal}
+            funcion={handleNuevo}
+          />
+        )}
       </div>
 
       <div className="sectionMeta">
@@ -134,11 +136,11 @@ export function VacacionesSection({
 }
 
 const Section = styled.section`
-  background: ${({ theme, $embedded }) => ($embedded ? "transparent" : theme.bg)};
+  background: ${({ theme}) => (theme.bg)};
   border-radius: ${({ $embedded }) => ($embedded ? "0" : "18px")};
   padding: ${({ $embedded }) => ($embedded ? "0" : "20px 24px")};
   box-shadow: ${({ $embedded }) =>
-    $embedded ? "none" : "0 6px 18px rgba(0, 0, 0, 0.08)"};
+    $embedded ? "none" : "var(--shadow-elev-1)"};
   display: grid;
   gap: 14px;
 

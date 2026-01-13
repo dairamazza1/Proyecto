@@ -398,7 +398,7 @@ const Container = styled.div`
     background: ${({ theme }) => theme.bg};
     border-radius: 14px;
     padding: 14px 16px;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+    box-shadow: var(--shadow-elev-1);
     display: grid;
     gap: 12px;
     width: 100%;
@@ -459,7 +459,7 @@ const Container = styled.div`
       padding: 6px 14px;
       font-weight: 600;
       cursor: pointer;
-      background: rgba(31, 141, 255, 0.15);
+      background: var(--bg-accent-soft-strong);
       color: ${({ theme }) => theme.color1};
     }
   }
@@ -581,7 +581,7 @@ const Container = styled.div`
         justify-content: space-between;
         align-items: center;
         height: 50px;
-        border-bottom: 1px solid rgba(161, 161, 161, 0.32);
+        border-bottom: 1px solid var(--border-subtle);
         @media ${Device.tablet} {
           justify-content: center;
           border-bottom: none;

@@ -177,7 +177,7 @@ export function RegisterTemplate() {
           <Btn1
             tipo="submit"
             titulo={loading ? "REGISTRANDO..." : "REGISTRAR"}
-            bgcolor="rgb(143, 191, 250)"
+            bgcolor={v.colorPrincipal}
             color="255,255,255"
             width="100%"
             disabled={loading}
@@ -230,7 +230,7 @@ const ContentLogo = styled.section`
 `;
 
 const ErrorText = styled.span`
-  color: #ff4444;
+  color: var(--color-danger);
   font-size: 12px;
   display: block;
   margin-top: 5px;
@@ -243,10 +243,10 @@ const LoginLink = styled.p`
   color: ${({ theme }) => theme.text};
 
   &:hover {
-    color: rgb(143, 191, 250);
+    color: ${({ theme }) => theme.color1};
   }
 
   strong {
-    color: rgb(143, 191, 250);
+    color: ${({ theme }) => theme.color1};
   }
 `;

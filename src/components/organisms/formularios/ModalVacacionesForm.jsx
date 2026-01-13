@@ -12,6 +12,8 @@ import { calcDaysTakenInclusive } from "../../../utils/vacaciones";
 import { v } from "../../../styles/variables";
 import { Device, DeviceMax } from "../../../styles/breakpoints";
 
+const _V = v;
+
 export function ModalVacacionesForm({ empleadoId, vacacion, onClose }) {
   const queryClient = useQueryClient();
   const isEdit = Boolean(vacacion?.id);
@@ -187,14 +189,14 @@ export function ModalVacacionesForm({ empleadoId, vacacion, onClose }) {
               <Btn1
                 icono={<v.iconocerrar />}
                 titulo="Cancelar"
-                bgcolor="rgb(183, 183, 182)"
+                bgcolor="var(--bg-surface-muted)"
                 funcion={onClose}
                 tipo="button"
               />
               <Btn1
                 icono={<v.iconoguardar />}
                 titulo="Guardar"
-                bgcolor="#F9D70B"
+                bgcolor={v.colorPrincipal}
               />
             </div>
           </section>
@@ -209,7 +211,7 @@ const Overlay = styled.div`
   top: 0;
   left: 0;
   position: fixed;
-  background-color: rgba(10, 9, 9, 0.5);
+  background-color: var(--overlay-backdrop);
   display: flex;
   width: 100%;
   min-height: 100vh;
@@ -226,7 +228,7 @@ const Modal = styled.div`
   max-width: 100%;
   border-radius: 18px;
   background: ${({ theme }) => theme.bgtotal};
-  box-shadow: -10px 15px 30px rgba(10, 9, 9, 0.25);
+  box-shadow: var(--shadow-elev-2);
   padding: 18px;
   box-sizing: border-box;
   max-height: calc(100dvh - 48px);

@@ -13,10 +13,18 @@ import {
 import { v } from "../../../styles/variables";
 import { Device, DeviceMax } from "../../../styles/breakpoints";
 
+const _V = v;
+
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export function ModalInvitarUsuario({ empresaId, onClose }) {
+export function ModalInvitarUsuario({
+  empresaId,
+  onClose,
+  empleadoId = null,
+  empleadoLabel = "",
+}) {
   const queryClient = useQueryClient();
+  const lockedEmpleadoId = empleadoId ? Number(empleadoId) : null;
 
   const {
     register,
@@ -34,7 +42,7 @@ export function ModalInvitarUsuario({ empresaId, onClose }) {
   const { data: empleados = [], isLoading: loadingEmpleados } = useQuery({
     queryKey: ["empleadosDisponibles", empresaId],
     queryFn: () => getAvailableEmpleados({ empresa_id: empresaId }),
-    enabled: Boolean(empresaId),
+    enabled: Boolean(empresaId) && !lockedEmpleadoId,
     refetchOnWindowFocus: false,
     onError: (err) => {
       Swal.fire({
@@ -44,6 +52,14 @@ export function ModalInvitarUsuario({ empresaId, onClose }) {
       });
     },
   });
+
+  useEffect(() => {
+    if (!lockedEmpleadoId) return;
+    reset((prev) => ({
+      ...prev,
+      empleado_id: lockedEmpleadoId,
+    }));
+  }, [lockedEmpleadoId, reset]);
 
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -64,7 +80,7 @@ export function ModalInvitarUsuario({ empresaId, onClose }) {
         empresa_id: empresaId,
         email: formData.email.trim(),
         app_role: formData.app_role,
-        empleado_id: formData.empleado_id || null,
+        empleado_id: lockedEmpleadoId ?? (formData.empleado_id || null),
       });
     },
     onError: (err) => {
@@ -82,6 +98,10 @@ export function ModalInvitarUsuario({ empresaId, onClose }) {
       });
       queryClient.invalidateQueries({ queryKey: ["invitaciones"] });
       queryClient.invalidateQueries({ queryKey: ["empleadosDisponibles"] });
+      if (lockedEmpleadoId) {
+        queryClient.invalidateQueries({ queryKey: ["empleado", String(lockedEmpleadoId)] });
+        queryClient.invalidateQueries({ queryKey: ["empleado", lockedEmpleadoId] });
+      }
       reset();
       onClose();
     },
@@ -149,37 +169,52 @@ export function ModalInvitarUsuario({ empresaId, onClose }) {
 
             <article>
               <InputText icono={<v.icononombre />}>
-                <select
-                  className="form__field"
-                  {...register("empleado_id", {
-                    setValueAs: (value) =>
-                      value ? Number(value) : null,
-                  })}
-                  disabled={loadingEmpleados}
-                >
-                  <option value="">
-                    {loadingEmpleados
-                      ? "Cargando empleados..."
-                      : empleados.length
-                        ? "Seleccionar empleado (opcional)"
-                        : "Sin empleados disponibles"}
-                  </option>
-                  {empleados.map((empleado) => {
-                    const firstName = empleado.first_name ?? "";
-                    const lastName = empleado.last_name ?? "";
-                    const fullName = `${firstName} ${lastName}`.trim();
-                    const legajo = empleado.employee_id_number
-                      ? ` - ${empleado.employee_id_number}`
-                      : "";
-                    return (
-                      <option key={empleado.id} value={empleado.id}>
-                        {fullName || `Empleado ${empleado.id}`}
-                        {legajo}
+                {lockedEmpleadoId ? (
+                  <>
+                    <input
+                      className="form__field"
+                      type="text"
+                      value={empleadoLabel || `Empleado ${lockedEmpleadoId}`}
+                      disabled
+                      readOnly
+                    />
+                    <label className="form__label">Empleado</label>
+                  </>
+                ) : (
+                  <>
+                    <select
+                      className="form__field"
+                      {...register("empleado_id", {
+                        setValueAs: (value) =>
+                          value ? Number(value) : null,
+                      })}
+                      disabled={loadingEmpleados}
+                    >
+                      <option value="">
+                        {loadingEmpleados
+                          ? "Cargando empleados..."
+                          : empleados.length
+                            ? "Seleccionar empleado (opcional)"
+                            : "Sin empleados disponibles"}
                       </option>
-                    );
-                  })}
-                </select>
-                <label className="form__label">Empleado</label>
+                      {empleados.map((empleado) => {
+                        const firstName = empleado.first_name ?? "";
+                        const lastName = empleado.last_name ?? "";
+                        const fullName = `${firstName} ${lastName}`.trim();
+                        const legajo = empleado.employee_id_number
+                          ? ` - ${empleado.employee_id_number}`
+                          : "";
+                        return (
+                          <option key={empleado.id} value={empleado.id}>
+                            {fullName || `Empleado ${empleado.id}`}
+                            {legajo}
+                          </option>
+                        );
+                      })}
+                    </select>
+                    <label className="form__label">Empleado</label>
+                  </>
+                )}
               </InputText>
             </article>
 
@@ -193,14 +228,14 @@ export function ModalInvitarUsuario({ empresaId, onClose }) {
               <Btn1
                 icono={<v.iconocerrar />}
                 titulo="Cancelar"
-                bgcolor="rgb(183, 183, 182)"
+                bgcolor="var(--bg-surface-muted)"
                 funcion={onClose}
                 tipo="button"
               />
               <Btn1
                 icono={<v.iconoagregar />}
                 titulo="Invitar"
-                bgcolor="#F9D70B"
+                bgcolor={v.colorPrincipal}
                 disabled={!empresaId}
               />
             </div>
@@ -216,7 +251,7 @@ const Overlay = styled.div`
   top: 0;
   left: 0;
   position: fixed;
-  background-color: rgba(10, 9, 9, 0.5);
+  background-color: var(--overlay-backdrop);
   display: flex;
   width: 100%;
   min-height: 100vh;
@@ -233,7 +268,7 @@ const Modal = styled.div`
   max-width: 100%;
   border-radius: 18px;
   background: ${({ theme }) => theme.bgtotal};
-  box-shadow: -10px 15px 30px rgba(10, 9, 9, 0.25);
+  box-shadow: var(--shadow-elev-2);
   padding: 18px;
   box-sizing: border-box;
   max-height: calc(100dvh - 48px);
@@ -301,7 +336,7 @@ const Modal = styled.div`
 
   .warning {
     grid-column: 1 / -1;
-    color: ${({ theme }) => theme.colorError || "#F54E41"};
+    color: ${({ theme }) => theme.colorError};
     font-size: 0.9rem;
   }
 `;

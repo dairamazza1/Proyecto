@@ -1,6 +1,3 @@
-import Swal from "sweetalert2";
-import { supabase } from "../index";
-
 // const table = "module";
 // export async function InsertModule(p, file) {
 //   //no se debe repetir la descripcion del modulo/categoría  a menos que haya sucursal con las mismas categorias. en una misma suc no repite

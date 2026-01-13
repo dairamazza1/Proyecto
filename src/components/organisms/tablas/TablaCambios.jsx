@@ -112,7 +112,7 @@ const buildTemplateData = (cambio, empresaNombre) => ({
 });
 
 export function TablaCambios({ data, onEdit, onDelete, empresaNombre }) {
-  if (data == null) return null;
+  const safeData = data ?? [];
   const [columnFilters] = useState([]);
   const [sorting, setSorting] = useState([
     { id: "start_date", desc: true },
@@ -321,7 +321,7 @@ export function TablaCambios({ data, onEdit, onDelete, empresaNombre }) {
   ];
 
   const table = useReactTable({
-    data,
+    data: safeData,
     columns,
     state: {
       columnFilters,
@@ -333,6 +333,8 @@ export function TablaCambios({ data, onEdit, onDelete, empresaNombre }) {
     getSortedRowModel: getSortedRowModel(),
     columnResizeMode: "onChange",
   });
+
+  if (data == null) return null;
 
   return (
     <Container>
@@ -572,7 +574,7 @@ const Container = styled.div`
     background: ${({ theme }) => theme.bg};
     border-radius: 14px;
     padding: 14px 16px;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+    box-shadow: var(--shadow-elev-1);
     display: grid;
     gap: 12px;
     width: 100%;
@@ -633,7 +635,7 @@ const Container = styled.div`
       padding: 6px 14px;
       font-weight: 600;
       cursor: pointer;
-      background: rgba(31, 141, 255, 0.15);
+      background: var(--bg-accent-soft-strong);
       color: ${({ theme }) => theme.color1};
     }
   }
@@ -755,7 +757,7 @@ const Container = styled.div`
         justify-content: space-between;
         align-items: center;
         height: 50px;
-        border-bottom: 1px solid rgba(161, 161, 161, 0.32);
+        border-bottom: 1px solid var(--border-subtle);
         @media ${Device.tablet} {
           justify-content: center;
           border-bottom: none;
@@ -789,7 +791,7 @@ const PreviewOverlay = styled.div`
   top: 0;
   left: 0;
   position: fixed;
-  background-color: rgba(10, 9, 9, 0.5);
+  background-color: var(--overlay-backdrop);
   display: flex;
   width: 100%;
   min-height: 100vh;
@@ -805,7 +807,7 @@ const PreviewModal = styled.div`
   max-width: 100%;
   border-radius: 18px;
   background: ${({ theme }) => theme.bgtotal};
-  box-shadow: -10px 15px 30px rgba(10, 9, 9, 0.25);
+  box-shadow: var(--shadow-elev-2);
   padding: 18px 22px 20px 22px;
   display: grid;
   gap: 16px;
@@ -885,12 +887,12 @@ const PreviewModal = styled.div`
       padding: 8px 16px;
       font-weight: 600;
       cursor: pointer;
-      background: rgba(31, 141, 255, 0.15);
+      background: var(--bg-accent-soft-strong);
       color: ${({ theme }) => theme.color1};
     }
 
     button.secondary {
-      background: rgba(0, 0, 0, 0.08);
+      background: var(--bg-surface-muted);
       color: ${({ theme }) => theme.text};
     }
   }
