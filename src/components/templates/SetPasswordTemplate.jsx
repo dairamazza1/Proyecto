@@ -55,15 +55,15 @@ export function SetPasswordTemplate() {
   const validateForm = () => {
     const nextErrors = {};
     if (!formData.password) {
-      nextErrors.password = "Ingresa una contrasena";
+      nextErrors.password = "Ingresa una contraseña";
     } else if (formData.password.length < 6) {
       nextErrors.password = "Minimo 6 caracteres";
     }
 
     if (!formData.confirmPassword) {
-      nextErrors.confirmPassword = "Confirma la contrasena";
+      nextErrors.confirmPassword = "Confirma la contraseña";
     } else if (formData.password !== formData.confirmPassword) {
-      nextErrors.confirmPassword = "Las contrasenas no coinciden";
+      nextErrors.confirmPassword = "Las contraseñas no coinciden";
     }
 
     setErrors(nextErrors);
@@ -88,7 +88,7 @@ export function SetPasswordTemplate() {
 
       await Swal.fire({
         icon: "success",
-        title: "Contrasena actualizada",
+        title: "Contraseña actualizada",
         text: "Ahora puedes iniciar sesion.",
         confirmButtonText: "Aceptar",
       });
@@ -99,7 +99,7 @@ export function SetPasswordTemplate() {
       Swal.fire({
         icon: "error",
         title: "No se pudo actualizar",
-        text: error?.message || "Error al actualizar contrasena.",
+        text: error?.message || "Error al actualizar contraseña.",
         confirmButtonText: "Aceptar",
       });
     } finally {
@@ -116,7 +116,7 @@ export function SetPasswordTemplate() {
             Clinica de Salud Mental <br /> Dr. Gutierrez Walker
           </span>
         </ContentLogo>
-        <Title $paddingbottom="20px">Definir contrasena</Title>
+        <Title $paddingbottom="20px">Definir contraseña</Title>
 
         {!sessionReady ? (
           <p className="status">Cargando sesion...</p>
@@ -137,7 +137,7 @@ export function SetPasswordTemplate() {
             <InputText2>
               <input
                 className="form__field"
-                placeholder="Nueva contrasena"
+                placeholder="Nueva contraseña"
                 type="password"
                 name="password"
                 value={formData.password}
@@ -149,7 +149,7 @@ export function SetPasswordTemplate() {
             <InputText2>
               <input
                 className="form__field"
-                placeholder="Confirmar contrasena"
+                placeholder="Confirmar contraseña"
                 type="password"
                 name="confirmPassword"
                 value={formData.confirmPassword}

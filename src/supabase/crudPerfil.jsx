@@ -1,4 +1,4 @@
-import { supabase } from "../index";
+import { supabase, getPuestoById } from "../index";
 
 const table = "perfiles";
 
@@ -25,7 +25,7 @@ export async function getPerfilActual({ authUserId } = {}) {
 
 export async function getEmpleadoByPerfil({ perfilId } = {}) {
   const selectFields =
-    "id, user_id, first_name, last_name, employee_id_number, document_type, document_number, professional_number, telephone, hire_date, termination_date, is_active";
+    "id, user_id, first_name, last_name, employee_id_number, document_type, document_number, professional_number, telephone, hire_date, termination_date, is_active, puesto_id";
 
   if (!perfilId) return null;
 
@@ -40,6 +40,12 @@ export async function getEmpleadoByPerfil({ perfilId } = {}) {
     .maybeSingle();
 
   if (error) throw error;
-  return data ?? null;
+
+  if (!data) return null;
+
+  const puesto = await getPuestoById(data?.puesto_id);
+  data.puesto = puesto?.name ?? null;
+
+  return data;
 
 }

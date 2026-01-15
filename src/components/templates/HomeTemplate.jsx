@@ -1,27 +1,40 @@
 import styled from "styled-components";
-import { HomeCards, Title, v } from "../../index";
+import { HomeCards, Title, usePermissions, v } from "../../index";
 
 export function HomeTemplate({ displayName = "Usuario" }) {
-  const cards = [
-    {
-      title: "Empleados",
-      description: "Gestiona los perfiles de los empleados.",
-      to: "/empleados",
-      icon: v.iconoempresa,
-    },
-    {
-      title: "Reportes",
-      description: "Consulta resumenes por vacaciones y licencias.",
-      to: "/reportes",
-      icon: v.iconoreportes,
-    },
-    {
-      title: "Mi perfil",
-      description: "Revisa tus datos y solicitudes.",
-      to: "/perfil",
-      icon: v.iconoUser,
-    },
-  ];
+  const { userRole } = usePermissions();
+  const cards =
+    userRole === "employee"
+      ? [
+          {
+            title: "Mi perfil",
+            description:
+              "Revisa tus datos y solicitudes de vacaciones y licencias.",
+            to: "/perfil",
+            icon: v.iconoUser,
+          },
+        ]
+      : [
+          {
+            title: "Empleados",
+            description: "Gestiona los perfiles de los empleados.",
+            to: "/empleados",
+            icon: v.iconoempresa,
+          },
+          {
+            title: "Reportes",
+            description: "Consulta las vacaciones y licencias programadas de los empleados.",
+            to: "/reportes",
+            icon: v.iconoreportes,
+          },
+          {
+            title: "Mi perfil",
+            description:
+              "Revisa tus datos y solicitudes de vacaciones y licencias.",
+            to: "/perfil",
+            icon: v.iconoUser,
+          },
+        ];
 
   return (
     <Container>

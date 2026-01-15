@@ -52,6 +52,7 @@ export * from "./context/AuthStore";
 export * from "./context/AuthStoreWithPermissions";
 export * from "./hooks/ProtectedByPermission";
 export * from "./hooks/ProtectedRoute";
+export * from "./hooks/RoleRoute";
 export * from "./hooks/usePermissions";
 export * from "./main";
 export * from "./pages/Categories";

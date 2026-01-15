@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled, { css } from "styled-components";
 import { Link } from "react-router-dom";
 import { Device } from "../../styles/breakpoints";
 
@@ -9,15 +9,24 @@ export function HomeCards({ cards = [] }) {
         const Icon = card.icon;
         const titleText = String(card.title ?? "");
         const descriptionText = String(card.description ?? "");
+        const isAction = typeof card.onClick === "function";
+        const CardComponent = isAction ? CardButton : CardLink;
         const tooltipText = [titleText, descriptionText].filter(Boolean).join(" — ");
         return (
-          <Card key={card.to} to={card.to} title={tooltipText} aria-label={tooltipText || titleText}>
+          <CardComponent
+            key={card.to ?? card.title}
+            to={!isAction ? card.to : undefined}
+            type={isAction ? "button" : undefined}
+            onClick={isAction ? card.onClick : undefined}
+            title={tooltipText}
+            aria-label={tooltipText || titleText}
+          >
             <div className="icon">{Icon && <Icon />}</div>
             <div className="content">
               <h3 title={titleText}>{card.title}</h3>
               <p title={descriptionText}>{card.description}</p>
             </div>
-          </Card>
+          </CardComponent>
         );
       })}
     </Grid>
@@ -42,7 +51,7 @@ const Grid = styled.div`
   }
 `;
 
-const Card = styled(Link)`
+const cardStyles = css`
   text-decoration: none;
   color: inherit;
   background: ${({ theme }) => theme.bg};
@@ -56,6 +65,7 @@ const Card = styled(Link)`
   align-self: start;
   transition: transform 160ms ease, box-shadow 160ms ease;
   min-height: 92px;
+  text-align: left;
 
   &:hover {
     transform: translateY(-2px);
@@ -76,25 +86,24 @@ const Card = styled(Link)`
   .content {
     display: grid;
     gap: 6px;
+    text-align: left;
 
     h3 {
       margin: 0;
       font-size: 1.05rem;
       font-weight: 700;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      white-space: normal;
+      word-break: break-word;
+      text-align: left;
     }
 
     p {
       margin: 0;
       color: ${({ theme }) => theme.textsecundary};
       font-weight: 500;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
+      white-space: normal;
+      word-break: break-word;
+      text-align: left;
     }
   }
 
@@ -121,7 +130,7 @@ const Card = styled(Link)`
 
       p {
         font-size: 0.92rem;
-        -webkit-line-clamp: 1;
+        white-space: normal;
       }
     }
   }
@@ -149,8 +158,19 @@ const Card = styled(Link)`
 
       p {
         font-size: 0.92rem;
-        -webkit-line-clamp: 1;
+        white-space: normal;
       }
     }
   }
+`;
+
+const CardLink = styled(Link)`
+  ${cardStyles}
+`;
+
+const CardButton = styled.button`
+  ${cardStyles}
+  border: none;
+  cursor: pointer;
+  font: inherit;
 `;

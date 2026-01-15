@@ -1,10 +1,21 @@
 import styled from "styled-components";
-import { LinksArray, SecondarylinksArray, ToggleTema } from "../../../index";
+import {
+  LinksArray,
+  SecondarylinksArray,
+  ToggleTema,
+  usePermissions,
+} from "../../../index";
 import { v } from "../../../styles/variables";
 import { NavLink } from "react-router-dom";
 import { Icon } from "@iconify/react";
 
 export function Sidebar({ state, setState }) {
+  const { userRole } = usePermissions();
+  const filterByRole = (links) =>
+    links.filter((link) => !link.roles || link.roles.includes(userRole));
+  const primaryLinks = filterByRole(LinksArray);
+  const secondaryLinks = filterByRole(SecondarylinksArray);
+
   return (
     <Main $isopen={state.toString()}>
       <span className="Sidebarbutton" onClick={() => setState(!state)}>
@@ -18,7 +29,7 @@ export function Sidebar({ state, setState }) {
           {/* <h2>Clínica de Salud Mental
               Dr. Gutierrez Walker</h2> */}
         </div>
-        {LinksArray.map(({ icon, label, to }) => (
+        {primaryLinks.map(({ icon, label, to }) => (
           <div
             className={state ? "LinkContainer active" : "LinkContainer"}
             key={label}
@@ -37,7 +48,7 @@ export function Sidebar({ state, setState }) {
           </div>
         ))}
         <Divider />
-        {SecondarylinksArray.map(({ icon, label, to, color }) => (
+        {secondaryLinks.map(({ icon, label, to, color }) => (
           <div
             className={state ? "LinkContainer active" : "LinkContainer"}
             key={label}
@@ -149,10 +160,10 @@ const Container = styled.div`
       align-items: center;
       .Linkicon {
         display: flex;
-        font-size: 20px;
+        font-size: 18px;
 
         svg {
-          font-size: 25px;
+          font-size: 28px;
         }
       }
 
@@ -169,7 +180,7 @@ const Container = styled.div`
       &.open {
         justify-content: start;
         gap: 20px;
-        padding: 20px;
+        padding: 1px;
       }
     }
 

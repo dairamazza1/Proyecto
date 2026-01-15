@@ -31,7 +31,7 @@ export function TablaLicencias({ data, onEdit, onDelete }) {
   const safeData = data ?? [];
   const [columnFilters] = useState([]);
   const [sorting, setSorting] = useState([{ id: "start_date", desc: true }]);
-  
+
   // Hook de permisos
   const { canUpdate, canDelete } = usePermissions();
 
@@ -132,7 +132,7 @@ export function TablaLicencias({ data, onEdit, onDelete }) {
       header: "Acciones",
       cell: (info) => (
         <div data-title="Acciones" className="ContentCell acciones">
-          {canUpdate('licencias') && (
+          {canUpdate("licencias") && (
             <AccionTabla
               funcion={() => onEdit?.(info.row.original)}
               fontSize="18px"
@@ -140,7 +140,7 @@ export function TablaLicencias({ data, onEdit, onDelete }) {
               icono={<v.iconeditarTabla />}
             />
           )}
-          {canDelete('licencias') && (
+          {canDelete("licencias") && (
             <AccionTabla
               funcion={() => onDelete?.(info.row.original)}
               fontSize="18px"
@@ -212,12 +212,16 @@ export function TablaLicencias({ data, onEdit, onDelete }) {
                     Ver certificado
                   </button>
                 )}
-                <button type="button" onClick={() => onEdit?.(licencia)}>
-                  Editar
-                </button>
-                <button type="button" onClick={() => onDelete?.(licencia)}>
-                  Eliminar
-                </button>
+                {canUpdate("licencias") && (
+                  <button type="button" onClick={() => onEdit?.(licencia)}>
+                    Editar
+                  </button>
+                )}
+                {canDelete("licencias") && (
+                  <button type="button" onClick={() => onDelete?.(licencia)}>
+                    Eliminar
+                  </button>
+                )}
               </div>
             </article>
           );
@@ -314,7 +318,8 @@ const Container = styled.div`
   }
 
   .card {
-    background: ${({ theme }) => theme.bg};
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
     border-radius: 14px;
     padding: 14px 16px;
     box-shadow: var(--shadow-elev-1);

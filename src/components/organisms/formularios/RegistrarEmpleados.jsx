@@ -2,9 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import styled from "styled-components";
 import { v } from "../../../styles/variables";
 import { Device, DeviceMax } from "../../../styles/breakpoints";
-
-const _V = v;
-
 import {
   InputText,
   Btn1,
@@ -192,6 +189,7 @@ export function RegistrarEmpleados({
       puesto_id: "",
       is_registered: empleado.is_registered ?? false,
       professional_number: empleado.professional_number ?? "",
+      telephone: empleado.telephone ?? "",
       sucursal_id: sucursalEmpleado?.sucursal_id
         ? String(sucursalEmpleado.sucursal_id)
         : "",
@@ -212,12 +210,7 @@ export function RegistrarEmpleados({
   }, [isEdit, areaId, puestoInfo, dataAreas, setValue]);
 
   useEffect(() => {
-    if (
-      !isEdit ||
-      !empleado?.puesto_id ||
-      puestoId ||
-      !dataPuestos?.length
-    ) {
+    if (!isEdit || !empleado?.puesto_id || puestoId || !dataPuestos?.length) {
       return;
     }
     const existsInPuestos = dataPuestos.some(
@@ -357,6 +350,7 @@ export function RegistrarEmpleados({
       is_active: isActiveBool,
       termination_date: isActiveBool ? null : data.termination_date || null,
       hire_date: data.hire_date || null,
+      telephone: data.telephone,
     };
 
     const empleadoActualizado = await updateEmpleado(empleadoId, payload);
@@ -408,84 +402,6 @@ export function RegistrarEmpleados({
         </div>
         <form className="formulario" onSubmit={handleSubmit(handlesub)}>
           <section className="form-subcontainer">
-            <article>
-              <InputText icono={<v.icononombre />}>
-                <input
-                  className="form__field"
-                  type="text"
-                  placeholder="nombre"
-                  {...register("first_name", { required: true })}
-                />
-                <label className="form__label">Nombre</label>
-                {errors.first_name?.type === "required" && (
-                  <p>Campo requerido</p>
-                )}
-              </InputText>
-            </article>
-
-            <article>
-              <InputText icono={<v.icononombre />}>
-                <input
-                  className="form__field"
-                  type="text"
-                  placeholder="apellido"
-                  {...register("last_name", { required: true })}
-                />
-                <label className="form__label">Apellido</label>
-                {errors.last_name?.type === "required" && (
-                  <p>Campo requerido</p>
-                )}
-              </InputText>
-            </article>
-
-            <article>
-              <InputText icono={<v.iconocodigobarras />}>
-                <input
-                  className="form__field"
-                  type="text"
-                  placeholder="Nro legajo"
-                  {...register("employee_id_number", {
-                    required: true,
-                    pattern: /^[0-9]+$/,
-                  })}
-                />
-                <label className="form__label">Nro legajo</label>
-                {errors.employee_id_number?.type === "required" && (
-                  <p>Campo requerido</p>
-                )}
-                {errors.employee_id_number?.type === "pattern" && (
-                  <p>Solo numeros</p>
-                )}
-              </InputText>
-            </article>
-
-            <article>
-              <InputText icono={<v.iconoTelephone />}>
-                <input
-                  className="form__field"
-                  type="text"
-                  placeholder="N° de telefono"
-                  {...register("telephone")}
-                />
-                <label className="form__label">Nro telefono</label>
-              </InputText>
-            </article>
-
-            <article>
-              <InputText icono={<v.iconoCalendario />}>
-                <select
-                  className="form__field"
-                  {...register("is_registered", {
-                    setValueAs: (value) => value === "true",
-                  })}
-                  defaultValue="false"
-                >
-                  <option value="false">No registrado</option>
-                  <option value="true">Registrado</option>
-                </select>
-                <label className="form__label">Empleado registrado</label>
-              </InputText>
-            </article>
 
             {isEdit && (
               <article>
@@ -524,6 +440,86 @@ export function RegistrarEmpleados({
               </article>
             )}
 
+            <article>
+              <InputText icono={<v.icononombre />}>
+                <input
+                  className="form__field"
+                  type="text"
+                  placeholder="nombre"
+                  {...register("first_name", { required: true })}
+                />
+                <label className="form__label">Nombre</label>
+                {errors.first_name?.type === "required" && (
+                  <p>Campo requerido</p>
+                )}
+              </InputText>
+            </article>
+
+            <article>
+              <InputText icono={<v.icononombre />}>
+                <input
+                  className="form__field"
+                  type="text"
+                  placeholder="apellido"
+                  {...register("last_name", { required: true })}
+                />
+                <label className="form__label">Apellido</label>
+                {errors.last_name?.type === "required" && (
+                  <p>Campo requerido</p>
+                )}
+              </InputText>
+            </article>
+
+            <article>
+              <InputText icono={<v.iconocodigobarras />}>
+                <input
+                  className="form__field"
+                  type="text"
+                  placeholder="Legajo"
+                  {...register("employee_id_number", {
+                    required: true,
+                    pattern: /^[0-9]+$/,
+                  })}
+                />
+                <label className="form__label">Legajo</label>
+                {errors.employee_id_number?.type === "required" && (
+                  <p>Campo requerido</p>
+                )}
+                {errors.employee_id_number?.type === "pattern" && (
+                  <p>Solo numeros</p>
+                )}
+              </InputText>
+            </article>
+
+            <article>
+              <InputText icono={<v.iconoTelephone />}>
+                <input
+                  className="form__field"
+                  type="text"
+                  placeholder="N° de telefono"
+                  {...register("telephone")}
+                />
+                <label className="form__label">Nro telefono</label>
+              </InputText>
+            </article>
+
+            <article>
+              <InputText icono={<v.iconoCalendario />}>
+                <select
+                  className="form__field"
+                  {...register("is_registered", {
+                    setValueAs: (value) => value === "true",
+                  })}
+                  defaultValue="false"
+                >
+                  <option value="false">No registrado</option>
+                  <option value="true">Registrado</option>
+                </select>
+                <label className="form__label">Empleado registrado</label>
+              </InputText>
+            </article>
+
+            
             <article>
               <InputText icono={<v.iconodocumento />}>
                 <select
@@ -671,7 +667,7 @@ export function RegistrarEmpleados({
                   className="form__field"
                   type="date"
                   placeholder="fecha ingreso"
-                  {...register("hire_date")}
+                  {...register("hire_date", { required: true })}
                 />
                 <label className="form__label">Fecha ingreso</label>
               </InputText>
@@ -741,8 +737,9 @@ const Container = styled.div`
     width: min(720px, 100%);
     max-width: 100%;
     border-radius: 18px;
-    background: ${({ theme }) => theme.bgtotal};
-    box-shadow: var(--shadow-elev-2);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    box-shadow: var(--shadow-elev-1);
     padding: 16px 18px 20px 18px;
 
     ${({ $modal }) =>

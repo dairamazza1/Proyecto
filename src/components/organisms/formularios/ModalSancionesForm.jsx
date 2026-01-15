@@ -122,12 +122,13 @@ export function ModalSancionesForm({ empleadoId, sancion, onClose }) {
           <section className="form-subcontainer">
             <article>
               <InputText icono={<v.iconoImportante />}>
-                  <select
-                  className="form__field"
-                  {...register("sanction_type")}
-                >
-                  <option value="Apercibimiento verbal">Apercibimiento verbal</option>
-                  <option value="Apercibimiento escrito">Apercibimiento escrito</option>
+                <select className="form__field" {...register("sanction_type")}>
+                  <option value="Apercibimiento verbal">
+                    Apercibimiento verbal
+                  </option>
+                  <option value="Apercibimiento escrito">
+                    Apercibimiento escrito
+                  </option>
                   <option value="Suspension">Suspension</option>
                   <option value="Otro">Otro</option>
                 </select>
@@ -200,7 +201,9 @@ export function ModalSancionesForm({ empleadoId, sancion, onClose }) {
                     required: "Campo requerido",
                   })}
                 />
-                <label className="form__label">Politica o norma incumplida</label>
+                <label className="form__label">
+                  Politica o norma incumplida
+                </label>
               </InputText>
             </article>
 
@@ -247,7 +250,7 @@ const Modal = styled.div`
   max-width: 100%;
   border-radius: 18px;
   background: ${({ theme }) => theme.bgtotal};
-  box-shadow: var(--shadow-elev-2);
+  box-shadow: var(--shadow-elev-1);
   padding: 18px;
   box-sizing: border-box;
   max-height: calc(100dvh - 48px);

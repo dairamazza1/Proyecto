@@ -157,12 +157,16 @@ export function TablaVacaciones({ data, onEdit, onDelete }) {
                 ))}
               </div>
               <div className="cardActions">
-                <button type="button" onClick={() => onEdit?.(vacacion)}>
-                  Editar
-                </button>
-                <button type="button" onClick={() => onDelete?.(vacacion)}>
-                  Eliminar
-                </button>
+                {canUpdate("vacaciones") && (
+                  <button type="button" onClick={() => onEdit?.(vacacion)}>
+                    Editar
+                  </button>
+                )}
+                {canDelete("vacaciones") && (
+                  <button type="button" onClick={() => onDelete?.(vacacion)}>
+                    Eliminar
+                  </button>
+                )}
               </div>
             </article>
           );
@@ -259,7 +263,8 @@ const Container = styled.div`
   }
 
   .card {
-    background: ${({ theme }) => theme.bg};
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
     border-radius: 14px;
     padding: 14px 16px;
     box-shadow: var(--shadow-elev-1);
@@ -314,6 +319,8 @@ const Container = styled.div`
   .cardActions {
     display: flex;
     justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 8px;
 
     button {
       border: none;

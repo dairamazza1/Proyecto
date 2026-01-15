@@ -61,6 +61,15 @@ export function usePermissions() {
     },
 
     /**
+     * Verificar si puede exportar (descargar) recursos
+     */
+    canExport: (resource) => {
+      const hasRead = hasPermission(userRole, resource, 'read');
+      const allowedRoles = ['rrhh', 'admin', 'superadmin'];
+      return hasRead && allowedRoles.includes(userRole);
+    },
+
+    /**
      * Verificar si puede ACTUALIZAR un recurso
      */
     canUpdate: (resource) => {

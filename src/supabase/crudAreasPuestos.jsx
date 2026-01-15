@@ -27,7 +27,7 @@ export async function getPuestoById(puestoId) {
   const { data, error } = await supabase
     
     .from("puestos_laborales")
-    .select("id, id_area, requires_professional_number")
+    .select("id, name, id_area, requires_professional_number")
     .eq("id", puestoId)
     .maybeSingle();
   if (error) throw error;

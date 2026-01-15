@@ -74,6 +74,10 @@ const Container = styled.div`
       font-size: 16px;
     }
 
+    button .btn {
+      display: none;
+    }
+
     .pageIndex,
     .pageCount {
       font-size: 0.95rem;

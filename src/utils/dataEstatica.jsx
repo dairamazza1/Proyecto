@@ -1,25 +1,19 @@
 import { v } from "../styles/variables";
-import {
-  AiOutlineHome,
-  AiOutlineSetting,
-} from "react-icons/ai";
-
-const _V = v;
 
 export const DesplegableUser = [
   {
     text: "Mi perfil",
-    icono: <v.iconoUser/>,
+    icono: <v.iconoUser />,
     tipo: "miperfil",
   },
   {
-    text: "Configuracion",
-    icono: <v.iconoSettings/>,
-    tipo: "configuracion",
+    text: "configuración",
+    icono: <v.iconoSettings />,
+    tipo: "configuración",
   },
   {
     text: "Cerrar sesión",
-    icono: <v.iconoCerrarSesion/>,
+    icono: <v.iconoCerrarSesion />,
     tipo: "cerrarsesion",
   },
 ];
@@ -37,126 +31,38 @@ export const statusValues = {
   pending: "Pendiente",
 };
 
-
 //data SIDEBAR
 export const LinksArray = [
   {
     label: "Inicio",
     icon: "streamline-flex:home-2",
     to: "/",
+    roles: ["admin", "rrhh", "employee"],
   },
   {
     label: "Empleados",
     icon: "streamline-flex:office-building-1",
     to: "/empleados",
+    roles: ["admin", "rrhh"],
   },
-  // {
-  //   label: "Kardex",
-  //   icon: "flat-ui:box",
-  //   to: "/kardex",
-  // },
   {
     label: "Reportes",
     icon: "streamline-flex:new-sticky-note",
     to: "/reportes",
+    roles: ["admin", "rrhh"],
   },
- 
 ];
 export const SecondarylinksArray = [
- 
-  {
-    label: "Configuración",
-    icon:"streamline-flex:sun",
-    to: "/configuracion",
-    // color:"#CE82FF"
-  },
   {
     label: "Mi perfil",
-    icon:"streamline-flex:user-circle-single",
+    icon: "streamline-flex:user-circle-single",
     to: "/perfil",
-    // color:"#b63473"
-  }
-  
-  
-
+    roles: ["admin", "rrhh", "employee"],
+  },
+  {
+    label: "Configuración",
+    icon: "streamline-flex:sun",
+    to: "/configuracion",
+    roles: ["admin", "rrhh", "employee"],
+  },
 ];
-// //temas
-// export const TemasData = [
-//   {
-//     icono: "🌞",
-//     descripcion: "light",
-   
-//   },
-//   {
-//     icono: "🌚",
-//     descripcion: "dark",
-    
-//   },
-// ];
-
-//data configuracion
-export const DataModulosConfiguracion =[
-  {
-    title:"Productos",
-    subtitle:"registra tus productos",
-    icono:"https://i.ibb.co/85zJ6yG/caja-del-paquete.png",
-    link:"/configurar/productos",
-   
-  },
-  {
-    title:"Personal",
-    subtitle:"ten el control de tu personal",
-    icono:"https://i.ibb.co/5vgZ0fX/hombre.png",
-    link:"/configurar/usuarios",
-   
-  },
-
-  {
-    title:"Tu empresa",
-    subtitle:"configura tus opciones básicas",
-    icono:"https://i.ibb.co/x7mHPgm/administracion-de-empresas.png",
-    link:"/configurar/empresa",
-    
-  },
-  {
-    title:"Categoria de productos",
-    subtitle:"asigna categorias a tus productos",
-    icono:"https://i.ibb.co/VYbMRLZ/categoria.png",
-    link:"configurar/categorias",
-    
-  },
-  {
-    title:"Marca de productos",
-    subtitle:"gestiona tus marcas",
-    icono:"https://i.ibb.co/1qsbCRb/piensa-fuera-de-la-caja.png",
-    link:"/configurar/marca",
-   
-  },
-
-]
-// //tipo usuario
-// export const TipouserData = [
-//   {
-//     descripcion: "empleado",
-//     icono: "🪖",
-//   },
-//   {
-//     descripcion: "administrador",
-//     icono: "👑",
-//   },
-// ];
-// //tipodoc
-// export const TipoDocData = [
-//   {
-//     descripcion: "Dni",
-//     icono: "🪖",
-//   },
-//   {
-//     descripcion: "Libreta electoral",
-//     icono: "👑",
-//   },
-//   {
-//     descripcion: "Otros",
-//     icono: "👑",
-//   },
-//];

@@ -305,7 +305,9 @@ export function ModalLicenciasForm({ empleadoId, licencia, onClose }) {
                   })}
                 >
                   <option value="">
-                    {isLoadingCategorias ? "Cargando..." : "Seleccionar categoria"}
+                    {isLoadingCategorias
+                      ? "Cargando..."
+                      : "Seleccionar categoria"}
                   </option>
                   {categorias.map((categoria) => (
                     <option key={categoria.id} value={categoria.id}>
@@ -333,8 +335,8 @@ export function ModalLicenciasForm({ empleadoId, licencia, onClose }) {
                     {!categoriaId
                       ? "Seleccionar categoria"
                       : isLoadingTipos
-                        ? "Cargando..."
-                        : "Seleccionar tipo"}
+                      ? "Cargando..."
+                      : "Seleccionar tipo"}
                   </option>
                   {tipos.map((tipo) => (
                     <option key={tipo.id} value={tipo.id}>
@@ -471,7 +473,7 @@ const Modal = styled.div`
   max-width: 100%;
   border-radius: 18px;
   background: ${({ theme }) => theme.bgtotal};
-  box-shadow: var(--shadow-elev-2);
+  box-shadow: var(--shadow-elev-1);
   padding: 18px;
   box-sizing: border-box;
   max-height: calc(100dvh - 48px);

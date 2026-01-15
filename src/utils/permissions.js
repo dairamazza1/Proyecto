@@ -12,6 +12,7 @@
 // ============================================
 export const ROLES = {
   SUPERADMIN: 'superadmin',
+  ADMIN: 'admin',
   RRHH: 'rrhh',
   EMPLOYEE: 'employee'
 };
@@ -45,6 +46,56 @@ export const ACTIONS = {
 // ============================================
 export const PERMISSIONS = {
   [ROLES.SUPERADMIN]: {
+    [RESOURCES.EMPLEADOS]: { 
+      [ACTIONS.CREATE]: true, 
+      [ACTIONS.READ]: true, 
+      [ACTIONS.UPDATE]: true, 
+      [ACTIONS.DELETE]: true 
+    },
+    [RESOURCES.VACACIONES]: { 
+      [ACTIONS.CREATE]: true, 
+      [ACTIONS.READ]: true, 
+      [ACTIONS.UPDATE]: true, 
+      [ACTIONS.DELETE]: true 
+    },
+    [RESOURCES.LICENCIAS]: { 
+      [ACTIONS.CREATE]: true, 
+      [ACTIONS.READ]: true, 
+      [ACTIONS.UPDATE]: true, 
+      [ACTIONS.DELETE]: true 
+    },
+    [RESOURCES.CAMBIOS]: { 
+      [ACTIONS.CREATE]: true, 
+      [ACTIONS.READ]: true, 
+      [ACTIONS.UPDATE]: true, 
+      [ACTIONS.DELETE]: true 
+    },
+    [RESOURCES.SANCIONES]: { 
+      [ACTIONS.CREATE]: true, 
+      [ACTIONS.READ]: true, 
+      [ACTIONS.UPDATE]: true, 
+      [ACTIONS.DELETE]: true 
+    },
+    [RESOURCES.CATEGORIAS]: { 
+      [ACTIONS.CREATE]: true, 
+      [ACTIONS.READ]: true, 
+      [ACTIONS.UPDATE]: true, 
+      [ACTIONS.DELETE]: true 
+    },
+    [RESOURCES.SUCURSALES]: { 
+      [ACTIONS.CREATE]: true, 
+      [ACTIONS.READ]: true, 
+      [ACTIONS.UPDATE]: true, 
+      [ACTIONS.DELETE]: true 
+    },
+    [RESOURCES.CONFIGURACION]: { 
+      [ACTIONS.CREATE]: true, 
+      [ACTIONS.READ]: true, 
+      [ACTIONS.UPDATE]: true, 
+      [ACTIONS.DELETE]: true 
+    }
+  },
+  [ROLES.ADMIN]: {
     [RESOURCES.EMPLEADOS]: { 
       [ACTIONS.CREATE]: true, 
       [ACTIONS.READ]: true, 
@@ -154,26 +205,26 @@ export const PERMISSIONS = {
       [ACTIONS.DELETE]: false 
     },
     [RESOURCES.VACACIONES]: { 
-      [ACTIONS.CREATE]: false, 
+      [ACTIONS.CREATE]: true, 
       [ACTIONS.READ]: true, 
       [ACTIONS.UPDATE]: false, 
       [ACTIONS.DELETE]: false 
     },
     [RESOURCES.LICENCIAS]: { 
-      [ACTIONS.CREATE]: false, 
+      [ACTIONS.CREATE]: true, 
       [ACTIONS.READ]: true, 
       [ACTIONS.UPDATE]: false, 
       [ACTIONS.DELETE]: false 
     },
     [RESOURCES.CAMBIOS]: { 
-      [ACTIONS.CREATE]: false, 
+      [ACTIONS.CREATE]: true, 
       [ACTIONS.READ]: true, 
       [ACTIONS.UPDATE]: false, 
       [ACTIONS.DELETE]: false 
     },
     [RESOURCES.SANCIONES]: { 
       [ACTIONS.CREATE]: false, 
-      [ACTIONS.READ]: true, 
+      [ACTIONS.READ]: false, 
       [ACTIONS.UPDATE]: false, 
       [ACTIONS.DELETE]: false 
     },
@@ -191,7 +242,7 @@ export const PERMISSIONS = {
     },
     [RESOURCES.CONFIGURACION]: { 
       [ACTIONS.CREATE]: false, 
-      [ACTIONS.READ]: false, 
+      [ACTIONS.READ]: true, 
       [ACTIONS.UPDATE]: false, 
       [ACTIONS.DELETE]: false 
     }

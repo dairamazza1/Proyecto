@@ -10,7 +10,12 @@ import {
 import { Device, DeviceMax } from "../../../styles/breakpoints";
 import { Paginacion } from "../../../index";
 
-export function ReportesTable({ data = [], columns = [], getCardTitle }) {
+export function ReportesTable({
+  data = [],
+  columns = [],
+  getCardTitle,
+  renderCardActions,
+}) {
   const [sorting, setSorting] = useState([]);
 
   const table = useReactTable({
@@ -36,6 +41,8 @@ export function ReportesTable({ data = [], columns = [], getCardTitle }) {
             }))
             .filter((field) => field.label);
 
+          const cardActions = renderCardActions?.(item);
+
           return (
             <article className="card" key={row.id}>
               <div className="cardHeader">
@@ -49,6 +56,9 @@ export function ReportesTable({ data = [], columns = [], getCardTitle }) {
                   </div>
                 ))}
               </div>
+              {cardActions ? (
+                <div className="cardActions">{cardActions}</div>
+              ) : null}
             </article>
           );
         })}
@@ -174,6 +184,13 @@ const Container = styled.div`
     }
   }
 
+  .cardActions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
   .responsive-table {
     width: 100%;
     margin-bottom: 1.5em;
@@ -291,6 +308,14 @@ const Container = styled.div`
         @media ${Device.tablet} {
           justify-content: center;
           border-bottom: none;
+        }
+      }
+
+      .ContentCell.acciones {
+        gap: 10px;
+        justify-content: flex-end;
+        @media ${Device.tablet} {
+          justify-content: center;
         }
       }
 

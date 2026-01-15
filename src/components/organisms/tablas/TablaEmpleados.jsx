@@ -19,7 +19,7 @@ export function TablaEmpleados({ data }) {
   const columns = [
     {
       accessorKey: "employee_id_number",
-      header: "Nro Legajo",
+      header: "Legajo",
       meta: {
         cardLabel: "Legajo",
         cardValue: (row) =>
@@ -471,6 +471,6 @@ const CardLink = styled(Link)`
 
   &:hover .card {
     transform: translateY(-2px);
-    box-shadow: var(--shadow-elev-2);
+    box-shadow: var(--shadow-elev-1);
   }
 `;

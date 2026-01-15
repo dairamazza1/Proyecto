@@ -1,4 +1,4 @@
-import { supabase } from "../index";
+import { supabase, getPuestoById, getSucursalEmpleado } from "../index";
 
 const table = "empleados_cambios_actividades";
 const selectFields = `
@@ -55,16 +55,30 @@ export async function getEmpleadoCambioContext(empleadoId) {
 
   if (error) throw error;
 
+  if (!data) return null;
+
   const sucursalData = Array.isArray(data?.sucursal)
     ? data.sucursal[0]
     : data?.sucursal;
+
+  let areaId = data?.puesto?.id_area ?? null;
+  if (!areaId && data?.puesto_id) {
+    const puesto = await getPuestoById(data.puesto_id);
+    areaId = puesto?.id_area ?? null;
+  }
+
+  let sucursalId = sucursalData?.sucursal_id ?? null;
+  if (!sucursalId) {
+    const sucursalEmpleado = await getSucursalEmpleado(empleadoId);
+    sucursalId = sucursalEmpleado?.sucursal_id ?? null;
+  }
 
   return {
     empleado_id: data?.id ?? empleadoId,
     empresa_id: data?.empresa_id ?? null,
     puesto_id: data?.puesto_id ?? null,
-    area_id: data?.puesto?.id_area ?? null,
-    sucursal_id: sucursalData?.sucursal_id ?? null,
+    area_id: areaId,
+    sucursal_id: sucursalId,
   };
 }
 

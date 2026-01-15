@@ -127,7 +127,7 @@ export function ModalVacacionesForm({ empleadoId, vacacion, onClose }) {
         <form className="formulario" onSubmit={handleSubmit(onSubmit)}>
           <section className="form-subcontainer">
             <article>
-              <InputText >
+              <InputText>
                 <input
                   className="form__field"
                   type="date"
@@ -141,7 +141,7 @@ export function ModalVacacionesForm({ empleadoId, vacacion, onClose }) {
             </article>
 
             <article>
-              <InputText >
+              <InputText>
                 <input
                   className="form__field"
                   type="date"
@@ -228,7 +228,7 @@ const Modal = styled.div`
   max-width: 100%;
   border-radius: 18px;
   background: ${({ theme }) => theme.bgtotal};
-  box-shadow: var(--shadow-elev-2);
+  box-shadow: var(--shadow-elev-1);
   padding: 18px;
   box-sizing: border-box;
   max-height: calc(100dvh - 48px);

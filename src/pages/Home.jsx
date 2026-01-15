@@ -38,6 +38,14 @@ export function Home() {
       empleado?.last_name ?? ""
     }`.trim();
     if (fullName) return fullName;
+
+    if(perfil?.app_role == "admin"){
+      return "usuario Administrador"
+    }
+    if((perfil?.app_role == "rrhh" && !fullName )){
+      return "usuario de Recursos Humanos"
+    }
+
     return perfil?.email || user?.email || "Usuario";
   }, [empleado, perfil, user]);
 

@@ -25,6 +25,21 @@ export function ModalInvitarUsuario({
 }) {
   const queryClient = useQueryClient();
   const lockedEmpleadoId = empleadoId ? Number(empleadoId) : null;
+  const showSwal = (options) => {
+    const onOpen = options?.didOpen;
+    return Swal.fire({
+      ...options,
+      didOpen: (popup) => {
+        const container = Swal.getContainer();
+        if (container) {
+          container.style.zIndex = "3000";
+        }
+        if (typeof onOpen === "function") {
+          onOpen(popup);
+        }
+      },
+    });
+  };
 
   const {
     register,
@@ -45,7 +60,7 @@ export function ModalInvitarUsuario({
     enabled: Boolean(empresaId) && !lockedEmpleadoId,
     refetchOnWindowFocus: false,
     onError: (err) => {
-      Swal.fire({
+      showSwal({
         icon: "error",
         title: "Oops...",
         text: err?.message || "Error al cargar empleados disponibles.",
@@ -84,18 +99,38 @@ export function ModalInvitarUsuario({
       });
     },
     onError: (err) => {
-      Swal.fire({
+      console.log(err);
+      
+      showSwal({
         icon: "error",
         title: "No se pudo invitar",
         text: err?.message || "Error al enviar invitacion.",
       });
     },
-    onSuccess: () => {
-      Swal.fire({
-        icon: "success",
-        title: "Invitacion enviada",
-        text: "El usuario recibira un email de invitacion.",
-      });
+    onSuccess: (result) => {
+      const status = String(result?.status ?? "");
+      const emailSent =
+        typeof result?.email_sent === "boolean"
+          ? result.email_sent
+          : status !== "linked";
+      const isLinked =
+        status === "linked" || (status === "accepted" && emailSent === false);
+
+      if (isLinked || emailSent === false) {
+        showSwal({
+          icon: "info",
+          title: "Usuario ya registrado",
+          text:
+            "El email ya tiene una cuenta confirmada. No se envia invitacion. Si necesita acceso, restablece la contrasena.",
+        });
+      } else {
+        const wasResent = Boolean(result?.resent);
+        showSwal({
+          icon: "success",
+          title: wasResent ? "Invitacion reenviada" : "Invitacion enviada",
+          text: "El usuario recibira un email de invitacion.",
+        });
+      }
       queryClient.invalidateQueries({ queryKey: ["invitaciones"] });
       queryClient.invalidateQueries({ queryKey: ["empleadosDisponibles"] });
       if (lockedEmpleadoId) {
@@ -161,7 +196,6 @@ export function ModalInvitarUsuario({
                 >
                   <option value="employee">Empleado</option>
                   <option value="rrhh">RRHH</option>
-                  <option value="admin">Admin</option>
                 </select>
                 <label className="form__label">Rol</label>
               </InputText>

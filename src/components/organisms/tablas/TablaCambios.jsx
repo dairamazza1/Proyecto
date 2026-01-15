@@ -105,7 +105,7 @@ const buildTemplateData = (cambio, empresaNombre) => ({
   tareas_nuevas: cambio?.new_tasks ?? "-",
   motivo: cambio?.change_reason ?? "-",
   estado: formatStatus(cambio?.status),
-  created_at: formatDateTime(cambio?.created_at) ?? "-" ,
+  created_at: formatDateTime(cambio?.created_at) ?? "-",
   dni: cambio?.empleado?.document_number,
   puesto: cambio?.empleado?.puesto?.name ?? "-",
   sucursal_direccion: getSucursalAddress(cambio?.empleado),
@@ -114,14 +114,13 @@ const buildTemplateData = (cambio, empresaNombre) => ({
 export function TablaCambios({ data, onEdit, onDelete, empresaNombre }) {
   const safeData = data ?? [];
   const [columnFilters] = useState([]);
-  const [sorting, setSorting] = useState([
-    { id: "start_date", desc: true },
-  ]);
+  const [sorting, setSorting] = useState([{ id: "start_date", desc: true }]);
   const [previewCambio, setPreviewCambio] = useState(null);
   const templateRef = useRef(null);
-  
+
   // Hook de permisos
-  const { canUpdate, canDelete } = usePermissions();
+  const { canUpdate, canDelete, canExport } = usePermissions();
+  const canExportDocs = canExport("cambios");
 
   const handleOpenPreview = (cambio) => {
     setPreviewCambio(cambio);
@@ -157,11 +156,11 @@ export function TablaCambios({ data, onEdit, onDelete, empresaNombre }) {
         mimeType:
           "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       });
-      const fileDate = buildFileDate(
-        cambio?.start_date || cambio?.created_at
-      );
-      
-      const fileName = `legajo_cambio_turno_${cambio?.empleado.last_name ?? "registro"}_${fileDate}.docx`;
+      const fileDate = buildFileDate(cambio?.start_date || cambio?.created_at);
+
+      const fileName = `legajo_cambio_turno_${
+        cambio?.empleado.last_name ?? "registro"
+      }_${fileDate}.docx`;
       saveAs(blob, fileName);
     } catch (err) {
       Swal.fire({
@@ -273,14 +272,14 @@ export function TablaCambios({ data, onEdit, onDelete, empresaNombre }) {
     },
     {
       id: "empleado_reemplazado",
-      header: "Empleado reemplazado",
+      header: "Reemplazado por",
       accessorFn: (row) => formatNombre(row.empleado_reemplazo),
       meta: {
-        cardLabel: "Empleado reemplazado",
+        cardLabel: "Reemplazado por",
         cardValue: (row) => formatNombre(row.empleado_reemplazo),
       },
       cell: (info) => (
-        <div data-title="Empleado reemplazado" className="ContentCell">
+        <div data-title="Reemplazado por" className="ContentCell">
           <span>{formatNombre(info.row.original.empleado_reemplazo)}</span>
         </div>
       ),
@@ -292,7 +291,7 @@ export function TablaCambios({ data, onEdit, onDelete, empresaNombre }) {
       header: "Acciones",
       cell: (info) => (
         <div data-title="Acciones" className="ContentCell">
-          {canUpdate('cambios') && (
+          {canUpdate("cambios") && (
             <AccionTabla
               funcion={() => onEdit?.(info.row.original)}
               fontSize="18px"
@@ -300,7 +299,7 @@ export function TablaCambios({ data, onEdit, onDelete, empresaNombre }) {
               icono={<v.iconeditarTabla />}
             />
           )}
-          {canDelete('cambios') && (
+          {canDelete("cambios") && (
             <AccionTabla
               funcion={() => onDelete?.(info.row.original)}
               fontSize="18px"
@@ -308,12 +307,14 @@ export function TablaCambios({ data, onEdit, onDelete, empresaNombre }) {
               icono={<v.iconeliminarTabla />}
             />
           )}
-          <AccionTabla
-            funcion={() => handleOpenPreview(info.row.original)}
-            fontSize="18px"
-            color="#7d7d7d"
-            icono={<v.iconoWord />}
-          />
+          {canExportDocs && (
+            <AccionTabla
+              funcion={() => handleOpenPreview(info.row.original)}
+              fontSize="18px"
+              color="#7d7d7d"
+              icono={<v.iconoWord />}
+            />
+          )}
         </div>
       ),
       enableSorting: false,
@@ -365,23 +366,33 @@ export function TablaCambios({ data, onEdit, onDelete, empresaNombre }) {
                 ))}
               </div>
               <div className="cardActions">
-                <button type="button" onClick={() => onEdit?.(cambio)}>
-                  Editar
-                </button>
-                <button type="button" onClick={() => handleOpenPreview(cambio)}>
-                  Vista previa
-                </button>
-                <button type="button" onClick={() => onDelete?.(cambio)}>
-                  Eliminar
-                </button>
+                {canUpdate("cambios") && (
+                  <button type="button" onClick={() => onEdit?.(cambio)}>
+                    Editar
+                  </button>
+                )}
+                {canExportDocs && (
+                  <button
+                    type="button"
+                    onClick={() => handleOpenPreview(cambio)}
+                  >
+                    Vista previa
+                  </button>
+                )}
+                {canDelete("cambios") && (
+                  <button type="button" onClick={() => onDelete?.(cambio)}>
+                    Eliminar
+                  </button>
+                )}
               </div>
             </article>
           );
         })}
       </div>
 
-      <table className="responsive-table">
-        <thead>
+      <div className="tableScroll">
+        <table className="responsive-table">
+          <thead>
           {table.getHeaderGroups().map((headerGroup) => (
             <tr key={headerGroup.id}>
               {headerGroup.headers.map((header) => {
@@ -428,8 +439,8 @@ export function TablaCambios({ data, onEdit, onDelete, empresaNombre }) {
               })}
             </tr>
           ))}
-        </thead>
-        <tbody>
+          </thead>
+          <tbody>
           {table.getRowModel().rows.map((item) => (
             <tr key={item.id}>
               {item.getVisibleCells().map((cell) => (
@@ -439,8 +450,9 @@ export function TablaCambios({ data, onEdit, onDelete, empresaNombre }) {
               ))}
             </tr>
           ))}
-        </tbody>
-      </table>
+          </tbody>
+        </table>
+      </div>
       <Paginacion table={table} />
       {previewCambio && (
         <PreviewOverlay
@@ -461,7 +473,9 @@ export function TablaCambios({ data, onEdit, onDelete, empresaNombre }) {
             </div>
             <div className="previewBody">
               <h3>{resolveEmpresaNombre(previewCambio, empresaNombre)}</h3>
-              <p className="subtitle">ACUERDO DE CAMBIO DE HORRIO Y/O MODIFICACIÓN DE TAREAS</p>
+              <p className="subtitle">
+                ACUERDO DE CAMBIO DE HORRIO Y/O MODIFICACIÓN DE TAREAS
+              </p>
               <div className="previewGrid">
                 <div className="previewRow">
                   <span className="label">Empleado</span>
@@ -470,12 +484,12 @@ export function TablaCambios({ data, onEdit, onDelete, empresaNombre }) {
                   </span>
                 </div>
                 <div className="previewRow">
-                  <span className="label">Empleado reemplazado</span>
+                  <span className="label">Reemplazado por</span>
                   <span className="value">
                     {formatNombre(previewCambio.empleado_reemplazo)}
                   </span>
                 </div>
-             
+
                 <div className="previewRow">
                   <span className="label">Tipo de duracion</span>
                   <span className="value">
@@ -514,7 +528,9 @@ export function TablaCambios({ data, onEdit, onDelete, empresaNombre }) {
                 </div>
                 <div className="previewRow">
                   <span className="label">Tareas nuevas</span>
-                  <span className="value">{previewCambio.new_tasks ?? "-"}</span>
+                  <span className="value">
+                    {previewCambio.new_tasks ?? "-"}
+                  </span>
                 </div>
                 <div className="previewRow">
                   <span className="label">Motivo</span>
@@ -522,7 +538,6 @@ export function TablaCambios({ data, onEdit, onDelete, empresaNombre }) {
                     {previewCambio.change_reason ?? "-"}
                   </span>
                 </div>
-          
               </div>
             </div>
             <div className="previewActions">
@@ -533,12 +548,14 @@ export function TablaCambios({ data, onEdit, onDelete, empresaNombre }) {
               >
                 Cerrar
               </button>
-              <button
-                type="button"
-                onClick={() => handleExportDocx(previewCambio)}
-              >
-                Descargar Word
-              </button>
+              {canExportDocs && (
+                <button
+                  type="button"
+                  onClick={() => handleExportDocx(previewCambio)}
+                >
+                  Descargar Word
+                </button>
+              )}
             </div>
           </PreviewModal>
         </PreviewOverlay>
@@ -571,7 +588,8 @@ const Container = styled.div`
   }
 
   .card {
-    background: ${({ theme }) => theme.bg};
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
     border-radius: 14px;
     padding: 14px 16px;
     box-shadow: var(--shadow-elev-1);
@@ -638,6 +656,12 @@ const Container = styled.div`
       background: var(--bg-accent-soft-strong);
       color: ${({ theme }) => theme.color1};
     }
+  }
+
+  .tableScroll {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .responsive-table {
@@ -807,7 +831,7 @@ const PreviewModal = styled.div`
   max-width: 100%;
   border-radius: 18px;
   background: ${({ theme }) => theme.bgtotal};
-  box-shadow: var(--shadow-elev-2);
+  box-shadow: var(--shadow-elev-1);
   padding: 18px 22px 20px 22px;
   display: grid;
   gap: 16px;

@@ -2,12 +2,7 @@ import styled from "styled-components";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
-import {
-  Title,
-  InputText2,
-  Btn1,
-  Footer,
-} from "../../index";
+import { Title, InputText2, Btn1, Footer } from "../../index";
 import { useAuthStore } from "../../context/AuthStoreWithPermissions";
 import { supabase } from "../../supabase/supabase.config.jsx";
 import { v } from "../../styles/variables";
@@ -47,7 +42,7 @@ export function LoginTemplate() {
     const result = await loginEmailPassword(formData.email, formData.password);
 
     if (result.success) {
-      navigate("/"); 
+      navigate("/");
     } else {
       Swal.fire({
         icon: "error",
@@ -60,7 +55,7 @@ export function LoginTemplate() {
 
   const handleForgotPassword = async () => {
     const { value: email } = await Swal.fire({
-      title: "Recuperar contrasena",
+      title: "Recuperar contraseña",
       input: "email",
       inputLabel: "Email",
       inputPlaceholder: "tu@email.com",
@@ -147,12 +142,8 @@ export function LoginTemplate() {
           />
 
           <ForgotPassword type="button" onClick={handleForgotPassword}>
-            Olvide mi contrasena
+            Olvidé mi contraseña
           </ForgotPassword>
-
-          <RegisterLink onClick={() => navigate("/register")}>
-            ¿No tienes cuenta? <strong>Regístrate</strong>
-          </RegisterLink>
         </form>
       </div>
       <Footer />
@@ -188,7 +179,7 @@ const Container = styled.div`
 
   .passwordToggle {
     position: absolute;
-    right: 12px;
+    right: 32px;
     top: 50%;
     transform: translateY(-50%);
     border: none;
@@ -255,5 +246,3 @@ const RegisterLink = styled.p`
     color: ${({ theme }) => theme.color1};
   }
 `;
-
-

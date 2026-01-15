@@ -68,9 +68,9 @@ export const useAuthStore = create((set, get) => ({
   loadUserProfile: async (authUserId) => {
     try {
       const profile = await getUsers({ id_auth: authUserId });
-      console.log(authUserId);
+      // console.log(authUserId);
       
-      console.log(profile);
+      // console.log(profile);
       
       if (profile) {
         set({ profile });

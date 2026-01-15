@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 import styled from "styled-components";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -21,11 +21,11 @@ export function EmpleadoTemplate({ id, empleado, isError, sucursalEmpleado }) {
   const [openEditar, setOpenEditar] = useState(false);
   const [openInvitar, setOpenInvitar] = useState(false);
   const [activeTab, setActiveTab] = useState("vacaciones");
-  
+
   // Hook de permisos
   const { canUpdate, isEmployee, userRole } = usePermissions();
   const canInvite = useMemo(
-    () => ["rrhh", "admin", "superadmin"].includes(String(userRole ?? "")),
+    () => ["rrhh", "admin"].includes(String(userRole ?? "")),
     [userRole]
   );
 
@@ -40,24 +40,29 @@ export function EmpleadoTemplate({ id, empleado, isError, sucursalEmpleado }) {
   });
 
   const empresaId = dataCompany?.id ?? null;
-  
+
   const fullName = [empleado?.first_name, empleado?.last_name]
     .filter(Boolean)
     .join(" ");
   const legajo =
-    empleado?.employee_id_number ?? empleado?.document_number ?? empleado?.id ?? "-";
+    empleado?.employee_id_number ??
+    empleado?.document_number ??
+    empleado?.id ??
+    "-";
   const documentInfo = empleado?.document_number
     ? `${empleado?.document_type ?? "Doc"} ${empleado?.document_number}`
     : "-";
   const hireDate = formatDate(empleado?.hire_date);
   const statusLabel = empleado?.is_active ? "Activo" : "Inactivo";
+  const emailLabel = empleado?.perfil?.email ?? "-";
 
   const terminationDate = formatDate(empleado?.termination_date);
 
   const hasUser = Boolean(empleado?.user_id);
 
   const empleadoInviteLabel = useMemo(() => {
-    const name = fullName || (empleado ? `Empleado ${empleado.id}` : "Empleado");
+    const name =
+      fullName || (empleado ? `Empleado ${empleado.id}` : "Empleado");
     const legajoLabel = legajo ? ` - ${legajo}` : "";
     return `${name}${legajoLabel}`;
   }, [empleado, fullName, legajo]);
@@ -84,7 +89,7 @@ export function EmpleadoTemplate({ id, empleado, isError, sucursalEmpleado }) {
                 tipo="button"
               />
             )}
-            {canUpdate('empleados') && (
+            {canUpdate("empleados") && (
               <Btn1
                 icono={<v.iconeditarTabla />}
                 titulo="Editar"
@@ -107,15 +112,30 @@ export function EmpleadoTemplate({ id, empleado, isError, sucursalEmpleado }) {
           {/* Mensaje informativo para empleados */}
           {isEmployee() && (
             <InfoBanner>
-              📖 Estás en modo solo lectura. Contacta a RRHH para modificaciones.
+              ðŸ“– EstÃ¡s en modo solo lectura. Contacta a RRHH para
+              modificaciones.
             </InfoBanner>
           )}
-          
+
           <InfoCard>
             <InfoGrid>
               <InfoItem>
-                <span className="label">N° de Legajo</span>
+                <span className="label">Nro de Legajo</span>
                 <span className="value">{legajo}</span>
+              </InfoItem>
+              <InfoItem>
+                <span className="label">Email</span>
+                <span className="value">{emailLabel}</span>
+              </InfoItem>
+              <InfoItem>
+                <span className="label">Fecha ingreso</span>
+                <span className="value">{hireDate}</span>
+              </InfoItem>
+              <InfoItem>
+                <span className="label">Empleado Registrado</span>
+                <span className="value">
+                  {empleado?.is_registered ? "Si" : "No"}
+                </span>
               </InfoItem>
               <InfoItem>
                 <span className="label">Nombre</span>
@@ -130,7 +150,7 @@ export function EmpleadoTemplate({ id, empleado, isError, sucursalEmpleado }) {
                 <span className="value">{documentInfo}</span>
               </InfoItem>
               <InfoItem>
-                <span className="label">N° de teléfono</span>
+                <span className="label">Nro de teléfono</span>
                 <span className="value">{empleado?.telephone ?? "-"}</span>
               </InfoItem>
               <InfoItem>
@@ -138,27 +158,22 @@ export function EmpleadoTemplate({ id, empleado, isError, sucursalEmpleado }) {
                 <span className="value">{empleado?.puesto?.name ?? "-"}</span>
               </InfoItem>
               <InfoItem>
-                <span className="label">N° de Matricula</span>
-                <span className="value">{empleado?.professional_number ?? "-"}</span>
+                <span className="label">Nro de Matricula</span>
+                <span className="value">
+                  {empleado?.professional_number ?? "-"}
+                </span>
               </InfoItem>
 
-              <InfoItem>
-                <span className="label">Empleado Registrado</span>
-                <span className="value">{empleado?.is_registered ? "Si" : "No"}</span>
-              </InfoItem>
               
-              <InfoItem>
-                <span className="label">Fecha ingreso</span>
-                <span className="value">{hireDate}</span>
-              </InfoItem>
+
               
+
               {!empleado?.is_active && (
                 <InfoItem>
                   <span className="label">Fecha de finalizacion laboral</span>
                   <span className="value">{terminationDate}</span>
                 </InfoItem>
               )}
-              
             </InfoGrid>
           </InfoCard>
 

@@ -107,7 +107,8 @@ export function TablaSanciones({ data, onEdit, onDelete }) {
   const templateRef = useRef(null);
   
   // Hook de permisos
-  const { canUpdate, canDelete } = usePermissions();
+  const { canUpdate, canDelete, canExport } = usePermissions();
+  const canExportDocs = canExport("sanciones");
 
   const loadTemplate = async () => {
     if (templateRef.current) return templateRef.current;
@@ -230,12 +231,14 @@ export function TablaSanciones({ data, onEdit, onDelete }) {
             />
           )}
           {/* Botón de exportar visible para todos */}
-          <AccionTabla
-            funcion={() => handleExportDocx(info.row.original)}
-            fontSize="18px"
-            color="#7d7d7d"
-            icono={<v.iconoWord />}
-          />
+          {canExportDocs && (
+            <AccionTabla
+              funcion={() => handleExportDocx(info.row.original)}
+              fontSize="18px"
+              color="#7d7d7d"
+              icono={<v.iconoWord />}
+            />
+          )}
         </div>
       ),
       enableSorting: false,
@@ -290,9 +293,14 @@ export function TablaSanciones({ data, onEdit, onDelete }) {
                   </button>
                 )}
                 {/* Botón de exportar visible para todos */}
-                <button type="button" onClick={() => handleExportDocx(sancion)}>
-                  Descargar Word
-                </button>
+                {canExportDocs && (
+                  <button
+                    type="button"
+                    onClick={() => handleExportDocx(sancion)}
+                  >
+                    Descargar Word
+                  </button>
+                )}
                 {/* Mostrar botón de eliminar SOLO si tiene permiso */}
                 {canDelete('sanciones') && (
                   <button type="button" onClick={() => onDelete?.(sancion)}>

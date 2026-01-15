@@ -156,7 +156,7 @@ export async function getEmpleadoById(id) {
   const { data, error } = await supabase
     
     .from(table)
-    .select("*, puesto:puestos_laborales(name)")
+    .select("*, puesto:puestos_laborales(name), perfil:perfiles(email)")
     .eq("id", id)
     .maybeSingle();
   if (error) throw error;
@@ -182,6 +182,8 @@ export async function getActiveEmpleados({ empresa_id } = {}) {
 }
 
 export async function getAvailableEmpleados({ empresa_id } = {}) {
+  if (!empresa_id) return [];
+
   let query = supabase
     
     .from(table)
@@ -190,14 +192,26 @@ export async function getAvailableEmpleados({ empresa_id } = {}) {
     )
     .eq("is_active", true)
     .is("user_id", null)
+    .eq("empresa_id", empresa_id)
     .order("last_name", { ascending: true })
     .order("first_name", { ascending: true });
 
-  if (empresa_id) {
-    query = query.eq("empresa_id", empresa_id);
-  }
-
-  const { data, error } = await query;
+  const { data: empleados, error } = await query;
   if (error) throw error;
-  return data ?? [];
+
+  const { data: invitaciones, error: invitacionesError } = await supabase
+    .from("user_invitations")
+    .select("empleado_id, status")
+    .eq("empresa_id", empresa_id)
+    .in("status", ["pending", "accepted", "linked"]);
+
+  if (invitacionesError) throw invitacionesError;
+
+  const invitados = new Set(
+    (invitaciones ?? [])
+      .map((item) => item.empleado_id)
+      .filter((id) => id != null)
+  );
+
+  return (empleados ?? []).filter((empleado) => !invitados.has(empleado.id));
 }
