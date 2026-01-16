@@ -12,7 +12,6 @@ const selectFields = `
   start_date,
   end_date,
   days,
-  certificate_url,
   document_id,
   status,
   created_at,

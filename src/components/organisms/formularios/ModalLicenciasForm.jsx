@@ -70,7 +70,7 @@ export function ModalLicenciasForm({ empleadoId, licencia, onClose }) {
   const tipoId = watch("licencia_tipo_id");
 
   const existingFilePath =
-    licencia?.documento?.file_path || licencia?.certificate_url || "";
+    licencia?.documento?.file_path || "";
   const hasExistingCertificate = Boolean(existingFilePath);
 
   const {

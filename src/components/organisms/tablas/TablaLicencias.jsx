@@ -25,7 +25,7 @@ const formatStatus = (value) =>
 const getTipoNombre = (licencia) => licencia?.licencia_tipo?.name ?? "-";
 
 const getCertificadoPath = (licencia) =>
-  licencia?.documento?.file_path || licencia?.certificate_url || "";
+  licencia?.documento?.file_path || "";
 
 export function TablaLicencias({ data, onEdit, onDelete }) {
   const safeData = data ?? [];
