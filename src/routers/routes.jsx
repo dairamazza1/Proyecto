@@ -17,6 +17,7 @@ import {
   RoleRoute,
   RegistrarEmpleados,
   Spinner1,
+  PokePruebas,
   useUsersStore,
 } from "../index";
 
@@ -65,6 +66,7 @@ export function MyRoutes() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/set-password" element={<SetPassword />} />
+      <Route path="/pruebas/pokeapi" element={<PokePruebas />} />
     </Routes>
   );
 }

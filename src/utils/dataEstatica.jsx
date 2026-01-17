@@ -72,4 +72,10 @@ export const SecondarylinksArray = [
     to: "/configuracion",
     roles: ["admin", "rrhh", "employee"],
   },
+  {
+    label: "Pruebas",
+    icon: "mdi:pokeball",
+    to: "/pruebas/pokeapi",
+    roles: ["admin", "rrhh"],
+  },
 ];
