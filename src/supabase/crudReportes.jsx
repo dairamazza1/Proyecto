@@ -39,7 +39,13 @@ export async function getReportVacaciones({
       end_date,
       days_taken,
       status,
+      verified_by,
       created_at,
+      verificador:perfiles!empleados_vacaciones_verified_by_fkey(
+        id,
+        email,
+        empleado:empleados(id, first_name, last_name)
+      ),
       empleado:empleados!empleado_id!inner(
         id,
         first_name,
@@ -83,7 +89,13 @@ export async function getReportLicencias({
       end_date,
       days,
       status,
+      verified_by,
       created_at,
+      verificador:perfiles!empleados_licencias_verified_by_fkey(
+        id,
+        email,
+        empleado:empleados(id, first_name, last_name)
+      ),
       licencia_tipo:licencias_tipos(name),
       empleado:empleados!inner(
         id,
@@ -130,7 +142,13 @@ export async function getReportCambios({
       start_date,
       end_date,
       status,
+      verified_by,
       created_at,
+      verificador:perfiles!empleados_cambios_actividades_verified_by_fkey(
+        id,
+        email,
+        empleado:empleados(id, first_name, last_name)
+      ),
       empleado:empleados!empleado_id!inner(
         id,
         first_name,
@@ -178,7 +196,13 @@ export async function getReportSanciones({
       sanction_type,
       sanction_date_start,
       sanction_date_end,
+      created_by,
       created_at,
+      creador:perfiles!empleados_sanciones_created_by_fkey(
+        id,
+        email,
+        empleado:empleados(id, first_name, last_name)
+      ),
       empleado:empleados!inner(
         id,
         first_name,

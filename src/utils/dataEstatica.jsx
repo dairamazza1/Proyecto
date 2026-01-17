@@ -54,11 +54,18 @@ export const LinksArray = [
 ];
 export const SecondarylinksArray = [
   {
+    label: "Notificaciones",
+    icon: "mdi:bell-outline",
+    to: "/notificaciones",
+    roles: ["admin", "rrhh"],
+  },
+  {
     label: "Mi perfil",
     icon: "streamline-flex:user-circle-single",
     to: "/perfil",
     roles: ["admin", "rrhh", "employee"],
   },
+
   {
     label: "Configuración",
     icon: "streamline-flex:sun",

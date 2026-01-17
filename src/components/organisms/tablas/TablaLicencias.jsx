@@ -1,5 +1,10 @@
 import styled from "styled-components";
-import { AccionTabla, Paginacion, getDocumentoSignedUrl } from "../../../index";
+import {
+  AccionTabla,
+  Paginacion,
+  getDocumentoSignedUrl,
+  resolvePerfilDisplayName,
+} from "../../../index";
 import { v } from "../../../styles/variables";
 import { Device, DeviceMax } from "../../../styles/breakpoints";
 import { useState } from "react";
@@ -24,16 +29,24 @@ const formatStatus = (value) =>
 
 const getTipoNombre = (licencia) => licencia?.licencia_tipo?.name ?? "-";
 
-const getCertificadoPath = (licencia) =>
-  licencia?.documento?.file_path || "";
+const getCertificadoPath = (licencia) => licencia?.documento?.file_path || "";
 
-export function TablaLicencias({ data, onEdit, onDelete }) {
+export function TablaLicencias({
+  data,
+  onEdit,
+  onDelete,
+  onApprove,
+  onReject,
+}) {
   const safeData = data ?? [];
   const [columnFilters] = useState([]);
   const [sorting, setSorting] = useState([{ id: "start_date", desc: true }]);
 
   // Hook de permisos
   const { canUpdate, canDelete } = usePermissions();
+  const canUpdateStatus = canUpdate("licencias");
+  const getVerifiedByLabel = (row) =>
+    resolvePerfilDisplayName(row?.verificador, row?.verified_by);
 
   const handleOpenCertificate = async (licencia) => {
     const filePath = getCertificadoPath(licencia);
@@ -68,6 +81,7 @@ export function TablaLicencias({ data, onEdit, onDelete }) {
       ),
       enableSorting: true,
     },
+
     {
       accessorKey: "end_date",
       header: "Hasta",
@@ -122,42 +136,82 @@ export function TablaLicencias({ data, onEdit, onDelete }) {
       },
       cell: (info) => (
         <div data-title="Estado" className="ContentCell">
-          <span>{formatStatus(info.getValue())}</span>
+          <StatusPill className={formatStatus(info.getValue())}>
+            {formatStatus(info.getValue())}
+          </StatusPill>
         </div>
       ),
       enableSorting: true,
     },
     {
-      id: "acciones",
-      header: "Acciones",
+      id: "verified_by",
+      header: "Verificado por",
+      accessorFn: (row) => getVerifiedByLabel(row),
+      meta: {
+        cardLabel: "Verificado por",
+        cardValue: (row) => getVerifiedByLabel(row),
+      },
       cell: (info) => (
-        <div data-title="Acciones" className="ContentCell acciones">
-          {canUpdate("licencias") && (
-            <AccionTabla
-              funcion={() => onEdit?.(info.row.original)}
-              fontSize="18px"
-              color="#7d7d7d"
-              icono={<v.iconeditarTabla />}
-            />
-          )}
-          {canDelete("licencias") && (
-            <AccionTabla
-              funcion={() => onDelete?.(info.row.original)}
-              fontSize="18px"
-              color={v.rojo}
-              icono={<v.iconeliminarTabla />}
-            />
-          )}
-          {getCertificadoPath(info.row.original) && (
-            <AccionTabla
-              funcion={() => handleOpenCertificate(info.row.original)}
-              fontSize="18px"
-              color="#7d7d7d"
-              icono={<v.iconopdf />}
-            />
-          )}
+        <div data-title="Verificado por" className="ContentCell">
+          <span>{info.getValue() ?? "-"}</span>
         </div>
       ),
+      enableSorting: true,
+      sortingFn: "alphanumeric",
+    },
+    {
+      id: "acciones",
+      header: "Acciones",
+      cell: (info) => {
+        const row = info.row.original;
+        const status = String(row?.status ?? "").toLowerCase();
+        const isApproved = status === "approved";
+        const isRejected = status === "rejected";
+        return (
+          <div data-title="Acciones" className="ContentCell acciones">
+            {canUpdateStatus && onApprove && !isApproved && (
+              <AccionTabla
+                funcion={() => onApprove?.(row)}
+                fontSize="18px"
+                color={v.verde}
+                icono={<v.iconoCheck />}
+              />
+            )}
+            {canUpdateStatus && onReject && !isRejected && (
+              <AccionTabla
+                funcion={() => onReject?.(row)}
+                fontSize="18px"
+                color={v.rojo}
+                icono={<v.iconocerrar />}
+              />
+            )}
+            {canUpdate("licencias") && (
+              <AccionTabla
+                funcion={() => onEdit?.(row)}
+                fontSize="18px"
+                color="#7d7d7d"
+                icono={<v.iconeditarTabla />}
+              />
+            )}
+            {canDelete("licencias") && (
+              <AccionTabla
+                funcion={() => onDelete?.(row)}
+                fontSize="18px"
+                color={v.rojo}
+                icono={<v.iconeliminarTabla />}
+              />
+            )}
+            {getCertificadoPath(row) && (
+              <AccionTabla
+                funcion={() => handleOpenCertificate(row)}
+                fontSize="18px"
+                color="#7d7d7d"
+                icono={<v.iconopdf />}
+              />
+            )}
+          </div>
+        );
+      },
       enableSorting: false,
     },
   ];
@@ -203,6 +257,28 @@ export function TablaLicencias({ data, onEdit, onDelete }) {
                 ))}
               </div>
               <div className="cardActions">
+                {canUpdateStatus &&
+                  onApprove &&
+                  String(licencia?.status ?? "").toLowerCase() !==
+                    "approved" && (
+                    <button
+                      type="button"
+                      onClick={() => onApprove?.(licencia)}
+                    >
+                      Aceptar
+                    </button>
+                  )}
+                {canUpdateStatus &&
+                  onReject &&
+                  String(licencia?.status ?? "").toLowerCase() !==
+                    "rejected" && (
+                    <button
+                      type="button"
+                      onClick={() => onReject?.(licencia)}
+                    >
+                      Rechazar
+                    </button>
+                  )}
                 {getCertificadoPath(licencia) && (
                   <button
                     type="button"
@@ -300,7 +376,24 @@ function formatDate(value) {
   if (!year || !month || !day) return value;
   return `${day}/${month}/${year}`;
 }
+const StatusPill = styled.span`
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  background: var(--bg-success-soft);
+  color: var(--color-success);
 
+  &.Pendiente {
+    background: var(--bg-warning-soft);
+    color: var(--color-warning);
+  }
+
+  &.Rechazado {
+    background: var(--bg-danger-soft);
+    color: var(--color-danger);
+  }
+`;
 const Container = styled.div`
   position: relative;
   width: 100%;

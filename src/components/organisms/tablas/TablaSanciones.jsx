@@ -1,5 +1,5 @@
 import styled from "styled-components";
-import { AccionTabla, Paginacion } from "../../../index";
+import { AccionTabla, Paginacion, resolvePerfilDisplayName } from "../../../index";
 import { v } from "../../../styles/variables";
 import { Device, DeviceMax } from "../../../styles/breakpoints";
 import { useRef, useState } from "react";
@@ -82,14 +82,14 @@ const buildFileDate = (value) => {
 const resolveEmpresaNombre = (sancion) =>
   sancion?.empleado?.empresa?.name || "Empresa";
 
-const buildTemplateData = (sancion) => ({
+const buildTemplateData = (sancion, createdByLabel) => ({
   empresa_nombre: resolveEmpresaNombre(sancion),
   sucursal_direccion: getSucursalAddress(sancion?.empleado),
   empleado: formatNombre(sancion?.empleado),
   dni: sancion?.empleado?.document_number,
   puesto: sancion?.empleado?.puesto?.name ?? "-",
   created_at: formatDateTime(sancion?.created_at) ?? "-",
-  created_by: sancion?.created_by ?? "-",
+  created_by: createdByLabel ?? "-",
   motivo: sancion?.sanction_type ?? "-",
   horario_anterior: formatDateRange(
     sancion?.sanction_date_start,
@@ -109,6 +109,9 @@ export function TablaSanciones({ data, onEdit, onDelete }) {
   // Hook de permisos
   const { canUpdate, canDelete, canExport } = usePermissions();
   const canExportDocs = canExport("sanciones");
+  const safeData = data ?? [];
+  const getCreatedByLabel = (row) =>
+    resolvePerfilDisplayName(row?.creador, row?.created_by);
 
   const loadTemplate = async () => {
     if (templateRef.current) return templateRef.current;
@@ -130,7 +133,8 @@ export function TablaSanciones({ data, onEdit, onDelete }) {
         linebreaks: true,
         delimiters: { start: "{{", end: "}}" },
       });
-      doc.render(buildTemplateData(sancion));
+      const createdByLabel = getCreatedByLabel(sancion);
+      doc.render(buildTemplateData(sancion, createdByLabel));
       const blob = doc.getZip().generate({
         type: "blob",
         mimeType:
@@ -208,6 +212,22 @@ export function TablaSanciones({ data, onEdit, onDelete }) {
       enableSorting: true,
     },
     {
+      id: "created_by",
+      header: "Creado por",
+      accessorFn: (row) => getCreatedByLabel(row),
+      meta: {
+        cardLabel: "Creado por",
+        cardValue: (row) => getCreatedByLabel(row),
+      },
+      cell: (info) => (
+        <div data-title="Creado por" className="ContentCell">
+          <span>{info.getValue() ?? "-"}</span>
+        </div>
+      ),
+      enableSorting: true,
+      sortingFn: "alphanumeric",
+    },
+    {
       id: "acciones",
       header: "Acciones",
       cell: (info) => (
@@ -246,7 +266,7 @@ export function TablaSanciones({ data, onEdit, onDelete }) {
   ];
 
   const table = useReactTable({
-    data: data ?? [],
+    data: safeData,
     columns,
     state: {
       columnFilters,

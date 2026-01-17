@@ -21,7 +21,7 @@ export function SancionesSection({
   const [openModal, setOpenModal] = useState(false);
   const [selectedSancion, setSelectedSancion] = useState(null);
   const queryClient = useQueryClient();
-  
+
   // Hook de permisos
   const { canCreate } = usePermissions();
 
@@ -63,7 +63,7 @@ export function SancionesSection({
 
   const handleEliminar = (sancion) => {
     Swal.fire({
-      title: "ÂEstas seguro(a)?",
+      title: "Estas seguro(a)?",
       text: "Una vez eliminado, no podras recuperar este registro.",
       icon: "warning",
       showCancelButton: true,
@@ -121,7 +121,7 @@ export function SancionesSection({
 }
 
 const Section = styled.section`
-  background: ${({ theme}) => (theme.bg)};
+  background: ${({ theme }) => theme.bg};
   border-radius: ${({ $embedded }) => ($embedded ? "0" : "18px")};
   padding: ${({ $embedded }) => ($embedded ? "0" : "20px 24px")};
   box-shadow: ${({ $embedded }) =>
@@ -145,5 +145,3 @@ const EmptyState = styled.div`
   color: ${({ theme }) => theme.textsecundary};
   text-align: center;
 `;
-
-

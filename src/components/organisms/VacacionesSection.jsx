@@ -6,6 +6,7 @@ import {
   TablaVacaciones,
   getVacacionesByEmpleadoId,
   deleteVacacion,
+  updateVacacion,
   Spinner1,
 } from "../../index";
 import { usePermissions } from "../../hooks/usePermissions";
@@ -13,7 +14,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { v } from "../../styles/variables";
 import { calcVacationSummary } from "../../utils/vacaciones";
 import Swal from "sweetalert2";
-
 
 export function VacacionesSection({
   empleado,
@@ -24,9 +24,9 @@ export function VacacionesSection({
   const [openModal, setOpenModal] = useState(false);
   const [selectedVacacion, setSelectedVacacion] = useState(null);
   const queryClient = useQueryClient();
-  
+
   // Hook de permisos
-  const { canCreate } = usePermissions();
+  const { canCreate, canUpdate, profile } = usePermissions();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["vacaciones", empleadoId],
@@ -69,9 +69,37 @@ export function VacacionesSection({
     },
   });
 
+  const { mutate: doActualizarEstado } = useMutation({
+    mutationFn: async ({ id, status }) => {
+      const payload = { status };
+      if (profile?.id) {
+        payload.verified_by = profile.id;
+        payload.verified_at = new Date().toISOString();
+      }
+      return updateVacacion(id, payload);
+    },
+    onError: (err) => {
+      Swal.fire({
+        icon: "error",
+        title: "Oops...",
+        text: err?.message || "Error al actualizar estado.",
+      });
+    },
+    onSuccess: (_data, variables) => {
+      const statusLabel =
+        variables?.status === "approved" ? "aprobada" : "rechazada";
+      Swal.fire({
+        icon: "success",
+        title: "Estado actualizado",
+        text: `La solicitud fue ${statusLabel}.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["vacaciones", empleadoId] });
+    },
+  });
+
   const handleEliminar = (vacacion) => {
     Swal.fire({
-      title: "ÂEstas seguro(a)?",
+      title: "Estas seguro(a)?",
       text: "Una vez eliminado, no podras recuperar este registro.",
       icon: "warning",
       showCancelButton: true,
@@ -81,6 +109,24 @@ export function VacacionesSection({
     }).then((result) => {
       if (result.isConfirmed) {
         doEliminar(vacacion.id);
+      }
+    });
+  };
+
+  const handleActualizarEstado = (vacacion, status) => {
+    if (!canUpdate("vacaciones")) return;
+    const actionLabel = status === "approved" ? "Aprobar" : "Rechazar";
+    Swal.fire({
+      title: `${actionLabel} solicitud`,
+      text: "Confirma la accion para actualizar el estado.",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: v.colorPrincipal,
+      cancelButtonColor: v.rojo,
+      confirmButtonText: actionLabel,
+    }).then((result) => {
+      if (result.isConfirmed) {
+        doActualizarEstado({ id: vacacion.id, status });
       }
     });
   };
@@ -119,6 +165,8 @@ export function VacacionesSection({
           data={data}
           onEdit={handleEditar}
           onDelete={handleEliminar}
+          onApprove={(vacacion) => handleActualizarEstado(vacacion, "approved")}
+          onReject={(vacacion) => handleActualizarEstado(vacacion, "rejected")}
         />
       ) : (
         <EmptyState>Sin registros por el momento.</EmptyState>
@@ -136,7 +184,7 @@ export function VacacionesSection({
 }
 
 const Section = styled.section`
-  background: ${({ theme}) => (theme.bg)};
+  background: ${({ theme }) => theme.bg};
   border-radius: ${({ $embedded }) => ($embedded ? "0" : "18px")};
   padding: ${({ $embedded }) => ($embedded ? "0" : "20px 24px")};
   box-shadow: ${({ $embedded }) =>
@@ -168,5 +216,3 @@ const EmptyState = styled.div`
   color: ${({ theme }) => theme.textsecundary};
   text-align: center;
 `;
-
-

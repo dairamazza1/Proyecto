@@ -113,7 +113,7 @@ export function PerfilTemplate({ perfil, empleado, displayName, userEmail }) {
                 <span className="value">{empleado?.puesto ?? "-"}</span>
               </InfoItem>
               <InfoItem>
-                <span className="label">Nro de Matricula</span>
+                <span className="label">Matricula profesional</span>
                 <span className="value">
                   {empleado?.professional_number ?? "-"}
                 </span>

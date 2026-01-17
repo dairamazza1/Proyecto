@@ -12,6 +12,7 @@ import {
   Reportes,
   Register,
   SetPassword,
+  Notificaciones,
   ProtectedRoute,
   RoleRoute,
   RegistrarEmpleados,
@@ -42,14 +43,15 @@ export function MyRoutes() {
         <Route path="/perfil" element={<Perfil />} />
         <Route path="/configuracion" element={<Configurations />} />
         <Route path="/Configuración" element={<Configurations />} />
-        {/* <Route path="/configuracion/categorias" element={<Categories />} /> */}
         <Route
           element={<RoleRoute roles={["admin", "rrhh"]} redirectTo="/perfil" />}
         >
           <Route path="/empleados" element={<Empleados />} />
           <Route path="/empleados/nuevo" element={<RegistrarEmpleados />} />
           <Route path="/empleados/:id" element={<Empleado />} />
+          <Route path="/empleado/:id" element={<Empleado />} />
           <Route path="/reportes" element={<Reportes />} />
+          <Route path="/notificaciones" element={<Notificaciones />} />
           <Route
             path="/configuracion/invitaciones"
             element={<InvitacionesConfig />}

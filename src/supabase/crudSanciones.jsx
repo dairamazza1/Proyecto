@@ -10,7 +10,13 @@ const selectFields = `
   sanction_date_start,
   sanction_date_end,
   document_id,
+  created_by,
   created_at,
+  creador:perfiles!empleados_sanciones_created_by_fkey(
+    id,
+    email,
+    empleado:empleados(id, first_name, last_name)
+  ),
   empleado:empleados!empleado_id(
     id,
     first_name,

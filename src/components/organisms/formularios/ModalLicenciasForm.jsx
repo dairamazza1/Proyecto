@@ -60,7 +60,6 @@ export function ModalLicenciasForm({ empleadoId, licencia, onClose }) {
       start_date: "",
       end_date: "",
       days: 0,
-      status: "pending",
     },
   });
 
@@ -118,7 +117,6 @@ export function ModalLicenciasForm({ empleadoId, licencia, onClose }) {
       start_date: licencia.start_date ?? "",
       end_date: licencia.end_date ?? "",
       days: licencia.days ?? 0,
-      status: licencia.status ?? "pending",
     });
     setSelectedFile(null);
     setFileError("");
@@ -218,7 +216,6 @@ export function ModalLicenciasForm({ empleadoId, licencia, onClose }) {
         start_date: data.start_date,
         end_date: data.end_date,
         days: data.days,
-        status: isEdit ? data.status : "pending",
       };
 
       if (documentId) {
@@ -228,6 +225,7 @@ export function ModalLicenciasForm({ empleadoId, licencia, onClose }) {
       if (isEdit) {
         return updateEmpleadoLicencia(licencia.id, payload);
       }
+      payload.status = "pending";
       return insertEmpleadoLicencia(payload);
     },
     onError: (err) => {
@@ -414,19 +412,6 @@ export function ModalLicenciasForm({ empleadoId, licencia, onClose }) {
                   <p className="helper">certificado cargado</p>
                 )}
                 {fileError && <p>{fileError}</p>}
-              </article>
-            )}
-
-            {isEdit && (
-              <article>
-                <InputText icono={<v.iconoCalendario />}>
-                  <select className="form__field" {...register("status")}>
-                    <option value="pending">Pendiente</option>
-                    <option value="approved">Aprobado</option>
-                    <option value="rejected">Rechazado</option>
-                  </select>
-                  <label className="form__label">Estado</label>
-                </InputText>
               </article>
             )}
 

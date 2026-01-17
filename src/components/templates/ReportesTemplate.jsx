@@ -14,9 +14,10 @@ import {
   getReportLicencias,
   getReportSanciones,
   getReportVacaciones,
+  resolvePerfilDisplayName,
   useCompanyStore,
 } from "../../index";
-import {TABS, statusValues} from "../../utils/dataEstatica";
+import { TABS, statusValues } from "../../utils/dataEstatica";
 
 const formatStatus = (value) =>
   statusValues[String(value ?? "").toLowerCase()] ?? "-";
@@ -65,11 +66,13 @@ export function ReportesTemplate() {
 
   const empresaId = dataCompany?.id ?? null;
 
-  const { data: empleadosActivos = [], isLoading: loadingEmpleados } = useQuery({
-    queryKey: ["empleadosActivos", empresaId],
-    queryFn: () => getActiveEmpleados({ empresa_id: empresaId }),
-    refetchOnWindowFocus: false,
-  });
+  const { data: empleadosActivos = [], isLoading: loadingEmpleados } = useQuery(
+    {
+      queryKey: ["empleadosActivos", empresaId],
+      queryFn: () => getActiveEmpleados({ empresa_id: empresaId }),
+      refetchOnWindowFocus: false,
+    }
+  );
 
   const normalizedFilters = useMemo(
     () => ({
@@ -104,16 +107,25 @@ export function ReportesTemplate() {
     refetchOnWindowFocus: false,
   });
 
+  const getVerifiedByLabel = (row) =>
+    resolvePerfilDisplayName(row?.verificador, row?.verified_by);
+  const getCreatedByLabel = (row) =>
+    resolvePerfilDisplayName(row?.creador, row?.created_by);
+
   const columns = useMemo(() => {
     const empleadoColumn = {
       id: "empleado",
       header: "Empleado",
       accessorFn: (row) =>
-        `${row.empleado?.last_name ?? ""}, ${row.empleado?.first_name ?? ""}`.trim(),
+        `${row.empleado?.last_name ?? ""}, ${
+          row.empleado?.first_name ?? ""
+        }`.trim(),
       meta: {
         cardLabel: "Empleado",
         cardValue: (row) =>
-          `${row.empleado?.last_name ?? ""}, ${row.empleado?.first_name ?? ""}`.trim() || "-",
+          `${row.empleado?.last_name ?? ""}, ${
+            row.empleado?.first_name ?? ""
+          }`.trim() || "-",
       },
       cell: (info) => (
         <div data-title="Empleado" className="ContentCell">
@@ -227,9 +239,27 @@ export function ReportesTemplate() {
           },
           cell: (info) => (
             <div data-title="Estado" className="ContentCell">
-              <span>{formatStatus(info.getValue())}</span>
+              <StatusPill className={formatStatus(info.getValue())}>
+                {formatStatus(info.getValue())}
+              </StatusPill>
             </div>
           ),
+        },
+        {
+          id: "verified_by",
+          header: "Verificado por",
+          accessorFn: (row) => getVerifiedByLabel(row),
+          meta: {
+            cardLabel: "Verificado por",
+            cardValue: (row) => getVerifiedByLabel(row),
+          },
+          cell: (info) => (
+            <div data-title="Verificado por" className="ContentCell">
+              <span>{info.getValue() ?? "-"}</span>
+            </div>
+          ),
+          enableSorting: true,
+          sortingFn: "alphanumeric",
         },
       ];
     }
@@ -308,9 +338,27 @@ export function ReportesTemplate() {
           },
           cell: (info) => (
             <div data-title="Estado" className="ContentCell">
-              <span>{formatStatus(info.getValue())}</span>
+              <StatusPill className={formatStatus(info.getValue())}>
+                {formatStatus(info.getValue())}
+              </StatusPill>
             </div>
           ),
+        },
+        {
+          id: "verified_by",
+          header: "Verificado por",
+          accessorFn: (row) => getVerifiedByLabel(row),
+          meta: {
+            cardLabel: "Verificado por",
+            cardValue: (row) => getVerifiedByLabel(row),
+          },
+          cell: (info) => (
+            <div data-title="Verificado por" className="ContentCell">
+              <span>{info.getValue() ?? "-"}</span>
+            </div>
+          ),
+          enableSorting: true,
+          sortingFn: "alphanumeric",
         },
       ];
     }
@@ -357,6 +405,22 @@ export function ReportesTemplate() {
               <span>{formatDate(info.getValue())}</span>
             </div>
           ),
+        },
+        {
+          id: "created_by",
+          header: "Creado por",
+          accessorFn: (row) => getCreatedByLabel(row),
+          meta: {
+            cardLabel: "Creado por",
+            cardValue: (row) => getCreatedByLabel(row),
+          },
+          cell: (info) => (
+            <div data-title="Creado por" className="ContentCell">
+              <span>{info.getValue() ?? "-"}</span>
+            </div>
+          ),
+          enableSorting: true,
+          sortingFn: "alphanumeric",
         },
       ];
     }
@@ -412,12 +476,30 @@ export function ReportesTemplate() {
         },
         cell: (info) => (
           <div data-title="Estado" className="ContentCell">
-            <span>{formatStatus(info.getValue())}</span>
+            <StatusPill className={formatStatus(info.getValue())}>
+              {formatStatus(info.getValue())}
+            </StatusPill>
           </div>
         ),
       },
+      {
+        id: "verified_by",
+        header: "Verificado por",
+        accessorFn: (row) => getVerifiedByLabel(row),
+        meta: {
+          cardLabel: "Verificado por",
+          cardValue: (row) => getVerifiedByLabel(row),
+        },
+        cell: (info) => (
+          <div data-title="Verificado por" className="ContentCell">
+            <span>{info.getValue() ?? "-"}</span>
+          </div>
+        ),
+        enableSorting: true,
+        sortingFn: "alphanumeric",
+      },
     ];
-  }, [activeTab]);
+  }, [activeTab, getVerifiedByLabel, getCreatedByLabel]);
 
   const handleFilterChange = (field, value) => {
     setFilters((prev) => {
@@ -445,11 +527,7 @@ export function ReportesTemplate() {
         <Title>Reportes</Title>
       </Header>
 
-      <ReportesTabs
-        tabs={TABS}
-        activeTab={activeTab}
-        onChange={setActiveTab}
-      />
+      <ReportesTabs tabs={TABS} activeTab={activeTab} onChange={setActiveTab} />
 
       <FiltersCard>
         <ReportesFilters
@@ -483,6 +561,24 @@ export function ReportesTemplate() {
   );
 }
 
+const StatusPill = styled.span`
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  background: var(--bg-success-soft);
+  color: var(--color-success);
+
+  &.Pendiente {
+    background: var(--bg-warning-soft);
+    color: var(--color-warning);
+  }
+
+  &.Rechazado {
+    background: var(--bg-danger-soft);
+    color: var(--color-danger);
+  }
+`;
 const Container = styled.div`
   /* min-height: calc(100dvh - 30px); */
   padding: 20px 22px 28px;

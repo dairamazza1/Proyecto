@@ -163,6 +163,20 @@ export async function getEmpleadoById(id) {
   return data;
 }
 
+export async function getEmpleadosByIds(ids = []) {
+  const uniqueIds = Array.from(
+    new Set((ids ?? []).filter((id) => id !== null && id !== undefined))
+  );
+  if (!uniqueIds.length) return [];
+
+  const { data, error } = await supabase
+    .from(table)
+    .select("id, first_name, last_name")
+    .in("id", uniqueIds);
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function getActiveEmpleados({ empresa_id } = {}) {
   let query = supabase
     

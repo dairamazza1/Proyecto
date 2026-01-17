@@ -14,7 +14,13 @@ const selectFields = `
   days,
   document_id,
   status,
+  verified_by,
   created_at,
+  verificador:perfiles!empleados_licencias_verified_by_fkey(
+    id,
+    email,
+    empleado:empleados(id, first_name, last_name)
+  ),
   licencia_tipo:licencias_tipos(id, name, requires_certificate, categoria_licencia_id),
   documento:empleados_documentos(id, file_path, document_type)
 `;
@@ -69,6 +75,20 @@ export async function getLicenciasByEmpleadoId(empleadoId) {
     .select(selectFields)
     .eq("empleado_id", empleadoId)
     .order("start_date", { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function getLicenciasStatusByIds(ids = []) {
+  const uniqueIds = Array.from(
+    new Set((ids ?? []).filter((id) => id !== null && id !== undefined))
+  );
+  if (!uniqueIds.length) return [];
+
+  const { data, error } = await supabase
+    .from(table)
+    .select("id, status")
+    .in("id", uniqueIds);
   if (error) throw error;
   return data ?? [];
 }

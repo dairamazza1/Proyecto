@@ -1,5 +1,5 @@
 import styled from "styled-components";
-import { AccionTabla, Paginacion } from "../../../index";
+import { AccionTabla, Paginacion, resolvePerfilDisplayName } from "../../../index";
 import { v } from "../../../styles/variables";
 import { Device, DeviceMax } from "../../../styles/breakpoints";
 import { useRef, useState } from "react";
@@ -111,7 +111,14 @@ const buildTemplateData = (cambio, empresaNombre) => ({
   sucursal_direccion: getSucursalAddress(cambio?.empleado),
 });
 
-export function TablaCambios({ data, onEdit, onDelete, empresaNombre }) {
+export function TablaCambios({
+  data,
+  onEdit,
+  onDelete,
+  onApprove,
+  onReject,
+  empresaNombre,
+}) {
   const safeData = data ?? [];
   const [columnFilters] = useState([]);
   const [sorting, setSorting] = useState([{ id: "start_date", desc: true }]);
@@ -121,6 +128,9 @@ export function TablaCambios({ data, onEdit, onDelete, empresaNombre }) {
   // Hook de permisos
   const { canUpdate, canDelete, canExport } = usePermissions();
   const canExportDocs = canExport("cambios");
+  const canUpdateStatus = canUpdate("cambios");
+  const getVerifiedByLabel = (row) =>
+    resolvePerfilDisplayName(row?.verificador, row?.verified_by);
 
   const handleOpenPreview = (cambio) => {
     setPreviewCambio(cambio);
@@ -270,6 +280,7 @@ export function TablaCambios({ data, onEdit, onDelete, empresaNombre }) {
       ),
       enableSorting: true,
     },
+    
     {
       id: "empleado_reemplazado",
       header: "Reemplazado por",
@@ -287,36 +298,90 @@ export function TablaCambios({ data, onEdit, onDelete, empresaNombre }) {
       sortingFn: "alphanumeric",
     },
     {
-      id: "acciones",
-      header: "Acciones",
+      accessorKey: "status",
+      header: "Estado",
+      meta: {
+        cardLabel: "Estado",
+        cardValue: (row) => formatStatus(row.status),
+      },
       cell: (info) => (
-        <div data-title="Acciones" className="ContentCell">
-          {canUpdate("cambios") && (
-            <AccionTabla
-              funcion={() => onEdit?.(info.row.original)}
-              fontSize="18px"
-              color="#7d7d7d"
-              icono={<v.iconeditarTabla />}
-            />
-          )}
-          {canDelete("cambios") && (
-            <AccionTabla
-              funcion={() => onDelete?.(info.row.original)}
-              fontSize="18px"
-              color={v.rojo}
-              icono={<v.iconeliminarTabla />}
-            />
-          )}
-          {canExportDocs && (
-            <AccionTabla
-              funcion={() => handleOpenPreview(info.row.original)}
-              fontSize="18px"
-              color="#7d7d7d"
-              icono={<v.iconoWord />}
-            />
-          )}
+        <div data-title="Estado" className="ContentCell">
+          <StatusPill className={formatStatus(info.getValue())}>
+            {formatStatus(info.getValue())}
+          </StatusPill>
         </div>
       ),
+      enableSorting: true,
+    },
+    {
+      id: "verified_by",
+      header: "Verificado por",
+      accessorFn: (row) => getVerifiedByLabel(row),
+      meta: {
+        cardLabel: "Verificado por",
+        cardValue: (row) => getVerifiedByLabel(row),
+      },
+      cell: (info) => (
+        <div data-title="Verificado por" className="ContentCell">
+          <span>{info.getValue() ?? "-"}</span>
+        </div>
+      ),
+      enableSorting: true,
+      sortingFn: "alphanumeric",
+    },
+    {
+      id: "acciones",
+      header: "Acciones",
+      cell: (info) => {
+        const row = info.row.original;
+        const status = String(row?.status ?? "").toLowerCase();
+        const isApproved = status === "approved";
+        const isRejected = status === "rejected";
+        return (
+          <div data-title="Acciones" className="ContentCell">
+            {canUpdateStatus && onApprove && !isApproved && (
+              <AccionTabla
+                funcion={() => onApprove?.(row)}
+                fontSize="18px"
+                color={v.verde}
+                icono={<v.iconoCheck />}
+              />
+            )}
+            {canUpdateStatus && onReject && !isRejected && (
+              <AccionTabla
+                funcion={() => onReject?.(row)}
+                fontSize="18px"
+                color={v.rojo}
+                icono={<v.iconocerrar />}
+              />
+            )}
+            {canUpdate("cambios") && (
+              <AccionTabla
+                funcion={() => onEdit?.(row)}
+                fontSize="18px"
+                color="#7d7d7d"
+                icono={<v.iconeditarTabla />}
+              />
+            )}
+            {canDelete("cambios") && (
+              <AccionTabla
+                funcion={() => onDelete?.(row)}
+                fontSize="18px"
+                color={v.rojo}
+                icono={<v.iconeliminarTabla />}
+              />
+            )}
+            {canExportDocs && (
+              <AccionTabla
+                funcion={() => handleOpenPreview(row)}
+                fontSize="18px"
+                color="#7d7d7d"
+                icono={<v.iconoWord />}
+              />
+            )}
+          </div>
+        );
+      },
       enableSorting: false,
     },
   ];
@@ -366,6 +431,22 @@ export function TablaCambios({ data, onEdit, onDelete, empresaNombre }) {
                 ))}
               </div>
               <div className="cardActions">
+                {canUpdateStatus &&
+                  onApprove &&
+                  String(cambio?.status ?? "").toLowerCase() !==
+                    "approved" && (
+                    <button type="button" onClick={() => onApprove?.(cambio)}>
+                      Aceptar
+                    </button>
+                  )}
+                {canUpdateStatus &&
+                  onReject &&
+                  String(cambio?.status ?? "").toLowerCase() !==
+                    "rejected" && (
+                    <button type="button" onClick={() => onReject?.(cambio)}>
+                      Rechazar
+                    </button>
+                  )}
                 {canUpdate("cambios") && (
                   <button type="button" onClick={() => onEdit?.(cambio)}>
                     Editar
@@ -809,7 +890,24 @@ const Container = styled.div`
     }
   }
 `;
+const StatusPill = styled.span`
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  background: var(--bg-success-soft);
+  color: var(--color-success);
 
+  &.Pendiente {
+    background: var(--bg-warning-soft);
+    color: var(--color-warning);
+  }
+
+  &.Rechazado {
+    background: var(--bg-danger-soft);
+    color: var(--color-danger);
+  }
+`;
 const PreviewOverlay = styled.div`
   transition: 0.3s;
   top: 0;

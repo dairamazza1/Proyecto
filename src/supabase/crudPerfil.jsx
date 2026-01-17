@@ -2,6 +2,17 @@ import { supabase, getPuestoById } from "../index";
 
 const table = "perfiles";
 
+const normalizeIdArray = (ids = []) => {
+  const unique = new Map();
+  (ids ?? []).forEach((id) => {
+    if (id === null || id === undefined) return;
+    const raw = String(id).trim();
+    if (!raw || !/^\d+$/.test(raw)) return;
+    unique.set(raw, raw);
+  });
+  return Array.from(unique.values());
+};
+
 export async function getPerfilActual({ authUserId } = {}) {
   let resolvedAuthId = authUserId;
 
@@ -48,4 +59,30 @@ export async function getEmpleadoByPerfil({ perfilId } = {}) {
 
   return data;
 
+}
+
+export async function getEmpleadosByUserIds(userIds = []) {
+  const normalizedIds = normalizeIdArray(userIds);
+  if (!normalizedIds.length) return [];
+
+  const { data, error } = await supabase
+    .from("empleados")
+    .select("id, user_id, first_name, last_name")
+    .in("user_id", normalizedIds);
+
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function getPerfilesByIds(perfilIds = []) {
+  const normalizedIds = normalizeIdArray(perfilIds);
+  if (!normalizedIds.length) return [];
+
+  const { data, error } = await supabase
+    .from(table)
+    .select("id, email")
+    .in("id", normalizedIds);
+
+  if (error) throw error;
+  return data ?? [];
 }

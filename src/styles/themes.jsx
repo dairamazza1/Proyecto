@@ -75,6 +75,7 @@ const createTheme = (mode) => {
 
     "--bg-success-soft": "rgba(83, 178, 87, 0.15)",
     "--bg-danger-soft": "rgba(245, 78, 65, 0.15)",
+    "--bg-warning-soft": "rgba(255, 193, 7, 0.15)",
     "--bg-accent-soft": isDark
       ? "--palette-detail-8"
       : "--palette-detail-3",

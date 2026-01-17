@@ -6,10 +6,12 @@ import {
   TablaCambios,
   getCambiosByEmpleadoId,
   deleteCambio,
+  updateCambio,
   Spinner1,
   useCompanyStore,
 } from "../../index";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { usePermissions } from "../../hooks/usePermissions";
 import { v } from "../../styles/variables";
 import Swal from "sweetalert2";
 
@@ -22,6 +24,7 @@ export function CambiosSection({
   const [selectedCambio, setSelectedCambio] = useState(null);
   const { dataCompany } = useCompanyStore();
   const queryClient = useQueryClient();
+  const { canUpdate, profile } = usePermissions();
   
   
   const empresaNombre =
@@ -67,9 +70,37 @@ export function CambiosSection({
     },
   });
 
+  const { mutate: doActualizarEstado } = useMutation({
+    mutationFn: async ({ id, status }) => {
+      const payload = { status };
+      if (profile?.id) {
+        payload.verified_by = profile.id;
+        payload.verified_at = new Date().toISOString();
+      }
+      return updateCambio(id, payload);
+    },
+    onError: (err) => {
+      Swal.fire({
+        icon: "error",
+        title: "Oops...",
+        text: err?.message || "Error al actualizar estado.",
+      });
+    },
+    onSuccess: (_data, variables) => {
+      const statusLabel =
+        variables?.status === "approved" ? "aprobado" : "rechazado";
+      Swal.fire({
+        icon: "success",
+        title: "Estado actualizado",
+        text: `El cambio fue ${statusLabel}.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["cambios", empleadoId] });
+    },
+  });
+
   const handleEliminar = (cambio) => {
     Swal.fire({
-      title: "ÂEstas seguro(a)?",
+      title: "Estas seguro(a)?",
       text: "Una vez eliminado, no podras recuperar este registro.",
       icon: "warning",
       showCancelButton: true,
@@ -79,6 +110,24 @@ export function CambiosSection({
     }).then((result) => {
       if (result.isConfirmed) {
         doEliminar(cambio.id);
+      }
+    });
+  };
+
+  const handleActualizarEstado = (cambio, status) => {
+    if (!canUpdate("cambios")) return;
+    const actionLabel = status === "approved" ? "Aprobar" : "Rechazar";
+    Swal.fire({
+      title: `${actionLabel} cambio`,
+      text: "Confirma la accion para actualizar el estado.",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: v.colorPrincipal,
+      cancelButtonColor: v.rojo,
+      confirmButtonText: actionLabel,
+    }).then((result) => {
+      if (result.isConfirmed) {
+        doActualizarEstado({ id: cambio.id, status });
       }
     });
   };
@@ -108,6 +157,8 @@ export function CambiosSection({
           data={data}
           onEdit={handleEditar}
           onDelete={handleEliminar}
+          onApprove={(cambio) => handleActualizarEstado(cambio, "approved")}
+          onReject={(cambio) => handleActualizarEstado(cambio, "rejected")}
           empresaNombre={empresaNombre}
         />
       ) : (

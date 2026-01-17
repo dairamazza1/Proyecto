@@ -1,6 +1,7 @@
 import { supabase } from "../index";
 
 const table = "user_invitations";
+const notificationsTable = "notificaciones";
 
 const mapInviteErrorMessage = (message, status) => {
   const raw = String(message ?? "").trim();
@@ -210,6 +211,95 @@ export async function getInvitations({
   }
 
   const { data, error } = await query;
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function getNotificaciones({
+  empresa_id,
+  recipient_perfil_id,
+  status,
+  type,
+  limit = 100,
+} = {}) {
+  if (!empresa_id) return [];
+
+  let query = supabase
+    .from(notificationsTable)
+    .select(
+      "id, empresa_id, recipient_perfil_id, type, entity_table, entity_id, empleado_id, empleado:empleados(id, first_name, last_name), title, status, created_at, read_at"
+    )
+    .eq("empresa_id", empresa_id)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (recipient_perfil_id) {
+    query = query.eq("recipient_perfil_id", recipient_perfil_id);
+  }
+
+  if (status && status !== "all") {
+    query = query.eq("status", status);
+  }
+
+  if (type && type !== "all") {
+    query = query.eq("type", type);
+  }
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function getNotificacionesCountUnread({
+  empresa_id,
+  recipient_perfil_id,
+} = {}) {
+  if (!empresa_id) return 0;
+
+  let query = supabase
+    .from(notificationsTable)
+    .select("id", { count: "exact", head: true })
+    .eq("empresa_id", empresa_id)
+    .eq("status", "unread");
+
+  if (recipient_perfil_id) {
+    query = query.eq("recipient_perfil_id", recipient_perfil_id);
+  }
+
+  const { count, error } = await query;
+
+  if (error) throw error;
+  return count ?? 0;
+}
+
+export async function markNotificacionRead(id) {
+  if (!id) {
+    throw new Error("Notificacion no valida");
+  }
+
+  const { data, error } = await supabase
+    .from(notificationsTable)
+    .update({ status: "read", read_at: new Date().toISOString() })
+    .eq("id", id)
+    .select()
+    .maybeSingle();
+
+  if (error) throw error;
+  return data ?? null;
+}
+
+export async function markAllRead(empresa_id) {
+  if (!empresa_id) {
+    throw new Error("Empresa no valida");
+  }
+
+  const { data, error } = await supabase
+    .from(notificationsTable)
+    .update({ status: "read", read_at: new Date().toISOString() })
+    .eq("empresa_id", empresa_id)
+    .eq("status", "unread")
+    .select("id");
+
   if (error) throw error;
   return data ?? [];
 }

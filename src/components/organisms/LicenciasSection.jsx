@@ -6,6 +6,7 @@ import {
   TablaLicencias,
   getLicenciasByEmpleadoId,
   deleteEmpleadoLicencia,
+  updateEmpleadoLicencia,
   Spinner1,
 } from "../../index";
 import { usePermissions } from "../../hooks/usePermissions";
@@ -21,9 +22,9 @@ export function LicenciasSection({
   const [openModal, setOpenModal] = useState(false);
   const [selectedLicencia, setSelectedLicencia] = useState(null);
   const queryClient = useQueryClient();
-  
+
   // Hook de permisos
-  const { canCreate } = usePermissions();
+  const { canCreate, canUpdate, profile } = usePermissions();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["licencias", empleadoId],
@@ -61,9 +62,37 @@ export function LicenciasSection({
     },
   });
 
+  const { mutate: doActualizarEstado } = useMutation({
+    mutationFn: async ({ id, status }) => {
+      const payload = { status };
+      if (profile?.id) {
+        payload.verified_by = profile.id;
+        payload.verified_at = new Date().toISOString();
+      }
+      return updateEmpleadoLicencia(id, payload);
+    },
+    onError: (err) => {
+      Swal.fire({
+        icon: "error",
+        title: "Oops...",
+        text: err?.message || "Error al actualizar estado.",
+      });
+    },
+    onSuccess: (_data, variables) => {
+      const statusLabel =
+        variables?.status === "approved" ? "aprobada" : "rechazada";
+      Swal.fire({
+        icon: "success",
+        title: "Estado actualizado",
+        text: `La licencia fue ${statusLabel}.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["licencias", empleadoId] });
+    },
+  });
+
   const handleEliminar = (licencia) => {
     Swal.fire({
-      title: "ÂEstas seguro(a)?",
+      title: "Estas seguro(a)?",
       text: "Una vez eliminado, no podras recuperar este registro.",
       icon: "warning",
       showCancelButton: true,
@@ -73,6 +102,24 @@ export function LicenciasSection({
     }).then((result) => {
       if (result.isConfirmed) {
         doEliminar(licencia.id);
+      }
+    });
+  };
+
+  const handleActualizarEstado = (licencia, status) => {
+    if (!canUpdate("licencias")) return;
+    const actionLabel = status === "approved" ? "Aprobar" : "Rechazar";
+    Swal.fire({
+      title: `${actionLabel} licencia`,
+      text: "Confirma la accion para actualizar el estado.",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: v.colorPrincipal,
+      cancelButtonColor: v.rojo,
+      confirmButtonText: actionLabel,
+    }).then((result) => {
+      if (result.isConfirmed) {
+        doActualizarEstado({ id: licencia.id, status });
       }
     });
   };
@@ -104,6 +151,8 @@ export function LicenciasSection({
           data={data}
           onEdit={handleEditar}
           onDelete={handleEliminar}
+          onApprove={(licencia) => handleActualizarEstado(licencia, "approved")}
+          onReject={(licencia) => handleActualizarEstado(licencia, "rejected")}
         />
       ) : (
         <EmptyState>Sin registros por el momento.</EmptyState>
@@ -121,7 +170,7 @@ export function LicenciasSection({
 }
 
 const Section = styled.section`
-  background: ${({ theme}) => (theme.bg)};
+  background: ${({ theme }) => theme.bg};
   border-radius: ${({ $embedded }) => ($embedded ? "0" : "18px")};
   padding: ${({ $embedded }) => ($embedded ? "0" : "20px 24px")};
   box-shadow: ${({ $embedded }) =>
@@ -145,5 +194,3 @@ const EmptyState = styled.div`
   color: ${({ theme }) => theme.textsecundary};
   text-align: center;
 `;
-
-

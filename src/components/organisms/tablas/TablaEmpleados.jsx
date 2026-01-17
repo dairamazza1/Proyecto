@@ -92,13 +92,13 @@ export function TablaEmpleados({ data }) {
     },
     {
       accessorKey: "professional_number",
-      header: "Matricula",
+      header: "Matricula profesional",
       meta: {
-        cardLabel: "Matricula",
+        cardLabel: "Matricula profesional",
         cardValue: (row) => row.professional_number || "-",
       },
       cell: (info) => (
-        <div data-title="Matricula" className="ContentCell">
+        <div data-title="Matricula profesional" className="ContentCell">
           <span>{info.getValue() || "-"}</span>
         </div>
       ),
@@ -226,6 +226,7 @@ export function TablaEmpleados({ data }) {
     </Container>
   );
 }
+
 
 const Container = styled.div`
   position: relative;

@@ -3,18 +3,68 @@ import {
   LinksArray,
   SecondarylinksArray,
   ToggleTema,
+  UserAuth,
+  useCompanyStore,
+  useNotificacionesCountUnread,
   usePermissions,
 } from "../../../index";
 import { v } from "../../../styles/variables";
 import { NavLink } from "react-router-dom";
 import { Icon } from "@iconify/react";
+import { useQuery } from "@tanstack/react-query";
 
 export function Sidebar({ state, setState }) {
-  const { userRole } = usePermissions();
+  const { userRole, profile } = usePermissions();
+  const { user } = UserAuth();
+  const { dataCompany, showCompany } = useCompanyStore();
+  const canSeeNotifications = ["admin", "rrhh"].includes(userRole);
+  const empresaId = dataCompany?.id ?? null;
+  const perfilId = profile?.id ?? null;
+
+  useQuery({
+    queryKey: ["empresa", user?.id],
+    queryFn: () => showCompany({ id_auth: user?.id }),
+    enabled: canSeeNotifications && Boolean(user?.id) && !dataCompany?.id,
+    refetchOnWindowFocus: false,
+  });
+
+  const { data: unreadCount = 0 } = useNotificacionesCountUnread({
+    empresaId,
+    recipientPerfilId: perfilId,
+    enabled: canSeeNotifications,
+  });
+  const unreadLabel = unreadCount > 99 ? "99+" : unreadCount;
   const filterByRole = (links) =>
     links.filter((link) => !link.roles || link.roles.includes(userRole));
   const primaryLinks = filterByRole(LinksArray);
   const secondaryLinks = filterByRole(SecondarylinksArray);
+
+  const renderLinks = (links) =>
+    links.map(({ icon, label, to, color }) => {
+      const showBadge =
+        canSeeNotifications && to === "/notificaciones" && unreadCount > 0;
+      return (
+        <div
+          className={state ? "LinkContainer active" : "LinkContainer"}
+          key={label}
+        >
+          <NavLink
+            to={to}
+            className={({ isActive }) => `Links${isActive ? ` active` : ``}`}
+          >
+            <section className={state ? "content open" : "content"}>
+              <span className="iconWrapper">
+                <Icon color={color} className="Linkicon" icon={icon} />
+                {showBadge && <span className="badge">{unreadLabel}</span>}
+              </span>
+              <span className={state ? "label_ver" : "label_oculto"}>
+                {label}
+              </span>
+            </section>
+          </NavLink>
+        </div>
+      );
+    });
 
   return (
     <Main $isopen={state.toString()}>
@@ -29,43 +79,9 @@ export function Sidebar({ state, setState }) {
           {/* <h2>Clínica de Salud Mental
               Dr. Gutierrez Walker</h2> */}
         </div>
-        {primaryLinks.map(({ icon, label, to }) => (
-          <div
-            className={state ? "LinkContainer active" : "LinkContainer"}
-            key={label}
-          >
-            <NavLink
-              to={to}
-              className={({ isActive }) => `Links${isActive ? ` active` : ``}`}
-            >
-              <section className={state ? "content open" : "content"}>
-                <Icon className="Linkicon" icon={icon} />
-                <span className={state ? "label_ver" : "label_oculto"}>
-                  {label}
-                </span>
-              </section>
-            </NavLink>
-          </div>
-        ))}
+        {renderLinks(primaryLinks)}
         <Divider />
-        {secondaryLinks.map(({ icon, label, to, color }) => (
-          <div
-            className={state ? "LinkContainer active" : "LinkContainer"}
-            key={label}
-          >
-            <NavLink
-              to={to}
-              className={({ isActive }) => `Links${isActive ? ` active` : ``}`}
-            >
-              <section className={state ? "content open" : "content"}>
-                <Icon color={color} className="Linkicon" icon={icon} />
-                <span className={state ? "label_ver" : "label_oculto"}>
-                  {label}
-                </span>
-              </section>
-            </NavLink>
-          </div>
-        ))}
+        {renderLinks(secondaryLinks)}
         {/* <div className={state ? "LinkContainer active" : "LinkContainer"}>
           <div className="Links">
             <section className={state ? "content open" : "content"}>
@@ -158,6 +174,12 @@ const Container = styled.div`
       justify-content: center;
       width: 100%;
       align-items: center;
+      .iconWrapper {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
       .Linkicon {
         display: flex;
         font-size: 18px;
@@ -165,6 +187,22 @@ const Container = styled.div`
         svg {
           font-size: 28px;
         }
+      }
+      .badge {
+        position: absolute;
+        top: -6px;
+        right: -8px;
+        min-width: 18px;
+        height: 18px;
+        padding: 0 4px;
+        border-radius: 999px;
+        background: var(--color-danger);
+        color: #fff;
+        font-size: 0.7rem;
+        font-weight: 700;
+        line-height: 18px;
+        text-align: center;
+        box-shadow: 0 0 0 2px ${({ theme }) => theme.bgtotal};
       }
 
       .label_ver {

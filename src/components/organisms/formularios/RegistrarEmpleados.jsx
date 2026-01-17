@@ -291,10 +291,9 @@ export function RegistrarEmpleados({
       document_type: data.document_type || "DNI",
       document_number: data.document_number,
       puesto_id: data.puesto_id,
-      professional_number:
-        requiresProfessionalNumber && data.is_registered
-          ? data.professional_number
-          : null,
+      professional_number: requiresProfessionalNumber
+        ? data.professional_number?.trim() || null
+        : null,
       is_registered: data.is_registered ?? false,
       is_active: true,
       created_at: new Date().toISOString(),
@@ -342,10 +341,9 @@ export function RegistrarEmpleados({
       document_type: data.document_type || "DNI",
       document_number: data.document_number,
       puesto_id: data.puesto_id,
-      professional_number:
-        requiresProfessionalNumber && data.is_registered
-          ? data.professional_number
-          : null,
+      professional_number: requiresProfessionalNumber
+        ? data.professional_number?.trim() || null
+        : null,
       is_registered: data.is_registered ?? false,
       is_active: isActiveBool,
       termination_date: isActiveBool ? null : data.termination_date || null,
@@ -618,7 +616,7 @@ export function RegistrarEmpleados({
                   <input
                     className="form__field"
                     type="text"
-                    placeholder="Nro matricula"
+                    placeholder="Matricula profesional"
                     {...register("professional_number", {
                       validate: (value) => {
                         if (isRegistered && requiresProfessionalNumber) {
@@ -630,7 +628,7 @@ export function RegistrarEmpleados({
                       },
                     })}
                   />
-                  <label className="form__label">Nro matricula</label>
+                  <label className="form__label">Matricula profesional</label>
                   {errors.professional_number?.message && (
                     <p>{errors.professional_number.message}</p>
                   )}

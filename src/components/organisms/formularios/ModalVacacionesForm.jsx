@@ -30,7 +30,6 @@ export function ModalVacacionesForm({ empleadoId, vacacion, onClose }) {
       start_date: "",
       end_date: "",
       days_taken: 0,
-      status: "pending",
     },
   });
 
@@ -43,7 +42,6 @@ export function ModalVacacionesForm({ empleadoId, vacacion, onClose }) {
       start_date: vacacion.start_date ?? "",
       end_date: vacacion.end_date ?? "",
       days_taken: vacacion.days_taken ?? 0,
-      status: vacacion.status ?? "pending",
     });
   }, [vacacion, reset]);
 
@@ -69,13 +67,13 @@ export function ModalVacacionesForm({ empleadoId, vacacion, onClose }) {
         start_date: data.start_date,
         end_date: data.end_date,
         days_taken: data.days_taken,
-        status: data.status,
         created_at: new Date().toISOString(),
       };
 
       if (isEdit) {
         return updateVacacion(vacacion.id, payload);
       }
+      payload.status = "pending";
       return insertVacacion(payload);
     },
     onError: (err) => {
@@ -173,17 +171,6 @@ export function ModalVacacionesForm({ empleadoId, vacacion, onClose }) {
                 </InputText>
               </article>
             )}
-
-            <article>
-              <InputText icono={<v.iconoCheck />}>
-                <select className="form__field" {...register("status")}>
-                  <option value="pending">Pendiente</option>
-                  <option value="approved">Aprobado</option>
-                  <option value="rejected">Rechazado</option>
-                </select>
-                <label className="form__label">Estado</label>
-              </InputText>
-            </article>
 
             <div className="acciones">
               <Btn1

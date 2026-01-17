@@ -22,7 +22,7 @@ import { BsQuestionCircle } from "react-icons/bs";
 import { HiOutlineChartPie } from "react-icons/hi";
 import { SlGraph } from "react-icons/sl";
 import { BsBarChartLine } from "react-icons/bs";
-import { AiOutlineCalculator } from "react-icons/ai";
+import { AiOutlineCalculator, AiOutlineEye } from "react-icons/ai";
 
 import { IoIosArrowForward } from "react-icons/io";
 
@@ -86,6 +86,7 @@ export const v = {
   iconoCheck: MdOutlineCheckCircleOutline ,
   iconoWord: FaRegFileWord ,
   iconomenu: CgMenu ,
+  iconoEye: AiOutlineEye,
 
 
 

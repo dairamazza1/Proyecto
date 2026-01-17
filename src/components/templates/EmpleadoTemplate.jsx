@@ -158,7 +158,7 @@ export function EmpleadoTemplate({ id, empleado, isError, sucursalEmpleado }) {
                 <span className="value">{empleado?.puesto?.name ?? "-"}</span>
               </InfoItem>
               <InfoItem>
-                <span className="label">Nro de Matricula</span>
+                <span className="label">Matricula profesional</span>
                 <span className="value">
                   {empleado?.professional_number ?? "-"}
                 </span>

@@ -37,7 +37,6 @@ export function ModalCambiosForm({ empleadoId, cambio, onClose }) {
       duration_type: "transitorio",
       start_date: "",
       end_date: "",
-      status: "pending",
       empleado_replace_id: "",
     },
   });
@@ -96,7 +95,6 @@ export function ModalCambiosForm({ empleadoId, cambio, onClose }) {
       duration_type: cambio.duration_type ?? "transitorio",
       start_date: cambio.start_date ?? "",
       end_date: cambio.end_date ?? "",
-      status: cambio.status ?? "pending",
       empleado_replace_id: cambio.empleado_replace_id
         ? String(cambio.empleado_replace_id)
         : "",
@@ -153,13 +151,13 @@ export function ModalCambiosForm({ empleadoId, cambio, onClose }) {
         duration_type: data.duration_type ?? "transitorio",
         start_date: isTransitorioPayload ? data.start_date : null,
         end_date: isTransitorioPayload ? data.end_date || null : null,
-        status: data.status,
         empleado_replace_id: data.empleado_replace_id ?? null,
       };
 
       if (isEdit) {
         return updateCambio(cambio.id, payload);
       }
+      payload.status = "pending";
       return insertCambio(payload);
     },
     onError: (err) => {
@@ -390,18 +388,6 @@ export function ModalCambiosForm({ empleadoId, cambio, onClose }) {
                 <label className="form__label">Empleado reemplazo (opcional)</label>
               </InputText>
             </article>
-
-            <article>
-              <InputText icono={<v.iconoCalendario />}>
-                <select className="form__field" {...register("status")}>
-                  <option value="pending">Pendiente</option>
-                  <option value="approved">Aprobado</option>
-                  <option value="rejected">Rechazado</option>
-                </select>
-                <label className="form__label">Estado</label>
-              </InputText>
-            </article>
-
             <div className="acciones">
               <Btn1
                 icono={<v.iconocerrar />}
