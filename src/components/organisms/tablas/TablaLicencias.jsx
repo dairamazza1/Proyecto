@@ -87,8 +87,11 @@ export function TablaLicencias({
   const [sorting, setSorting] = useState([{ id: "start_date", desc: true }]);
 
   // Hook de permisos
-  const { canUpdate, canDelete } = usePermissions();
-  const canUpdateStatus = canUpdate("licencias");
+  const {
+    canApproveRejectSolicitud,
+    canDeleteSolicitud,
+    canEditSolicitud,
+  } = usePermissions();
   const getVerifiedByLabel = (row) =>
     buildPerfilDateLabel(row?.verificador, row?.verified_by, row?.verified_at);
   const getRequestedByLabel = (row) =>
@@ -229,9 +232,12 @@ export function TablaLicencias({
         const status = String(row?.status ?? "").toLowerCase();
         const isApproved = status === "approved";
         const isRejected = status === "rejected";
+        const canApproveReject = canApproveRejectSolicitud(row);
+        const canEdit = canEditSolicitud(row);
+        const canDelete = canDeleteSolicitud(row);
         return (
           <div data-title="Acciones" className="ContentCell acciones">
-            {canUpdateStatus && onApprove && !isApproved && (
+            {canApproveReject && onApprove && !isApproved && (
               <AccionTabla
                 funcion={() => onApprove?.(row)}
                 fontSize="18px"
@@ -239,7 +245,7 @@ export function TablaLicencias({
                 icono={<v.iconoCheck />}
               />
             )}
-            {canUpdateStatus && onReject && !isRejected && (
+            {canApproveReject && onReject && !isRejected && (
               <AccionTabla
                 funcion={() => onReject?.(row)}
                 fontSize="18px"
@@ -247,7 +253,7 @@ export function TablaLicencias({
                 icono={<v.iconocerrar />}
               />
             )}
-            {canUpdate("licencias") && (
+            {canEdit && (
               <AccionTabla
                 funcion={() => onEdit?.(row)}
                 fontSize="18px"
@@ -255,7 +261,7 @@ export function TablaLicencias({
                 icono={<v.iconeditarTabla />}
               />
             )}
-            {canDelete("licencias") && (
+            {canDelete && (
               <AccionTabla
                 funcion={() => onDelete?.(row)}
                 fontSize="18px"
@@ -319,7 +325,7 @@ export function TablaLicencias({
                 ))}
               </div>
               <div className="cardActions">
-                {canUpdateStatus &&
+                {canApproveRejectSolicitud(licencia) &&
                   onApprove &&
                   String(licencia?.status ?? "").toLowerCase() !==
                     "approved" && (
@@ -330,7 +336,7 @@ export function TablaLicencias({
                       Aceptar
                     </button>
                   )}
-                {canUpdateStatus &&
+                {canApproveRejectSolicitud(licencia) &&
                   onReject &&
                   String(licencia?.status ?? "").toLowerCase() !==
                     "rejected" && (
@@ -350,12 +356,12 @@ export function TablaLicencias({
                     Ver certificado
                   </button>
                 )}
-                {canUpdate("licencias") && (
+                {canEditSolicitud(licencia) && (
                   <button type="button" onClick={() => onEdit?.(licencia)}>
                     Editar
                   </button>
                 )}
-                {canDelete("licencias") && (
+                {canDeleteSolicitud(licencia) && (
                   <button type="button" onClick={() => onDelete?.(licencia)}>
                     Eliminar
                   </button>

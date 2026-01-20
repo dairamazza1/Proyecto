@@ -77,8 +77,11 @@ export function TablaVacaciones({
   const [sorting, setSorting] = useState([{ id: "start_date", desc: true }]);
   
   // Hook de permisos
-  const { canUpdate, canDelete } = usePermissions();
-  const canUpdateStatus = canUpdate("vacaciones");
+  const {
+    canApproveRejectSolicitud,
+    canDeleteSolicitud,
+    canEditSolicitud,
+  } = usePermissions();
   const getVerifiedByLabel = (row) =>
     buildPerfilDateLabel(row?.verificador, row?.verified_by, row?.verified_at);
   const getRequestedByLabel = (row) =>
@@ -183,9 +186,12 @@ export function TablaVacaciones({
         const status = String(row?.status ?? "").toLowerCase();
         const isApproved = status === "approved";
         const isRejected = status === "rejected";
+        const canApproveReject = canApproveRejectSolicitud(row);
+        const canEdit = canEditSolicitud(row);
+        const canDelete = canDeleteSolicitud(row);
         return (
           <div data-title="Acciones" className="ContentCell">
-            {canUpdateStatus && onApprove && !isApproved && (
+            {canApproveReject && onApprove && !isApproved && (
               <AccionTabla
                 funcion={() => onApprove?.(row)}
                 fontSize="18px"
@@ -193,7 +199,7 @@ export function TablaVacaciones({
                 icono={<v.iconoCheck />}
               />
             )}
-            {canUpdateStatus && onReject && !isRejected && (
+            {canApproveReject && onReject && !isRejected && (
               <AccionTabla
                 funcion={() => onReject?.(row)}
                 fontSize="18px"
@@ -201,7 +207,7 @@ export function TablaVacaciones({
                 icono={<v.iconocerrar />}
               />
             )}
-            {canUpdate("vacaciones") && (
+            {canEdit && (
               <AccionTabla
                 funcion={() => onEdit?.(row)}
                 fontSize="18px"
@@ -209,7 +215,7 @@ export function TablaVacaciones({
                 icono={<v.iconeditarTabla />}
               />
             )}
-            {canDelete("vacaciones") && (
+            {canDelete && (
               <AccionTabla
                 funcion={() => onDelete?.(row)}
                 fontSize="18px"
@@ -268,7 +274,7 @@ export function TablaVacaciones({
                 ))}
               </div>
               <div className="cardActions">
-                {canUpdateStatus &&
+                {canApproveRejectSolicitud(vacacion) &&
                   onApprove &&
                   String(vacacion?.status ?? "").toLowerCase() !==
                     "approved" && (
@@ -279,7 +285,7 @@ export function TablaVacaciones({
                       Aceptar
                     </button>
                   )}
-                {canUpdateStatus &&
+                {canApproveRejectSolicitud(vacacion) &&
                   onReject &&
                   String(vacacion?.status ?? "").toLowerCase() !==
                     "rejected" && (
@@ -290,12 +296,12 @@ export function TablaVacaciones({
                       Rechazar
                     </button>
                   )}
-                {canUpdate("vacaciones") && (
+                {canEditSolicitud(vacacion) && (
                   <button type="button" onClick={() => onEdit?.(vacacion)}>
                     Editar
                   </button>
                 )}
-                {canDelete("vacaciones") && (
+                {canDeleteSolicitud(vacacion) && (
                   <button type="button" onClick={() => onDelete?.(vacacion)}>
                     Eliminar
                   </button>

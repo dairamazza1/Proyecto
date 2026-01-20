@@ -44,11 +44,18 @@ export function ProtectedByPermission({
   action, 
   children, 
   fallback = null,
-  redirectTo = null 
+  redirectTo = null,
+  can,
+  row = null
 }) {
-  const { can } = usePermissions();
+  const { can: canRole } = usePermissions();
 
-  const hasAccess = can(resource, action);
+  const hasAccess =
+    typeof can === "function"
+      ? Boolean(can(action, row))
+      : typeof can === "boolean"
+      ? can
+      : canRole(resource, action);
 
   if (!hasAccess) {
     if (redirectTo) {

@@ -30,6 +30,45 @@ export function usePermissions() {
   
   // Calcular el rol directamente desde profile para asegurar reactividad
   const userRole = profile?.app_role || 'employee';
+  const isAdminRole = userRole === 'admin' || userRole === 'superadmin';
+  const isRRHHRole = userRole === 'rrhh';
+  const isEmployeeRole = userRole === 'employee';
+
+  const normalizeStatus = (value) => String(value ?? "").toLowerCase();
+
+  const isPendingStatus = (row) =>
+    normalizeStatus(row?.status) === "pending";
+
+  const isCreatedByCurrentUser = (row) => {
+    const perfilId = profile?.id;
+    const createdBy = row?.created_by;
+    if (!perfilId || createdBy === null || createdBy === undefined) return false;
+    return String(createdBy) === String(perfilId);
+  };
+
+  const isWithinEditWindow = (row) => {
+    const createdAt = row?.created_at;
+    if (!createdAt) return false;
+    const createdAtMs = new Date(createdAt).getTime();
+    if (Number.isNaN(createdAtMs)) return false;
+    return Date.now() <= createdAtMs + 24 * 60 * 60 * 1000;
+  };
+
+  const canEditSolicitud = (row) => {
+    if (isAdminRole || isRRHHRole) return true;
+    if (isEmployeeRole) {
+      return (
+        isCreatedByCurrentUser(row) &&
+        isPendingStatus(row) &&
+        isWithinEditWindow(row)
+      );
+    }
+    return false;
+  };
+
+  const canDeleteSolicitud = (_row) => isAdminRole;
+
+  const canApproveRejectSolicitud = (_row) => isAdminRole || isRRHHRole;
 
   return {
     // Rol del usuario
@@ -105,17 +144,31 @@ export function usePermissions() {
     },
 
     /**
+     * Verificar si es admin
+     */
+    isAdmin: () => {
+      return isAdminRole;
+    },
+
+    /**
      * Verificar si es RRHH
      */
     isRRHH: () => {
-      return userRole === 'rrhh';
+      return isRRHHRole;
     },
 
     /**
      * Verificar si es empleado
      */
     isEmployee: () => {
-      return userRole === 'employee';
-    }
+      return isEmployeeRole;
+    },
+
+    /**
+     * Permisos para solicitudes (vacaciones/licencias/cambios)
+     */
+    canEditSolicitud,
+    canDeleteSolicitud,
+    canApproveRejectSolicitud
   };
 }

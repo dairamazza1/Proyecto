@@ -170,9 +170,13 @@ export function TablaCambios({
   const templateRef = useRef(null);
 
   // Hook de permisos
-  const { canUpdate, canDelete, canExport } = usePermissions();
+  const {
+    canApproveRejectSolicitud,
+    canDeleteSolicitud,
+    canEditSolicitud,
+    canExport,
+  } = usePermissions();
   const canExportDocs = canExport("cambios");
-  const canUpdateStatus = canUpdate("cambios");
   const getVerifiedByLabel = (row) =>
     buildPerfilDateLabel(row?.verificador, row?.verified_by, row?.verified_at);
   const getRequestedByLabel = (row) =>
@@ -399,9 +403,12 @@ export function TablaCambios({
         const status = String(row?.status ?? "").toLowerCase();
         const isApproved = status === "approved";
         const isRejected = status === "rejected";
+        const canApproveReject = canApproveRejectSolicitud(row);
+        const canEdit = canEditSolicitud(row);
+        const canDelete = canDeleteSolicitud(row);
         return (
           <div data-title="Acciones" className="ContentCell">
-            {canUpdateStatus && onApprove && !isApproved && (
+            {canApproveReject && onApprove && !isApproved && (
               <AccionTabla
                 funcion={() => onApprove?.(row)}
                 fontSize="18px"
@@ -409,7 +416,7 @@ export function TablaCambios({
                 icono={<v.iconoCheck />}
               />
             )}
-            {canUpdateStatus && onReject && !isRejected && (
+            {canApproveReject && onReject && !isRejected && (
               <AccionTabla
                 funcion={() => onReject?.(row)}
                 fontSize="18px"
@@ -417,7 +424,7 @@ export function TablaCambios({
                 icono={<v.iconocerrar />}
               />
             )}
-            {canUpdate("cambios") && (
+            {canEdit && (
               <AccionTabla
                 funcion={() => onEdit?.(row)}
                 fontSize="18px"
@@ -425,7 +432,7 @@ export function TablaCambios({
                 icono={<v.iconeditarTabla />}
               />
             )}
-            {canDelete("cambios") && (
+            {canDelete && (
               <AccionTabla
                 funcion={() => onDelete?.(row)}
                 fontSize="18px"
@@ -493,7 +500,7 @@ export function TablaCambios({
                 ))}
               </div>
               <div className="cardActions">
-                {canUpdateStatus &&
+                {canApproveRejectSolicitud(cambio) &&
                   onApprove &&
                   String(cambio?.status ?? "").toLowerCase() !==
                     "approved" && (
@@ -501,7 +508,7 @@ export function TablaCambios({
                       Aceptar
                     </button>
                   )}
-                {canUpdateStatus &&
+                {canApproveRejectSolicitud(cambio) &&
                   onReject &&
                   String(cambio?.status ?? "").toLowerCase() !==
                     "rejected" && (
@@ -509,7 +516,7 @@ export function TablaCambios({
                       Rechazar
                     </button>
                   )}
-                {canUpdate("cambios") && (
+                {canEditSolicitud(cambio) && (
                   <button type="button" onClick={() => onEdit?.(cambio)}>
                     Editar
                   </button>
@@ -522,7 +529,7 @@ export function TablaCambios({
                     Vista previa
                   </button>
                 )}
-                {canDelete("cambios") && (
+                {canDeleteSolicitud(cambio) && (
                   <button type="button" onClick={() => onDelete?.(cambio)}>
                     Eliminar
                   </button>
