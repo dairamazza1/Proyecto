@@ -2,7 +2,7 @@ import { supabase } from "../index";
 
 const table = "empleados";
 const selectFields =
-  "id, document_number, first_name, last_name, puesto:puestos_laborales(name), empresa_id, employee_id_number,professional_number,telephone";
+  "id, document_number, first_name, last_name, puesto:puestos_laborales(name), empresa_id, employee_id_number, professional_number, telephone, birthday, genre";
 export async function getEmpleados({
   empresa_id,
   orderBy = "last_name",
@@ -69,7 +69,7 @@ export async function searchEmpleados({
     
     .from("empleados")
     .select(
-      "id, document_number, first_name, last_name, puesto:puestos_laborales!inner(name), empresa_id, employee_id_number, professional_number"
+      "id, document_number, first_name, last_name, puesto:puestos_laborales!inner(name), empresa_id, employee_id_number, professional_number, telephone, birthday, genre"
     )
     .order(orderBy, { ascending })
     .ilike("puestos_laborales.name", `%${term}%`);

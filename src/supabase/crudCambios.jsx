@@ -13,9 +13,16 @@ const selectFields = `
   start_date,
   end_date,
   status,
+  created_by,
+  created_at,
   verified_by,
   empleado_replace_id,
-  created_at,
+  verified_at,
+  creador:perfiles!empleados_cambios_actividades_created_by_fkey(
+    id,
+    email,
+    empleado:empleados(id, first_name, last_name)
+  ),
   verificador:perfiles!empleados_cambios_actividades_verified_by_fkey(
     id,
     email,
@@ -140,20 +147,6 @@ export async function getCambiosByEmpleadoId(empleadoId) {
     .select(selectFields)
     .eq("empleado_id", empleadoId)
     .order("created_at", { ascending: false });
-  if (error) throw error;
-  return data ?? [];
-}
-
-export async function getCambiosStatusByIds(ids = []) {
-  const uniqueIds = Array.from(
-    new Set((ids ?? []).filter((id) => id !== null && id !== undefined))
-  );
-  if (!uniqueIds.length) return [];
-
-  const { data, error } = await supabase
-    .from(table)
-    .select("id, status")
-    .in("id", uniqueIds);
   if (error) throw error;
   return data ?? [];
 }

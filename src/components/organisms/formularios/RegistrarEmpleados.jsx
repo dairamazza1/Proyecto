@@ -121,6 +121,8 @@ export function RegistrarEmpleados({
       document_type: "DNI",
       is_registered: false,
       is_active: "true",
+      birthday: "",
+      genre: "",
     },
   });
 
@@ -129,6 +131,11 @@ export function RegistrarEmpleados({
   const isRegistered = watch("is_registered");
   const isActiveValue = watch("is_active");
   const showTerminationDate = isEdit && String(isActiveValue) === "false";
+  const normalizeDateInputValue = (value) => {
+    if (!value) return "";
+    const raw = String(value);
+    return raw.split("T")[0];
+  };
 
   const { data: dataAreas, isLoading: loadingAreas } = useQuery({
     queryKey: ["mostrar areas laborales"],
@@ -190,6 +197,8 @@ export function RegistrarEmpleados({
       is_registered: empleado.is_registered ?? false,
       professional_number: empleado.professional_number ?? "",
       telephone: empleado.telephone ?? "",
+      birthday: normalizeDateInputValue(empleado.birthday),
+      genre: empleado.genre ?? "",
       sucursal_id: sucursalEmpleado?.sucursal_id
         ? String(sucursalEmpleado.sucursal_id)
         : "",
@@ -291,6 +300,8 @@ export function RegistrarEmpleados({
       document_type: data.document_type || "DNI",
       document_number: data.document_number,
       puesto_id: data.puesto_id,
+      birthday: data.birthday || null,
+      genre: data.genre || null,
       professional_number: requiresProfessionalNumber
         ? data.professional_number?.trim() || null
         : null,
@@ -341,6 +352,8 @@ export function RegistrarEmpleados({
       document_type: data.document_type || "DNI",
       document_number: data.document_number,
       puesto_id: data.puesto_id,
+      birthday: data.birthday || null,
+      genre: data.genre || null,
       professional_number: requiresProfessionalNumber
         ? data.professional_number?.trim() || null
         : null,
@@ -465,6 +478,38 @@ export function RegistrarEmpleados({
                 {errors.last_name?.type === "required" && (
                   <p>Campo requerido</p>
                 )}
+              </InputText>
+            </article>
+
+            <article>
+              <InputText icono={<v.iconoCalendario />}>
+                <input
+                  className="form__field"
+                  type="date"
+                  placeholder="fecha de nacimiento"
+                  {...register("birthday", { required: "Campo requerido" })}
+                />
+                <label className="form__label">Fecha de nacimiento</label>
+                {errors.birthday?.message && <p>{errors.birthday.message}</p>}
+              </InputText>
+            </article>
+
+            <article>
+              <InputText icono={<v.iconoUser />}>
+                <select
+                  className="form__field"
+                  {...register("genre", { required: "Campo requerido" })}
+                  defaultValue=""
+                >
+                  <option value="" disabled>
+                    Seleccionar genero
+                  </option>
+                  <option value="Femenino">Femenino</option>
+                  <option value="Masculino">Masculino</option>
+                  <option value="Otro">Otro</option>
+                </select>
+                <label className="form__label">Genero</label>
+                {errors.genre?.message && <p>{errors.genre.message}</p>}
               </InputText>
             </article>
 

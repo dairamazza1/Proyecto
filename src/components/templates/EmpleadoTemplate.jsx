@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import styled from "styled-components";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -16,11 +16,25 @@ import {
 import { usePermissions } from "../../hooks/usePermissions";
 import { v } from "../../styles/variables";
 import { Device, DeviceMax } from "../../styles/breakpoints";
+import { useSearchParams } from "react-router-dom";
 
 export function EmpleadoTemplate({ id, empleado, isError, sucursalEmpleado }) {
   const [openEditar, setOpenEditar] = useState(false);
   const [openInvitar, setOpenInvitar] = useState(false);
   const [activeTab, setActiveTab] = useState("vacaciones");
+  const [searchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab");
+
+  useEffect(() => {
+    const allowedTabs = new Set([
+      "vacaciones",
+      "licencias",
+      "cambios",
+      "sanciones",
+    ]);
+    const nextTab = tabParam ? String(tabParam).toLowerCase() : "vacaciones";
+    setActiveTab(allowedTabs.has(nextTab) ? nextTab : "vacaciones");
+  }, [tabParam]);
 
   // Hook de permisos
   const { canUpdate, isEmployee, userRole } = usePermissions();
@@ -55,6 +69,8 @@ export function EmpleadoTemplate({ id, empleado, isError, sucursalEmpleado }) {
   const hireDate = formatDate(empleado?.hire_date);
   const statusLabel = empleado?.is_active ? "Activo" : "Inactivo";
   const emailLabel = empleado?.perfil?.email ?? "-";
+  const ageLabel = formatAge(empleado?.birthday);
+  const genreLabel = empleado?.genre ?? "-";
 
   const terminationDate = formatDate(empleado?.termination_date);
 
@@ -112,7 +128,7 @@ export function EmpleadoTemplate({ id, empleado, isError, sucursalEmpleado }) {
           {/* Mensaje informativo para empleados */}
           {isEmployee() && (
             <InfoBanner>
-              ðŸ“– EstÃ¡s en modo solo lectura. Contacta a RRHH para
+              📖 Estás en modo solo lectura. Contacta a RRHH para
               modificaciones.
             </InfoBanner>
           )}
@@ -144,6 +160,14 @@ export function EmpleadoTemplate({ id, empleado, isError, sucursalEmpleado }) {
               <InfoItem>
                 <span className="label">Apellido</span>
                 <span className="value">{empleado?.last_name ?? "-"}</span>
+              </InfoItem>
+              <InfoItem>
+                <span className="label">Edad</span>
+                <span className="value">{ageLabel}</span>
+              </InfoItem>
+              <InfoItem>
+                <span className="label">Genero</span>
+                <span className="value">{genreLabel}</span>
               </InfoItem>
               <InfoItem>
                 <span className="label">Documento</span>
@@ -340,6 +364,9 @@ const InfoItem = styled.div`
     font-size: 1rem;
     font-weight: 600;
     color: ${({ theme }) => theme.text};
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    white-space: normal;
   }
 `;
 
@@ -407,3 +434,20 @@ function formatDate(value) {
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleDateString("es-AR");
 }
+
+function formatAge(value) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  const today = new Date();
+  let age = today.getFullYear() - date.getFullYear();
+  const monthDiff = today.getMonth() - date.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < date.getDate())) {
+    age -= 1;
+  }
+  if (age < 0) return "-";
+  return `${age} años`;
+}
+
+
+

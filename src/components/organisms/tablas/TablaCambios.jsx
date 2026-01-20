@@ -25,6 +25,50 @@ const statusValues = {
 const formatStatus = (value) =>
   statusValues[String(value ?? "").toLowerCase()] ?? "-";
 
+const formatDateTimeLabel = (value) => {
+  if (!value) return "";
+  const raw = String(value);
+  const dateOnlyMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const parsed = dateOnlyMatch
+    ? new Date(
+        Number(dateOnlyMatch[1]),
+        Number(dateOnlyMatch[2]) - 1,
+        Number(dateOnlyMatch[3])
+      )
+    : new Date(raw);
+  if (Number.isNaN(parsed.valueOf())) return raw;
+  const day = String(parsed.getDate()).padStart(2, "0");
+  const month = String(parsed.getMonth() + 1).padStart(2, "0");
+  const year = parsed.getFullYear();
+  const hours = String(parsed.getHours()).padStart(2, "0");
+  const minutes = String(parsed.getMinutes()).padStart(2, "0");
+  return `${day}/${month}/${year} ${hours}:${minutes} hs`;
+};
+
+const buildPerfilDateLabel = (perfil, perfilId, dateValue) => {
+  if (perfilId === null || perfilId === undefined || perfilId === "") {
+    return "-";
+  }
+  const baseLabel = resolvePerfilDisplayName(perfil, perfilId);
+  if (!baseLabel || baseLabel === "-") return "-";
+  const dateLabel = formatDateTimeLabel(dateValue);
+  return dateLabel ? `${baseLabel} (${dateLabel})` : baseLabel;
+};
+
+const renderLabelWithDateBreak = (value) => {
+  if (!value || value === "-") return "-";
+  const raw = String(value);
+  const match = raw.match(/^(.*)\s\(([^()]*)\)$/);
+  if (!match) return raw;
+  const [, main, datePart] = match;
+  return (
+    <span className="valueStack">
+      <span className="valueMain">{main}</span>
+      <span className="valueSub">({datePart})</span>
+    </span>
+  );
+};
+
 const formatNombre = (persona) => {
   if (!persona) return "-";
   const firstName = persona.first_name ?? "";
@@ -130,7 +174,9 @@ export function TablaCambios({
   const canExportDocs = canExport("cambios");
   const canUpdateStatus = canUpdate("cambios");
   const getVerifiedByLabel = (row) =>
-    resolvePerfilDisplayName(row?.verificador, row?.verified_by);
+    buildPerfilDateLabel(row?.verificador, row?.verified_by, row?.verified_at);
+  const getRequestedByLabel = (row) =>
+    buildPerfilDateLabel(row?.creador, row?.created_by, row?.created_at);
 
   const handleOpenPreview = (cambio) => {
     setPreviewCambio(cambio);
@@ -182,6 +228,22 @@ export function TablaCambios({
   };
 
   const columns = [
+    {
+      id: "requested_by",
+      header: "Solicitado por",
+      accessorFn: (row) => getRequestedByLabel(row),
+      meta: {
+        cardLabel: "Solicitado por",
+        cardValue: (row) => renderLabelWithDateBreak(getRequestedByLabel(row)),
+      },
+      cell: (info) => (
+        <div data-title="Solicitado por" className="ContentCell">
+          <span>{info.getValue() ?? "-"}</span>
+        </div>
+      ),
+      enableSorting: true,
+      sortingFn: "alphanumeric",
+    },
     {
       accessorKey: "start_date",
       header: "Fecha inicio",
@@ -319,7 +381,7 @@ export function TablaCambios({
       accessorFn: (row) => getVerifiedByLabel(row),
       meta: {
         cardLabel: "Verificado por",
-        cardValue: (row) => getVerifiedByLabel(row),
+        cardValue: (row) => renderLabelWithDateBreak(getVerifiedByLabel(row)),
       },
       cell: (info) => (
         <div data-title="Verificado por" className="ContentCell">
@@ -718,7 +780,22 @@ const Container = styled.div`
       font-weight: 600;
       max-width: 100%;
       word-break: break-word;
+      overflow-wrap: anywhere;
+      white-space: normal;
       text-align: right;
+    }
+
+    .valueStack {
+      display: inline-flex;
+      flex-direction: column;
+      gap: 2px;
+      align-items: flex-end;
+    }
+
+    .valueSub {
+      font-weight: 500;
+      font-size: 0.85rem;
+      color: ${({ theme }) => theme.textsecundary};
     }
   }
 

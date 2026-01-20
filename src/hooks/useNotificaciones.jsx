@@ -1,101 +1,110 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  getNotificaciones,
-  getNotificacionesCountUnread,
-  markNotificacionRead,
-} from "../supabase/crudInvitaciones";
+  getNotificationReads,
+  getNotifications,
+  getUnreadCount,
+  markRead,
+} from "../supabase/crudNotifications";
 
-export function useNotificacionesCountUnread({
-  empresaId,
-  recipientPerfilId,
-  enabled = true,
-} = {}) {
+const buildNotificationsWithReads = async (notifications = []) => {
+  if (!notifications?.length) return [];
+
+  const ids = notifications.map((item) => item.id);
+  const reads = await getNotificationReads(ids);
+  const readMap = new Map(
+    (reads ?? []).map((item) => [item.notification_id, item.read_at])
+  );
+
+  return notifications.map((item) => ({
+    ...item,
+    is_read: readMap.has(item.id),
+    read_at: readMap.get(item.id) ?? null,
+  }));
+};
+
+export function useNotificationsList({ limit = 100 } = {}, enabled = true) {
   return useQuery({
-    queryKey: ["notificacionesUnreadCount", empresaId, recipientPerfilId],
-    queryFn: () =>
-      getNotificacionesCountUnread({
-        empresa_id: empresaId,
-        recipient_perfil_id: recipientPerfilId,
-      }),
-    enabled: Boolean(empresaId) && Boolean(recipientPerfilId) && enabled,
+    queryKey: ["notifications", limit],
+    queryFn: async () => {
+      const notifications = await getNotifications({ limit });
+      return buildNotificationsWithReads(notifications);
+    },
+    enabled,
     refetchOnWindowFocus: false,
   });
 }
 
-export function useNotificacionesList(filters, enabled = true) {
+export function useNotificationsUnreadCount({ limit = 500 } = {}, enabled = true) {
   return useQuery({
-    queryKey: ["notificaciones", filters],
-    queryFn: () => getNotificaciones(filters),
-    enabled: Boolean(filters?.empresa_id) && enabled,
+    queryKey: ["notificationsUnreadCount", limit],
+    queryFn: () => getUnreadCount({ limit }),
+    enabled,
     refetchOnWindowFocus: false,
   });
 }
 
-export function useMarkNotificacionReadMutation({
-  empresaId,
-  recipientPerfilId,
-} = {}) {
+export function useMarkReadMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: markNotificacionRead,
-    onMutate: async (id) => {
-      await queryClient.cancelQueries({ queryKey: ["notificaciones"] });
+    mutationFn: markRead,
+    onMutate: async (payload) => {
+      const notificationId =
+        typeof payload === "object" ? payload.notificationId : payload;
+
+      if (!notificationId) {
+        return {};
+      }
+
+      await queryClient.cancelQueries({ queryKey: ["notifications"] });
+      await queryClient.cancelQueries({ queryKey: ["notificationsUnreadCount"] });
+
       const previousLists = queryClient.getQueriesData({
-        queryKey: ["notificaciones"],
+        queryKey: ["notifications"],
       });
-      const previousCount = queryClient.getQueryData([
-        "notificacionesUnreadCount",
-        empresaId,
-        recipientPerfilId,
-      ]);
+      const previousCounts = queryClient.getQueriesData({
+        queryKey: ["notificationsUnreadCount"],
+      });
 
       let wasUnread = false;
       previousLists.forEach(([, data]) => {
         if (!Array.isArray(data)) return;
-        const match = data.find((item) => item?.id === id);
-        if (match?.status === "unread") {
+        const match = data.find((item) => item?.id === notificationId);
+        if (match && !match.is_read) {
           wasUnread = true;
         }
       });
 
       const readAt = new Date().toISOString();
-      queryClient.setQueriesData({ queryKey: ["notificaciones"] }, (old) => {
+      queryClient.setQueriesData({ queryKey: ["notifications"] }, (old) => {
         if (!Array.isArray(old)) return old;
         return old.map((item) =>
-          item?.id === id
-            ? { ...item, status: "read", read_at: readAt }
+          item?.id === notificationId
+            ? { ...item, is_read: true, read_at: readAt }
             : item
         );
       });
 
       if (wasUnread) {
-        queryClient.setQueryData(
-          ["notificacionesUnreadCount", empresaId, recipientPerfilId],
+        queryClient.setQueriesData(
+          { queryKey: ["notificationsUnreadCount"] },
           (old) => Math.max(0, (old ?? 0) - 1)
         );
       }
 
-      return { previousLists, previousCount };
+      return { previousLists, previousCounts };
     },
     onError: (_err, _id, context) => {
       context?.previousLists?.forEach(([key, data]) => {
         queryClient.setQueryData(key, data);
       });
-      if (context?.previousCount !== undefined) {
-        queryClient.setQueryData(
-          ["notificacionesUnreadCount", empresaId, recipientPerfilId],
-          context.previousCount
-        );
-      }
+      context?.previousCounts?.forEach(([key, data]) => {
+        queryClient.setQueryData(key, data);
+      });
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["notificaciones"] });
-      if (empresaId) {
-        queryClient.invalidateQueries({
-          queryKey: ["notificacionesUnreadCount", empresaId, recipientPerfilId],
-        });
-      }
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["notificationsUnreadCount"] });
     },
   });
 }

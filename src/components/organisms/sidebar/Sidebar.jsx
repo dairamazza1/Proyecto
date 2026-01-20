@@ -3,36 +3,21 @@ import {
   LinksArray,
   SecondarylinksArray,
   ToggleTema,
-  UserAuth,
-  useCompanyStore,
-  useNotificacionesCountUnread,
+  useNotificationsUnreadCount,
   usePermissions,
 } from "../../../index";
 import { v } from "../../../styles/variables";
 import { NavLink } from "react-router-dom";
 import { Icon } from "@iconify/react";
-import { useQuery } from "@tanstack/react-query";
 
 export function Sidebar({ state, setState }) {
-  const { userRole, profile } = usePermissions();
-  const { user } = UserAuth();
-  const { dataCompany, showCompany } = useCompanyStore();
+  const { userRole } = usePermissions();
   const canSeeNotifications = ["admin", "rrhh"].includes(userRole);
-  const empresaId = dataCompany?.id ?? null;
-  const perfilId = profile?.id ?? null;
 
-  useQuery({
-    queryKey: ["empresa", user?.id],
-    queryFn: () => showCompany({ id_auth: user?.id }),
-    enabled: canSeeNotifications && Boolean(user?.id) && !dataCompany?.id,
-    refetchOnWindowFocus: false,
-  });
-
-  const { data: unreadCount = 0 } = useNotificacionesCountUnread({
-    empresaId,
-    recipientPerfilId: perfilId,
-    enabled: canSeeNotifications,
-  });
+  const { data: unreadCount = 0 } = useNotificationsUnreadCount(
+    { limit: 500 },
+    canSeeNotifications
+  );
   const unreadLabel = unreadCount > 99 ? "99+" : unreadCount;
   const filterByRole = (links) =>
     links.filter((link) => !link.roles || link.roles.includes(userRole));
