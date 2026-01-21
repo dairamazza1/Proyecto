@@ -6,6 +6,7 @@ import {
   Empleado,
   Empleados,
   Home,
+  Enfermeria,
   InvitacionesConfig,
   Login,
   Perfil,
@@ -39,9 +40,10 @@ export function MyRoutes() {
     <Routes>
       {/* Rutas protegidas */}
       <Route element={<ProtectedRoute redirectTo="/login" />}>
-        <Route path="/" element={<Home />} />
-        <Route path="/perfil" element={<Perfil />} />
-        <Route path="/configuracion" element={<Configurations />} />
+      <Route path="/" element={<Home />} />
+      <Route path="/perfil" element={<Perfil />} />
+      <Route path="/enfermeria" element={<Enfermeria />} />
+      <Route path="/configuracion" element={<Configurations />} />
         <Route path="/Configuración" element={<Configurations />} />
         <Route
           element={<RoleRoute roles={["admin", "rrhh"]} redirectTo="/perfil" />}

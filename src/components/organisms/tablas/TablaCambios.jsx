@@ -22,8 +22,17 @@ const statusValues = {
   pending: "Pendiente",
 };
 
+const shiftValues = {
+  manana: "Mañana",
+  tarde: "Tarde",
+  noche: "Noche",
+};
+
 const formatStatus = (value) =>
   statusValues[String(value ?? "").toLowerCase()] ?? "-";
+
+const formatShift = (value) =>  
+  shiftValues[String(value ?? "").toLowerCase()] ?? "-";
 
 const formatDateTimeLabel = (value) => {
   if (!value) return "";
@@ -143,8 +152,8 @@ const buildTemplateData = (cambio, empresaNombre) => ({
   start_date: formatDate(cambio?.start_date) ?? "-",
   end_date: formatDate(cambio?.end_date) ?? "-",
   duration_type: formatDurationType(cambio?.duration_type),
-  horario_anterior: cambio?.previous_schedule ?? "-",
-  horario_nuevo: cambio?.new_schedule ?? "-",
+  horario_anterior: formatShift(cambio?.previous_schedule) ?? "-",
+  horario_nuevo: formatShift(cambio?.new_schedule) ?? "-",
   tareas_anteriores: cambio?.previous_tasks ?? "-",
   tareas_nuevas: cambio?.new_tasks ?? "-",
   motivo: cambio?.change_reason ?? "-",
@@ -278,28 +287,28 @@ export function TablaCambios({
     },
     {
       accessorKey: "previous_schedule",
-      header: "Hora anterior",
+      header: "Turno anterior",
       meta: {
-        cardLabel: "Hora anterior",
-        cardValue: (row) => row.previous_schedule ?? "-",
+        cardLabel: "Turno anterior",
+        cardValue: (row) => formatShift(row.previous_schedule) ?? "-",
       },
       cell: (info) => (
-        <div data-title="Hora anterior" className="ContentCell">
-          <span>{info.getValue() ?? "-"}</span>
+        <div data-title="Turno anterior" className="ContentCell">
+          <span>{formatShift(info.getValue()) ?? "-"}</span>
         </div>
       ),
       enableSorting: true,
     },
     {
       accessorKey: "new_schedule",
-      header: "Hora nueva",
+      header: "Turno nuevo",
       meta: {
-        cardLabel: "Hora nueva",
-        cardValue: (row) => row.new_schedule ?? "-",
+        cardLabel: "Turno nuevo",
+        cardValue: (row) => formatShift(row.new_schedule) ?? "-",
       },
       cell: (info) => (
-        <div data-title="Hora nueva" className="ContentCell">
-          <span>{info.getValue() ?? "-"}</span>
+        <div data-title="Turno nuevo" className="ContentCell">
+          <span>{formatShift(info.getValue()) ?? "-"}</span>
         </div>
       ),
       enableSorting: true,
@@ -941,7 +950,7 @@ const Container = styled.div`
       }
 
       .ContentCell {
-        text-align: right;
+        text-align: center;
         display: flex;
         justify-content: space-between;
         align-items: center;

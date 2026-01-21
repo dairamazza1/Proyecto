@@ -1,10 +1,16 @@
 import styled from "styled-components";
 import { HomeCards, Title, usePermissions, v } from "../../index";
+import { useMemo } from "react";
 
 export function HomeTemplate({ displayName = "Usuario" }) {
-  const { userRole } = usePermissions();
-  const cards =
-    userRole === "employee"
+  const { userRole, isAdmin, isNurseEmployee, empleado, defaultTabFromShift } =
+    usePermissions();
+  const isEmployee = userRole === "employee";
+  const isNurse = isNurseEmployee();
+  const canSeeEnfermeria = isAdmin() || isNurse;
+
+  const cards = useMemo(() => {
+    const baseCards = isEmployee
       ? [
           {
             title: "Mi perfil",
@@ -23,7 +29,8 @@ export function HomeTemplate({ displayName = "Usuario" }) {
           },
           {
             title: "Reportes",
-            description: "Consulta las vacaciones y licencias programadas de los empleados.",
+            description:
+              "Consulta las vacaciones y licencias programadas de los empleados.",
             to: "/reportes",
             icon: v.iconoreportes,
           },
@@ -35,6 +42,31 @@ export function HomeTemplate({ displayName = "Usuario" }) {
             icon: v.iconoUser,
           },
         ];
+
+    if (!canSeeEnfermeria) return baseCards;
+
+    const enfermeriaLink = isNurse
+      ? `/enfermeria?tab=${defaultTabFromShift(empleado?.shift)}`
+      : "/enfermeria";
+    const enfermeriaCard = {
+      title: "Enfermeria",
+      description: "Registros diarios del area de enfermeria.",
+      to: enfermeriaLink,
+      icon: v.iconoProfesional,
+    };
+
+    if (isEmployee) {
+      return [enfermeriaCard, ...baseCards];
+    }
+
+    return [baseCards[0], enfermeriaCard, ...baseCards.slice(1)];
+  }, [
+    isEmployee,
+    canSeeEnfermeria,
+    isNurse,
+    defaultTabFromShift,
+    empleado?.shift,
+  ]);
 
   return (
     <Container>

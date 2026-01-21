@@ -41,6 +41,22 @@ const formatDate = (value) => {
   return `${day}/${month}/${year}`;
 };
 
+const showSwal = (options) => {
+  const onOpen = options?.didOpen;
+  return Swal.fire({
+    ...options,
+    didOpen: (popup) => {
+      const container = Swal.getContainer();
+      if (container) {
+        container.style.zIndex = "3000";
+      }
+      if (typeof onOpen === "function") {
+        onOpen(popup);
+      }
+    },
+  });
+};
+
 export function InvitacionesSection() {
   const queryClient = useQueryClient();
   const [openModal, setOpenModal] = useState(false);
@@ -93,7 +109,7 @@ export function InvitacionesSection() {
         status === "linked" || (status === "accepted" && emailSent === false);
 
       if (isLinked || emailSent === false) {
-        Swal.fire({
+        showSwal({
           icon: "info",
           title: "Usuario ya registrado",
           text:
@@ -101,7 +117,7 @@ export function InvitacionesSection() {
         });
       } else {
         const wasResent = Boolean(result?.resent);
-        Swal.fire({
+        showSwal({
           icon: "success",
           title: wasResent ? "Invitacion reenviada" : "Invitacion enviada",
           text: "El usuario recibira un email de invitacion.",
@@ -110,7 +126,7 @@ export function InvitacionesSection() {
       invalidateInvitationQueries();
     },
     onError: (err) => {
-      Swal.fire({
+      showSwal({
         icon: "error",
         title: "No se pudo reenviar",
         text: err?.message || "Error al reenviar la invitacion.",
@@ -121,7 +137,7 @@ export function InvitacionesSection() {
   const deleteMutation = useMutation({
     mutationFn: async (rowId) => deleteInvitation(rowId),
     onSuccess: () => {
-      Swal.fire({
+      showSwal({
         icon: "success",
         title: "Invitacion eliminada",
         text: "El registro fue eliminado.",
@@ -129,7 +145,7 @@ export function InvitacionesSection() {
       invalidateInvitationQueries();
     },
     onError: (err) => {
-      Swal.fire({
+      showSwal({
         icon: "error",
         title: "No se pudo eliminar",
         text: err?.message || "Error al eliminar la invitacion.",
@@ -145,7 +161,7 @@ export function InvitacionesSection() {
       return unlinkEmpleado(row.empleado_id);
     },
     onSuccess: () => {
-      Swal.fire({
+      showSwal({
         icon: "success",
         title: "Usuario desvinculado",
         text: "El empleado quedo disponible para reasignar.",
@@ -153,7 +169,7 @@ export function InvitacionesSection() {
       invalidateInvitationQueries();
     },
     onError: (err) => {
-      Swal.fire({
+      showSwal({
         icon: "error",
         title: "No se pudo desvincular",
         text: err?.message || "Error al desvincular el usuario.",
@@ -172,7 +188,7 @@ export function InvitacionesSection() {
   );
 
   const handleResend = useCallback((row) => {
-    Swal.fire({
+    showSwal({
       icon: "question",
       title: "Reenviar invitacion",
       text: `Se enviara la invitacion a ${row.email}.`,
@@ -187,7 +203,7 @@ export function InvitacionesSection() {
   }, [resendMutation]);
 
   const handleDelete = useCallback((row) => {
-    Swal.fire({
+    showSwal({
       icon: "warning",
       title: "Eliminar invitacion",
       text: "Esta accion elimina el registro para volver a invitar.",
@@ -202,7 +218,7 @@ export function InvitacionesSection() {
   }, [deleteMutation]);
 
   const handleUnlink = useCallback((row) => {
-    Swal.fire({
+    showSwal({
       icon: "warning",
       title: "Desvincular usuario",
       text: "El empleado quedara libre para reasignar.",
@@ -500,6 +516,11 @@ export function InvitacionesSection() {
           onClose={() => setOpenModal(false)}
         />
       )}
+      {resendMutation.isPending && (
+        <LoadingOverlay>
+          <Spinner1 />
+        </LoadingOverlay>
+      )}
     </Section>
   );
 }
@@ -562,4 +583,14 @@ const EmptyState = styled.div`
   border: 1px dashed ${({ theme }) => theme.color2};
   color: ${({ theme }) => theme.textsecundary};
   text-align: center;
+`;
+
+const LoadingOverlay = styled.div`
+  position: fixed;
+  inset: 0;
+  background: var(--overlay-backdrop);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2500;
 `;

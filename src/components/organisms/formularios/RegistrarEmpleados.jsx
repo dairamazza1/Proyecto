@@ -123,6 +123,7 @@ export function RegistrarEmpleados({
       is_active: "true",
       birthday: "",
       genre: "",
+      shift: "",
     },
   });
 
@@ -176,6 +177,8 @@ export function RegistrarEmpleados({
   const requiresProfessionalNumber = Boolean(
     selectedPuesto?.requires_professional_number
   );
+  const isNursePuesto =
+    String(selectedPuesto?.name ?? "").trim().toLowerCase() === "enfermero/a";
 
   const { data: puestoInfo } = useQuery({
     queryKey: ["puestoInfo", empleado?.puesto_id],
@@ -199,6 +202,7 @@ export function RegistrarEmpleados({
       telephone: empleado.telephone ?? "",
       birthday: normalizeDateInputValue(empleado.birthday),
       genre: empleado.genre ?? "",
+      shift: empleado.shift ?? "",
       sucursal_id: sucursalEmpleado?.sucursal_id
         ? String(sucursalEmpleado.sucursal_id)
         : "",
@@ -305,6 +309,7 @@ export function RegistrarEmpleados({
       professional_number: requiresProfessionalNumber
         ? data.professional_number?.trim() || null
         : null,
+      shift: data.shift || null,
       is_registered: data.is_registered ?? false,
       is_active: true,
       created_at: new Date().toISOString(),
@@ -357,6 +362,7 @@ export function RegistrarEmpleados({
       professional_number: requiresProfessionalNumber
         ? data.professional_number?.trim() || null
         : null,
+      shift: data.shift || null,
       is_registered: data.is_registered ?? false,
       is_active: isActiveBool,
       termination_date: isActiveBool ? null : data.termination_date || null,
@@ -652,6 +658,31 @@ export function RegistrarEmpleados({
                 {errors.puesto_id?.type === "required" && (
                   <p>Campo requerido</p>
                 )}
+              </InputText>
+            </article>
+
+            <article>
+              <InputText icono={<v.iconoCalendario />}>
+                <select
+                  className="form__field"
+                  {...register("shift", {
+                    setValueAs: (value) => (value ? value : null),
+                    validate: (value) => {
+                      if (isNursePuesto) {
+                        return value ? true : "El turno es obligatorio.";
+                      }
+                      return true;
+                    },
+                  })}
+                  defaultValue=""
+                >
+                  <option value="">Seleccionar turno</option>
+                  <option value="manana">Mañana</option>
+                  <option value="tarde">Tarde</option>
+                  <option value="noche">Noche</option>
+                </select>
+                <label className="form__label">Turno</label>
+                {errors.shift?.message && <p>{errors.shift.message}</p>}
               </InputText>
             </article>
 

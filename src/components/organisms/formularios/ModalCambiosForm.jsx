@@ -67,7 +67,7 @@ export function ModalCambiosForm({ empleadoId, cambio, onClose }) {
       return base;
     }
     const exists = base.some(
-      (item) => String(item.id) === String(cambio.empleado_reemplazo.id ?? "")
+      (item) => String(item.id) === String(cambio.empleado_reemplazo.id ?? ""),
     );
     if (exists) return base;
     const firstName = cambio.empleado_reemplazo.first_name ?? "";
@@ -111,7 +111,7 @@ export function ModalCambiosForm({ empleadoId, cambio, onClose }) {
     if (!isEdit || !cambio?.empleado_replace_id) return;
     if (!optionsWithSelected.length) return;
     const exists = optionsWithSelected.some(
-      (item) => String(item.id) === String(cambio.empleado_replace_id ?? "")
+      (item) => String(item.id) === String(cambio.empleado_replace_id ?? ""),
     );
     if (!exists) return;
     if (empleadoReplaceId) return;
@@ -121,7 +121,7 @@ export function ModalCambiosForm({ empleadoId, cambio, onClose }) {
   useEffect(() => {
     if (loadingReemplazos || !empleadoReplaceId) return;
     const exists = optionsWithSelected.some(
-      (item) => String(item.id) === String(empleadoReplaceId)
+      (item) => String(item.id) === String(empleadoReplaceId),
     );
     if (!exists) {
       setValue("empleado_replace_id", "");
@@ -205,65 +205,88 @@ export function ModalCambiosForm({ empleadoId, cambio, onClose }) {
         </div>
         <form className="formulario" onSubmit={handleSubmit(onSubmit)}>
           <section className="form-subcontainer">
-            {!isEmployee && (
-              <>
-                <article>
-                  <InputText icono={<v.icononombre />}>
-                    <input
-                      className="form__field"
-                      type="text"
-                      placeholder="Horario o turno anterior"
-                      {...register("previous_schedule")}
-                    />
-                    <label className="form__label">
-                      Horario o turno anterior
-                    </label>
-                    {errors.previous_schedule?.message && (
-                      <p>{errors.previous_schedule.message}</p>
-                    )}
-                  </InputText>
-                </article>
+            
+              <article>
+                <InputText icono={<v.icononombre />}>
+                  {/* <input
+                    className="form__field"
+                    type="text"
+                    placeholder="Turno anterior"
+                    {...register("previous_schedule")}
+                  /> */}
+                  <select
+                    className="form__field"
+                    {...register("previous_schedule", {
+                      validate: (value) => {
+                        if (!value) return "Campo requerido";
+                      },
+                    })}
+                  >
+                    <option value="manana">Mañana</option>
+                    <option value="tarde">Tarde</option>
+                    <option value="noche">Noche</option>
+                  </select>
+                  <label className="form__label">Turno anterior</label>
+                  {errors.previous_schedule?.message && (
+                    <p>{errors.previous_schedule.message}</p>
+                  )}
+                </InputText>
+              </article>
 
-                <article>
-                  <InputText icono={<v.icononombre />}>
-                    <input
+              <article>
+                <InputText icono={<v.icononombre />}>
+                  {/* <input
                       className="form__field"
                       type="text"
-                      placeholder="Horario o turno nuevo"
+                      placeholder="Turno nuevo"
                       {...register("new_schedule")}
-                    />
-                    <label className="form__label">Horario o turno nuevo</label>
-                    {errors.new_schedule?.message && (
-                      <p>{errors.new_schedule.message}</p>
-                    )}
-                  </InputText>
-                </article>
+                    /> */}
+                  <select
+                    className="form__field"
+                    {...register("new_schedule", {
+                      validate: (value) => {
+                        if (!value) return "Campo requerido";
+                      },
+                    })}
+                  >
+                    <option value="manana">Mañana</option>
+                    <option value="tarde">Tarde</option>
+                    <option value="noche">Noche</option>
+                  </select>
+                  <label className="form__label">Turno nuevo</label>
+                  {errors.new_schedule?.message && (
+                    <p>{errors.new_schedule.message}</p>
+                  )}
+                </InputText>
+              </article>
 
+              {!isEmployee && (
+                <>
                 <article>
                   <InputText icono={<v.icononombre />}>
                     <input
                       className="form__field"
                       type="text"
                       placeholder="Tareas anteriores"
-                      {...register("previous_tasks")}
-                    />
-                    <label className="form__label">Tareas anteriores</label>
-                  </InputText>
-                </article>
+                    {...register("previous_tasks")}
+                  />
+                  <label className="form__label">Tareas anteriores</label>
+                </InputText>
+              </article>
 
-                <article>
-                  <InputText icono={<v.icononombre />}>
-                    <input
-                      className="form__field"
-                      type="text"
-                      placeholder="Tareas nuevas"
-                      {...register("new_tasks")}
-                    />
-                    <label className="form__label">Tareas nuevas</label>
-                  </InputText>
-                </article>
-              </>
-            )}
+              <article>
+                <InputText icono={<v.icononombre />}>
+                  <input
+                    className="form__field"
+                    type="text"
+                    placeholder="Tareas nuevas"
+                    {...register("new_tasks")}
+                  />
+                  <label className="form__label">Tareas nuevas</label>
+                </InputText>
+              </article>
+              </>)}
+            
 
             <article>
               <InputText icono={<v.icononombre />}>
@@ -360,8 +383,6 @@ export function ModalCambiosForm({ empleadoId, cambio, onClose }) {
               </>
             )}
 
-            
-
             <article>
               <InputText icono={<v.iconocodigobarras />}>
                 <select
@@ -375,8 +396,8 @@ export function ModalCambiosForm({ empleadoId, cambio, onClose }) {
                     {loadingReemplazos
                       ? "Cargando empleados..."
                       : optionsWithSelected.length
-                      ? "Seleccionar empleado reemplazo"
-                      : "Sin empleados disponibles"}
+                        ? "Seleccionar empleado reemplazo"
+                        : "Sin empleados disponibles"}
                   </option>
                   {optionsWithSelected.map((option) => (
                     <option key={option.id} value={option.id}>
@@ -385,7 +406,9 @@ export function ModalCambiosForm({ empleadoId, cambio, onClose }) {
                     </option>
                   ))}
                 </select>
-                <label className="form__label">Empleado reemplazo (opcional)</label>
+                <label className="form__label">
+                  Empleado reemplazo (opcional)
+                </label>
               </InputText>
             </article>
             <div className="acciones">

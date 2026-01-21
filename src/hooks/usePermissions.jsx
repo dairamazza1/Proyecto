@@ -27,6 +27,7 @@ import { hasPermission, canWrite, getResourcePermissions } from "../utils/permis
 export function usePermissions() {
   // Suscribirse a profile para que se actualice cuando cambie el usuario
   const profile = useAuthStore((state) => state.profile);
+  const empleado = useAuthStore((state) => state.empleado);
   
   // Calcular el rol directamente desde profile para asegurar reactividad
   const userRole = profile?.app_role || 'employee';
@@ -35,6 +36,8 @@ export function usePermissions() {
   const isEmployeeRole = userRole === 'employee';
 
   const normalizeStatus = (value) => String(value ?? "").toLowerCase();
+  const normalizeShift = (value) => String(value ?? "").trim().toLowerCase();
+  const normalizePuesto = (value) => String(value ?? "").trim().toLowerCase();
 
   const isPendingStatus = (row) =>
     normalizeStatus(row?.status) === "pending";
@@ -70,10 +73,31 @@ export function usePermissions() {
 
   const canApproveRejectSolicitud = (_row) => isAdminRole || isRRHHRole;
 
+  const isNurseEmployee = () => {
+    if (!isEmployeeRole) return false;
+    const puesto = empleado?.puesto?.name ?? empleado?.puesto ?? "";    
+    return normalizePuesto(puesto) === "enfermero/a";
+  };
+
+  const defaultTabFromShift = (shift) => {
+    const raw = normalizeShift(shift);
+    if (raw === "manana") return "manana";
+    if (raw === "tarde") return "tarde";
+    if (raw === "noche") return "noche";
+    return "manana";
+  };
+
+  const canEditNurseRecord = (row) => {
+    if (isAdminRole) return true;
+    if (!isNurseEmployee()) return false;
+    return isCreatedByCurrentUser(row) && isWithinEditWindow(row);
+  };
+
   return {
     // Rol del usuario
     userRole,
     profile,
+    empleado,
 
     /**
      * Verificar si el usuario tiene un permiso específico
@@ -169,6 +193,13 @@ export function usePermissions() {
      */
     canEditSolicitud,
     canDeleteSolicitud,
-    canApproveRejectSolicitud
+    canApproveRejectSolicitud,
+
+    /**
+     * Helpers para enfermeria
+     */
+    isNurseEmployee,
+    canEditNurseRecord,
+    defaultTabFromShift
   };
 }

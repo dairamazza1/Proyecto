@@ -11,8 +11,9 @@ import { NavLink } from "react-router-dom";
 import { Icon } from "@iconify/react";
 
 export function Sidebar({ state, setState }) {
-  const { userRole } = usePermissions();
+  const { userRole, isAdmin, isNurseEmployee } = usePermissions();
   const canSeeNotifications = ["admin", "rrhh"].includes(userRole);
+  const canSeeEnfermeria = isAdmin() || isNurseEmployee();
 
   const { data: unreadCount = 0 } = useNotificationsUnreadCount(
     { limit: 500 },
@@ -20,7 +21,9 @@ export function Sidebar({ state, setState }) {
   );
   const unreadLabel = unreadCount > 99 ? "99+" : unreadCount;
   const filterByRole = (links) =>
-    links.filter((link) => !link.roles || link.roles.includes(userRole));
+    links
+      .filter((link) => !link.roles || link.roles.includes(userRole))
+      .filter((link) => !link.requiresNurse || canSeeEnfermeria);
   const primaryLinks = filterByRole(LinksArray);
   const secondaryLinks = filterByRole(SecondarylinksArray);
 
@@ -28,11 +31,15 @@ export function Sidebar({ state, setState }) {
     links.map(({ icon, label, to, color }) => {
       const showBadge =
         canSeeNotifications && to === "/notificaciones" && unreadCount > 0;
+      const containerClass = [
+        "LinkContainer",
+        state ? "active" : "",
+        to === "/notificaciones" ? "notificationLink" : "",
+      ]
+        .filter(Boolean)
+        .join(" ");
       return (
-        <div
-          className={state ? "LinkContainer active" : "LinkContainer"}
-          key={label}
-        >
+        <div className={containerClass} key={label}>
           <NavLink
             to={to}
             className={({ isActive }) => `Links${isActive ? ` active` : ``}`}
@@ -216,6 +223,12 @@ const Container = styled.div`
       border: 2px solid ${(props) => props.theme.bg5};
       color: ${(props) => props.theme.color1};
       font-weight: 500;
+    }
+  }
+
+  @media (max-width: 767px) {
+    .notificationLink {
+      display: none;
     }
   }
 `;

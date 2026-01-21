@@ -4,21 +4,29 @@ import {
   GlobalStyles,
   MyRoutes,
   Sidebar,
+  useNotificationsUnreadCount,
+  usePermissions,
   useThemeStore,
-  Login,
 } from "./index";
 import { Device } from "./styles/breakpoints";
 import { useState } from "react";
-import { useLocation } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { v } from "./styles/variables";
+import { Icon } from "@iconify/react";
 
-const _V = v;
 
 function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { themeStyle } = useThemeStore();
   const { pathname } = useLocation();
+  const { userRole } = usePermissions();
+  const canSeeNotifications = ["admin", "rrhh"].includes(userRole);
+  const { data: unreadCount = 0 } = useNotificationsUnreadCount(
+    { limit: 500 },
+    canSeeNotifications
+  );
+  const unreadLabel = unreadCount > 99 ? "99+" : unreadCount;
 
   return (
     <ThemeProvider theme={themeStyle}>
@@ -47,6 +55,20 @@ function App() {
                 {sidebarOpen ? <v.iconocerrar /> : <v.iconomenu />}
               </button>
               <span className="hamburTitle">Menu</span>
+              {canSeeNotifications && (
+                <div className="hamburActions">
+                  <NavLink
+                    to="/notificaciones"
+                    className="notifyButton"
+                    aria-label="Notificaciones"
+                  >
+                    <Icon icon="mdi:bell-outline" />
+                    {unreadCount > 0 && (
+                      <span className="badge">{unreadLabel}</span>
+                    )}
+                  </NavLink>
+                </div>
+              )}
             </section>
 
             {sidebarOpen && (
@@ -123,6 +145,44 @@ const Container = styled.main`
     font-weight: 700;
     letter-spacing: 0.02em;
     color: ${({ theme }) => theme.text};
+  }
+
+  .hamburActions {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .notifyButton {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    text-decoration: none;
+    background: ${({ theme }) => theme.bgAlpha};
+    color: ${({ theme }) => theme.text};
+    font-size: 22px;
+  }
+
+  .notifyButton .badge {
+    position: absolute;
+    top: -6px;
+    right: -8px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    border-radius: 999px;
+    background: var(--color-danger);
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 700;
+    line-height: 18px;
+    text-align: center;
+    box-shadow: 0 0 0 2px ${({ theme }) => theme.bgtotal};
   }
   .contentRouters {
     /* background-color: rgb(86, 137, 99); */

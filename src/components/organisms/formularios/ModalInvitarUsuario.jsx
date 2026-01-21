@@ -152,10 +152,6 @@ export function ModalInvitarUsuario({
     mutate(data);
   };
 
-  if (isPending) {
-    return <Spinner1 />;
-  }
-
   return (
     <Overlay onClick={handleBackdropClick}>
       <Modal>
@@ -276,6 +272,11 @@ export function ModalInvitarUsuario({
           </section>
         </form>
       </Modal>
+      {isPending && (
+        <LoadingOverlay>
+          <Spinner1 />
+        </LoadingOverlay>
+      )}
     </Overlay>
   );
 }
@@ -373,4 +374,14 @@ const Modal = styled.div`
     color: ${({ theme }) => theme.colorError};
     font-size: 0.9rem;
   }
+`;
+
+const LoadingOverlay = styled.div`
+  position: fixed;
+  inset: 0;
+  background: var(--overlay-backdrop);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2100;
 `;

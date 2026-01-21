@@ -36,7 +36,7 @@ export async function getPerfilActual({ authUserId } = {}) {
 
 export async function getEmpleadoByPerfil({ perfilId } = {}) {
   const selectFields =
-    "id, user_id, first_name, last_name, employee_id_number, document_type, document_number, professional_number, telephone, hire_date, termination_date, is_active, puesto_id";
+    "id, user_id, first_name, last_name, employee_id_number, document_type, document_number, professional_number, telephone, hire_date, termination_date, is_active, puesto_id, shift";
 
   if (!perfilId) return null;
 

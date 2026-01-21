@@ -71,6 +71,7 @@ export function EmpleadoTemplate({ id, empleado, isError, sucursalEmpleado }) {
   const emailLabel = empleado?.perfil?.email ?? "-";
   const ageLabel = formatAge(empleado?.birthday);
   const genreLabel = empleado?.genre ?? "-";
+  const shiftLabel = formatShift(empleado?.shift);
 
   const terminationDate = formatDate(empleado?.termination_date);
 
@@ -128,7 +129,7 @@ export function EmpleadoTemplate({ id, empleado, isError, sucursalEmpleado }) {
           {/* Mensaje informativo para empleados */}
           {isEmployee() && (
             <InfoBanner>
-              📖 Estás en modo solo lectura. Contacta a RRHH para
+              ?? Est�s en modo solo lectura. Contacta a RRHH para
               modificaciones.
             </InfoBanner>
           )}
@@ -174,12 +175,16 @@ export function EmpleadoTemplate({ id, empleado, isError, sucursalEmpleado }) {
                 <span className="value">{documentInfo}</span>
               </InfoItem>
               <InfoItem>
-                <span className="label">Nro de teléfono</span>
+                <span className="label">Nro de telefono</span>
                 <span className="value">{empleado?.telephone ?? "-"}</span>
               </InfoItem>
               <InfoItem>
                 <span className="label">Puesto</span>
                 <span className="value">{empleado?.puesto?.name ?? "-"}</span>
+              </InfoItem>
+              <InfoItem>
+                <span className="label">Turno</span>
+                <span className="value">{shiftLabel}</span>
               </InfoItem>
               <InfoItem>
                 <span className="label">Matricula profesional</span>
@@ -436,18 +441,29 @@ function formatDate(value) {
 }
 
 function formatAge(value) {
-  if (!value) return "-";
+  if (!value) return '-';
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "-";
+  if (Number.isNaN(date.getTime())) return '-';
   const today = new Date();
   let age = today.getFullYear() - date.getFullYear();
   const monthDiff = today.getMonth() - date.getMonth();
   if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < date.getDate())) {
     age -= 1;
   }
-  if (age < 0) return "-";
+  if (age < 0) return '-';
   return `${age} años`;
 }
+
+function formatShift(value) {
+  if (!value) return '-';
+  const raw = String(value).trim().toLowerCase();
+  if (raw === 'manana') return 'Manaña';
+  if (raw === 'tarde') return 'Tarde';
+  if (raw === 'noche') return 'Noche';
+  return value;
+}
+
+
 
 
 

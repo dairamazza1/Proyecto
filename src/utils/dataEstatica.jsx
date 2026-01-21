@@ -51,6 +51,13 @@ export const LinksArray = [
     to: "/reportes",
     roles: ["admin", "rrhh"],
   },
+  {
+    label: "Enfermeria",
+    icon: "mdi:stethoscope",
+    to: "/enfermeria",
+    roles: ["admin", "employee"],
+    requiresNurse: true,
+  },
 ];
 export const SecondarylinksArray = [
   {

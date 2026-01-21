@@ -24,6 +24,7 @@ export const useAuthStore = create((set, get) => ({
   user: null,
   session: null,
   profile: null,  // ← NUEVO: Contiene { id, email, app_role, ... }
+  empleado: null,
   loading: true,
   error: null,
 
@@ -37,7 +38,7 @@ export const useAuthStore = create((set, get) => ({
       
       if (session?.user) {
         if (skipProfileCheck) {
-          set({ session, user: session.user });
+          set({ session, user: session.user, empleado: null });
         } else {
           const validation = await get().validateUserAccess(session.user.id);
           if (!validation.ok) {
@@ -46,6 +47,7 @@ export const useAuthStore = create((set, get) => ({
               session: null,
               user: null,
               profile: null,
+              empleado: null,
               error: validation.reason,
             });
           } else {
@@ -53,7 +55,7 @@ export const useAuthStore = create((set, get) => ({
           }
         }
       } else {
-        set({ session: null, user: null, profile: null });
+        set({ session: null, user: null, profile: null, empleado: null });
       }
     } catch (error) {
       console.error('Error al inicializar autenticación:', error);
@@ -77,7 +79,7 @@ export const useAuthStore = create((set, get) => ({
         return profile;
       } else {
         console.warn('No se encontró perfil para el usuario');
-        set({ profile: null });
+        set({ profile: null, empleado: null });
         return null;
       }
     } catch (error) {
@@ -93,10 +95,19 @@ export const useAuthStore = create((set, get) => ({
   validateUserAccess: async (authUserId) => {
     const profile = await get().loadUserProfile(authUserId);
     if (!profile?.id) {
+      set({ empleado: null });
       return { ok: false, reason: "Perfil no encontrado" };
     }
 
-    const empleado = await getEmpleadoByPerfil({ perfilId: profile.id });
+    let empleado = null;
+    try {
+      empleado = await getEmpleadoByPerfil({ perfilId: profile.id });
+    } catch (error) {
+      console.error("Error al cargar empleado del perfil:", error);
+      empleado = null;
+    }
+
+    set({ empleado });
     
     if ((!empleado || !empleado.is_active) && (profile.app_role == "employee") ) {
       return { ok: false, reason: "Empleado no activo" };
@@ -109,7 +120,7 @@ export const useAuthStore = create((set, get) => ({
   // Registro de usuario
   // ============================================
   registerUser: async (email, password, name = '') => {
-    set({ loading: true, error: null, profile: null });
+    set({ loading: true, error: null, profile: null, empleado: null });
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -127,7 +138,8 @@ export const useAuthStore = create((set, get) => ({
         user: data.user,
         session: data.session,
         loading: false,
-        error: null
+        error: null,
+        empleado: null
       });
 
       // Cargar perfil después del registro
@@ -138,7 +150,7 @@ export const useAuthStore = create((set, get) => ({
       return { success: true, data };
     } catch (error) {
       const errorMsg = error.message || 'Error al registrar usuario';
-      set({ loading: false, error: errorMsg });
+      set({ loading: false, error: errorMsg, empleado: null });
       return { success: false, error: errorMsg };
     }
   },
@@ -147,7 +159,7 @@ export const useAuthStore = create((set, get) => ({
   // Login con email y contrase??a
   // ============================================
   loginEmailPassword: async (email, password) => {
-    set({ loading: true, error: null, profile: null });
+    set({ loading: true, error: null, profile: null, empleado: null });
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -164,6 +176,7 @@ export const useAuthStore = create((set, get) => ({
           user: null,
           session: null,
           profile: null,
+          empleado: null,
           loading: false,
           error: validation.reason,
         });
@@ -185,7 +198,7 @@ export const useAuthStore = create((set, get) => ({
       } else {
         errorMsg = error.message;
       }
-      set({ loading: false, error: errorMsg, profile: null });
+      set({ loading: false, error: errorMsg, profile: null, empleado: null });
       return { success: false, error: errorMsg };
     }
   },  // ============================================
@@ -197,7 +210,7 @@ export const useAuthStore = create((set, get) => ({
     } catch (error) {
       console.error('Error al cerrar sesión:', error);
     } finally {
-      set({ user: null, session: null, profile: null, error: null });
+      set({ user: null, session: null, profile: null, empleado: null, error: null });
     }
   },
 
@@ -221,6 +234,52 @@ export const useAuthStore = create((set, get) => ({
     return get().getUserRole() === 'rrhh';
   },
 
+
+  // Verificar si el usuario es admin
+  isAdmin: () => {
+    const role = get().getUserRole();
+    return role === 'admin' || role === 'superadmin';
+  },
+
+  // Verificar si es empleado enfermero/a
+  isNurseEmployee: () => {
+    if (get().getUserRole() !== 'employee') return false;
+    const empleado = get().empleado;
+    const puesto = empleado?.puesto?.name ?? empleado?.puesto ?? '';
+    return String(puesto).trim().toLowerCase() === 'enfermero/a';
+  },
+
+  // Default tab para enfermeria segun turno
+  defaultTabFromShift: (shift) => {
+    const raw = String(shift ?? "").trim().toLowerCase();
+    if (raw === "manana") return "manana";
+    if (raw === "tarde") return "tarde";
+    if (raw === "noche") return "noche";
+    return "manana";
+  },
+
+  // Permiso de edicion para registros de enfermeria
+  canEditNurseRecord: (row) => {
+    const role = get().getUserRole();
+    if (role === 'admin' || role === 'superadmin') return true;
+    if (role !== 'employee') return false;
+    const empleado = get().empleado;
+    const puesto = empleado?.puesto?.name ?? empleado?.puesto ?? '';
+    if (String(puesto).trim().toLowerCase() !== 'enfermero/a') return false;
+    
+    const perfilId = get().profile?.id;
+    const createdBy = row?.created_by;
+    if (!perfilId || createdBy === null || createdBy === undefined) {
+      return false;
+    }
+    const isOwner = String(createdBy) === String(perfilId);
+    if (!isOwner) return false;
+    const createdAt = row?.created_at;
+    if (!createdAt) return false;
+    const createdAtMs = new Date(createdAt).getTime();
+    if (Number.isNaN(createdAtMs)) return false;
+    return Date.now() <= createdAtMs + 24 * 60 * 60 * 1000;
+  },
   // Verificar si el usuario es empleado básico
   isEmployee: () => {
     return get().getUserRole() === 'employee';
@@ -229,6 +288,8 @@ export const useAuthStore = create((set, get) => ({
   // Limpiar errores
   clearError: () => set({ error: null })
 }));
+
+
 
 
 
