@@ -673,7 +673,17 @@ export function RegistrarEmpleados({
                       },
                     })}
                   />
-                  <label className="form__label">Matricula profesional</label>
+                  <label className="form__label with-link">
+                    Matricula profesional
+                    <a
+                      className="label-link"
+                      href="https://sisa.msal.gov.ar/sisadoc/docs/050102/refeps_buscador_publico_profesionales.jsp"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Validar
+                    </a>
+                  </label>
                   {errors.professional_number?.message && (
                     <p>{errors.professional_number.message}</p>
                   )}

@@ -82,6 +82,23 @@ const Container = styled.div`
     pointer-events: none;
   }
 
+  .form__label.with-link {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 6px;
+    max-width: 100%;
+    line-height: 1.15;
+  }
+
+  .form__label .label-link {
+    pointer-events: auto;
+    font-size: 0.70em;
+    color: ${({ theme }) => theme.color1};
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
   .form__field:focus {
     padding-bottom: 6px;
     font-weight: 700;
