@@ -63,6 +63,22 @@ export function ModalEnfermeriaForm({
   const queryClient = useQueryClient();
   const isEdit = Boolean(record?.id);
 
+  const resolveMutationErrorMessage = (err) => {
+    const message = String(err?.message ?? "");
+    const code = String(err?.code ?? "");
+    const lower = message.toLowerCase();
+    const isPermissionError =
+      code === "42501" ||
+      lower.includes("row-level security") ||
+      lower.includes("permission denied");
+
+    if (isPermissionError) {
+      return "No tenés permiso para registrar en este turno para esta fecha.";
+    }
+
+    return message || "Error al guardar el registro.";
+  };
+
   const {
     register,
     formState: { errors },
@@ -107,15 +123,16 @@ export function ModalEnfermeriaForm({
         if (!shift || !registroDate || !sucursalId) {
           throw new Error("Selecciona sucursal, fecha y turno.");
         }
+
         const payload = {
-          empleado_id: empleadoId ?? null,
+          empleado_id: empleadoId ? Number(empleadoId) : null, // admin puede ser null
           shift,
           registro_date: registroDate,
           registro_time: data.registro_time,
           details: data.details,
-          sucursal_id: sucursalId,
-          created_at: new Date().toISOString(),
+          sucursal_id: Number(sucursalId), // asegurá número
         };
+
         return insertEnfermeriaRecord(payload);
       }
 
@@ -129,16 +146,14 @@ export function ModalEnfermeriaForm({
       Swal.fire({
         icon: "error",
         title: "Oops...",
-        text: err?.message || "Error al guardar el registro.",
+        text: resolveMutationErrorMessage(err),
       });
     },
     onSuccess: () => {
       Swal.fire({
         icon: "success",
         title: isEdit ? "Registro actualizado" : "Registro creado",
-        text: isEdit
-          ? "Se actualizo el registro."
-          : "Se registro el detalle.",
+        text: isEdit ? "Se actualizo el registro." : "Se registro el detalle.",
       });
       if (queryKey) {
         queryClient.invalidateQueries({ queryKey });

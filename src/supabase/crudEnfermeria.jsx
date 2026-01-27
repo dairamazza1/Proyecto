@@ -36,11 +36,35 @@ export async function getEnfermeriaRecords({
   return data ?? [];
 }
 
+export async function getEnfermeriaAllowedShifts({ date, sucursalId } = {}) {
+  if (!date || !sucursalId) return [];
+
+  const { data, error } = await supabase.rpc(
+    "get_enfermeria_allowed_shifts",
+    {
+      p_date: date,
+      p_sucursal_id: sucursalId,
+    }
+  );
+
+  if (error) throw error;
+  if (!data) return [];
+
+  if (Array.isArray(data)) {
+    if (data.length && typeof data[0] === "object") {
+      return data.map((row) => row?.shift).filter(Boolean);
+    }
+    return data;
+  }
+
+  return [];
+}
+
 export async function insertEnfermeriaRecord(payload) {
   const { data, error } = await supabase
     .from(table)
     .insert(payload)
-    .select()
+    .select(selectFields)
     .maybeSingle();
   if (error) throw error;
   return data;
@@ -51,7 +75,7 @@ export async function updateEnfermeriaRecord(id, payload) {
     .from(table)
     .update(payload)
     .eq("id", id)
-    .select()
+    .select(selectFields)
     .maybeSingle();
   if (error) throw error;
   return data;

@@ -9,6 +9,7 @@ import {
   Title,
   UserAuth,
   getCurrentUserSucursalId,
+  getEnfermeriaAllowedShifts,
   getEnfermeriaRecords,
   useCompanyStore,
   usePermissions,
@@ -20,6 +21,17 @@ import { useSearchParams } from "react-router-dom";
 import Swal from "sweetalert2";
 
 const ALLOWED_TABS = new Set(["manana", "tarde", "noche"]);
+const ALL_SHIFTS = ["manana", "tarde", "noche"];
+
+const normalizeShiftValue = (value) =>
+  String(value ?? "").trim().toLowerCase();
+
+const getShiftLabel = (shiftValue) => {
+  if (shiftValue === "manana") return "Turno ma√±ana";
+  if (shiftValue === "tarde") return "Turno tarde";
+  if (shiftValue === "noche") return "Turno noche";
+  return shiftValue;
+};
 
 const getTodayDate = () => {
   const now = new Date();
@@ -90,16 +102,59 @@ export function EnfermeriaTemplate() {
     refetchOnWindowFocus: false,
   });
 
+  const resolvedSucursalId = isAdminRole ? selectedSucursalId : autoSucursalId;
+
+  const {
+    data: allowedShiftsData,
+    isLoading: loadingAllowedShifts,
+    error: allowedShiftsError,
+  } = useQuery({
+    queryKey: ["enfermeriaAllowedShifts", resolvedSucursalId, selectedDate],
+    queryFn: () =>
+      getEnfermeriaAllowedShifts({
+        date: selectedDate,
+        sucursalId: resolvedSucursalId,
+      }),
+    enabled: isNurse && Boolean(resolvedSucursalId && selectedDate),
+    refetchOnWindowFocus: false,
+  });
+
+  const allowedShifts = useMemo(() => {
+    if (isAdminRole || !isNurse) {
+      return ALL_SHIFTS;
+    }
+
+    const normalized = (allowedShiftsData ?? [])
+      .map(normalizeShiftValue)
+      .filter((shift) => ALLOWED_TABS.has(shift));
+
+    if (normalized.length) {
+      return Array.from(new Set(normalized));
+    }
+
+    const fallback = defaultTabFromShift(empleado?.shift);
+    return fallback ? [fallback] : [];
+  }, [
+    allowedShiftsData,
+    isAdminRole,
+    isNurse,
+    defaultTabFromShift,
+    empleado?.shift,
+  ]);
+
+  const allowedShiftSet = useMemo(
+    () => new Set(allowedShifts),
+    [allowedShifts]
+  );
+
   useEffect(() => {
-    const tabParam = String(searchParams.get("tab") ?? "").toLowerCase();
+    const tabParam = normalizeShiftValue(searchParams.get("tab"));
     const fallback = isNurse
       ? defaultTabFromShift(empleado?.shift)
       : "manana";
     const nextTab = ALLOWED_TABS.has(tabParam) ? tabParam : fallback;
     setActiveTab(nextTab);
   }, [searchParams, isNurse, empleado?.shift, defaultTabFromShift]);
-
-  const resolvedSucursalId = isAdminRole ? selectedSucursalId : autoSucursalId;
 
   const recordsQueryKey = useMemo(
     () => [
@@ -161,6 +216,25 @@ export function EnfermeriaTemplate() {
     }
 
     if (isNurse) {
+      if (loadingAllowedShifts) {
+        Swal.fire({
+          icon: "info",
+          title: "Cargando permisos",
+          text: "Espera un momento para validar tus turnos.",
+        });
+        return;
+      }
+      if (allowedShiftsError) {
+        console.warn(
+          "No se pudieron validar permisos de enfermeria",
+          allowedShiftsError
+        );
+        Swal.fire({
+          icon: "warning",
+          title: "ValidaciÛn parcial",
+          text: "No se pudieron validar permisos, el sistema los comprobar· al guardar.",
+        });
+      }
       const turno = empleado?.shift;
       if (!turno) {
         Swal.fire({
@@ -170,11 +244,11 @@ export function EnfermeriaTemplate() {
         });
         return;
       }
-      if (defaultTabFromShift(turno) !== activeTab) {
+      if (!allowedShiftsError && !allowedShiftSet.has(activeTab)) {
         Swal.fire({
           icon: "warning",
-          title: "Turno incorrecto",
-          text: "Solo puedes registrar en tu turno asignado.",
+          title: "Sin permiso",
+          text: "No ten√©s permiso para registrar en este turno para esta fecha.",
         });
         return;
       }
@@ -208,52 +282,58 @@ export function EnfermeriaTemplate() {
           <Title>Enfermeria</Title>
           <p>Registros diarios por turno.</p>
         </div>
-        {isAdminRole && (
-          <div className="selector-sucursal">
-            <select
-              value={selectedSucursalId ?? ""}
-              onChange={(e) =>
-                setSelectedSucursalId(
-                  e.target.value ? Number(e.target.value) : null
-                )
-              }
-              className="select-sucursal"
-            >
-              <option value="">Seleccionar sucursal</option>
-              {dataSucursales?.map((sucursal) => (
-                <option key={sucursal.id} value={sucursal.id}>
-                  {sucursal.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
       </Header>
 
       <Controls>
-        <div className="dateFilter">
-          <button
-            type="button"
-            onClick={() => setSelectedDate(shiftDateBy(selectedDate, -1))}
-            aria-label="Dia anterior"
-          >
-            <v.iconoflechaizquierda />
-          </button>
-          <input
-            type="date"
-            value={selectedDate}
-            onChange={handleDateChange}
-            max={todayDate}
-          />
-          <button
-            type="button"
-            onClick={() => setSelectedDate(shiftDateBy(selectedDate, 1))}
-            aria-label="Dia siguiente"
-            disabled={isNextDisabled}
-          >
-            <v.iconoflechaderecha />
-          </button>
+        <div className="filtersGroup">
+          <div className="dateFilter">
+            <button
+              type="button"
+              onClick={() => setSelectedDate(shiftDateBy(selectedDate, -1))}
+              aria-label="Dia anterior"
+            >
+              <v.iconoflechaizquierda />
+            </button>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={handleDateChange}
+              max={todayDate}
+            />
+            <button
+              type="button"
+              onClick={() => setSelectedDate(shiftDateBy(selectedDate, 1))}
+              aria-label="Dia siguiente"
+              disabled={isNextDisabled}
+            >
+              <v.iconoflechaderecha />
+            </button>
+          </div>
+          
+          
         </div>
+        {isAdminRole && (
+            <div className="selector-sucursal">
+              <select
+                value={selectedSucursalId ?? ""}
+                onChange={(e) =>
+                  setSelectedSucursalId(
+                    e.target.value ? Number(e.target.value) : null
+                  )
+                }
+                className={`select-sucursal${
+                  selectedSucursalId == null ? " is-empty" : ""
+                }`}
+              >
+                <option value="">Seleccione una sucursal</option>
+                {dataSucursales?.map((sucursal) => (
+                  <option key={sucursal.id} value={sucursal.id}>
+                    {sucursal.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         <Btn1
           icono={<v.iconoagregar />}
           titulo="Agregar registro"
@@ -264,27 +344,16 @@ export function EnfermeriaTemplate() {
       </Controls>
 
       <Tabs>
-        <button
-          className={`tab ${activeTab === "manana" ? "active" : ""}`}
-          type="button"
-          onClick={() => handleTabChange("manana")}
-        >
-          Turno ma√±ana
-        </button>
-        <button
-          className={`tab ${activeTab === "tarde" ? "active" : ""}`}
-          type="button"
-          onClick={() => handleTabChange("tarde")}
-        >
-          Turno tarde
-        </button>
-        <button
-          className={`tab ${activeTab === "noche" ? "active" : ""}`}
-          type="button"
-          onClick={() => handleTabChange("noche")}
-        >
-          Turno noche
-        </button>
+        {ALL_SHIFTS.map((shiftValue) => (
+          <button
+            key={shiftValue}
+            className={`tab ${activeTab === shiftValue ? "active" : ""}`}
+            type="button"
+            onClick={() => handleTabChange(shiftValue)}
+          >
+            {getShiftLabel(shiftValue)}
+          </button>
+        ))}
       </Tabs>
 
       <ResultsCard>
@@ -360,27 +429,6 @@ const Header = styled.header`
       font-weight: 500;
     }
   }
-
-  .selector-sucursal {
-    width: min(260px, 100%);
-
-    .select-sucursal {
-      width: 100%;
-      height: 52px;
-      padding: 0 15px;
-      border-radius: 10px;
-      border: 2px solid ${({ theme }) => theme.color2};
-      background: ${({ theme }) => theme.bgtotal};
-      color: ${({ theme }) => theme.text};
-      font-size: 16px;
-      cursor: pointer;
-      outline: none;
-
-      &:focus {
-        border-color: ${({ theme }) => theme.color1};
-      }
-    }
-  }
 `;
 
 const Controls = styled.div`
@@ -389,6 +437,13 @@ const Controls = styled.div`
   justify-content: space-between;
   gap: 16px;
   flex-wrap: wrap;
+
+  .filtersGroup {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
 
   .dateFilter {
     display: inline-flex;
@@ -425,12 +480,49 @@ const Controls = styled.div`
     }
   }
 
+  .selector-sucursal {
+    width: min(260px, 100%);
+
+    .select-sucursal {
+      width: 100%;
+      height: 52px;
+      padding: 0 15px;
+      border-radius: 10px;
+      border: 2px solid ${({ theme }) => theme.color2};
+      background: ${({ theme }) => theme.bgtotal};
+      color: ${({ theme }) => theme.text};
+      font-size: 16px;
+      cursor: pointer;
+      outline: none;
+
+      &:focus {
+        border-color: ${({ theme }) => theme.color1};
+      }
+    }
+
+    .select-sucursal.is-empty {
+      color: var(--color-danger);
+    }
+
+    .select-sucursal option {
+      color: ${({ theme }) => theme.text};
+    }
+  }
+
   @media ${DeviceMax.mobile} {
     align-items: stretch;
+
+    .filtersGroup {
+      width: 100%;
+    }
 
     .dateFilter {
       width: 100%;
       justify-content: space-between;
+    }
+
+    .selector-sucursal {
+      width: 100%;
     }
   }
 `;
@@ -498,3 +590,7 @@ const EmptyState = styled.div`
   color: ${({ theme }) => theme.textsecundary};
   text-align: center;
 `;
+
+
+
+
