@@ -56,11 +56,7 @@ const Container = styled.div`
   display: grid;
   height: fit-content;
   gap: 12px;
-  grid-template-columns: repeat(1, minmax(0, 1fr));
-
-  @media ${Device.mobile} {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 
   @media ${Device.tablet} {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -70,6 +66,7 @@ const Container = styled.div`
 const Field = styled.div`
   display: grid;
   gap: 6px;
+  width: 100%;
 
   label {
     font-size: 0.85rem;
@@ -80,6 +77,8 @@ const Field = styled.div`
   input,
   select {
     height: 38px;
+    width: 100%;
+    min-width: 0;
     border-radius: 12px;
     border: 1px solid ${({ theme }) => theme.color2};
     background: ${({ theme }) => theme.bgtotal};
@@ -89,9 +88,7 @@ const Field = styled.div`
   }
 
   &.field-span {
-    @media ${Device.mobile} {
-      grid-column: span 2;
-    }
+    grid-column: span 2;
     @media ${Device.tablet} {
       grid-column: auto;
     }

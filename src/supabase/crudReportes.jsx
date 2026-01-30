@@ -35,6 +35,7 @@ export async function getReportVacaciones({
       `
       id,
       empleado_id,
+      type,
       start_date,
       end_date,
       days_taken,

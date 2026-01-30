@@ -13,6 +13,18 @@ import { v } from "../../../styles/variables";
 import { Device, DeviceMax } from "../../../styles/breakpoints";
 
 const _V = v;
+const VACATION_TYPES = [
+  { value: "Ordinarias", label: "Ordinarias" },
+  { value: "Profilacticas", label: "Profilacticas" },
+];
+
+const normalizeVacationType = (value) => {
+  const raw = String(value ?? "").trim().toLowerCase();
+  if (!raw) return "";
+  if (raw === "ordinarias") return "Ordinarias";
+  if (raw === "profilacticas") return "Profilacticas";
+  return value;
+};
 
 export function ModalVacacionesForm({ empleadoId, vacacion, onClose }) {
   const queryClient = useQueryClient();
@@ -27,6 +39,7 @@ export function ModalVacacionesForm({ empleadoId, vacacion, onClose }) {
     setValue,
   } = useForm({
     defaultValues: {
+      type: "",
       start_date: "",
       end_date: "",
       days_taken: 0,
@@ -39,6 +52,7 @@ export function ModalVacacionesForm({ empleadoId, vacacion, onClose }) {
   useEffect(() => {
     if (!vacacion) return;
     reset({
+      type: normalizeVacationType(vacacion.type),
       start_date: vacacion.start_date ?? "",
       end_date: vacacion.end_date ?? "",
       days_taken: vacacion.days_taken ?? 0,
@@ -64,6 +78,7 @@ export function ModalVacacionesForm({ empleadoId, vacacion, onClose }) {
     mutationFn: async (data) => {
       const payload = {
         empleado_id: empleadoId,
+        type: data.type,
         start_date: data.start_date,
         end_date: data.end_date,
         days_taken: data.days_taken,
@@ -124,6 +139,23 @@ export function ModalVacacionesForm({ empleadoId, vacacion, onClose }) {
         </div>
         <form className="formulario" onSubmit={handleSubmit(onSubmit)}>
           <section className="form-subcontainer">
+            <article>
+              <InputText>
+                <select
+                  className="form__field"
+                  {...register("type", { required: "Campo requerido" })}
+                >
+                  <option value="">Selecciona el tipo</option>
+                  {VACATION_TYPES.map((tipo) => (
+                    <option key={tipo.value} value={tipo.value}>
+                      {tipo.label}
+                    </option>
+                  ))}
+                </select>
+                <label className="form__label">Vacaciones</label>
+                {errors.type?.message && <p>{errors.type.message}</p>}
+              </InputText>
+            </article>
             <article>
               <InputText>
                 <input

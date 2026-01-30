@@ -5,7 +5,7 @@ import { IoIosArrowDown } from "react-icons/io";
 import { RiVipCrownFill } from "react-icons/ri";
 import { BiUserCircle } from "react-icons/bi";
 import { RiSettings3Line } from "react-icons/ri";
-import { MdExitToApp } from "react-icons/md";
+import { MdExitToApp, MdNotificationsNone } from "react-icons/md";
 import { FcPicture } from "react-icons/fc";
 import { CgMathPlus } from "react-icons/cg";
 import { TbBrandSupabase } from "react-icons/tb";
@@ -116,6 +116,7 @@ export const v = {
   iconoUser: BiUserCircle,
   iconoSettings: RiSettings3Line,
   iconoCerrarSesion: MdExitToApp,
+  iconoNotificaciones: MdNotificationsNone,
   iconofotovacia: FcPicture,
   verde: `var(--color-success)`,
   rojo: `var(--color-danger)`,

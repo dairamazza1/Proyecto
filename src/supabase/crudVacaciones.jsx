@@ -4,6 +4,7 @@ const table = "empleados_vacaciones";
 const selectFields = `
   id,
   empleado_id,
+  type,
   start_date,
   end_date,
   days_taken,

@@ -22,6 +22,14 @@ import { TABS, statusValues } from "../../utils/dataEstatica";
 const formatStatus = (value) =>
   statusValues[String(value ?? "").toLowerCase()] ?? "-";
 
+const formatTipo = (value) => {
+  const raw = String(value ?? "").trim().toLowerCase();
+  if (!raw) return "-";
+  if (raw === "ordinarias") return "Ordinarias";
+  if (raw === "profilacticas") return "Profilacticas";
+  return value;
+};
+
 const formatDate = (value) => {
   if (!value) return "-";
   const [year, month, day] = String(value).split("-");
@@ -429,6 +437,19 @@ export function ReportesTemplate() {
       legajoColumn,
       empleadoColumn,
       {
+        accessorKey: "type",
+        header: "Tipo",
+        meta: {
+          cardLabel: "Tipo",
+          cardValue: (row) => formatTipo(row.type),
+        },
+        cell: (info) => (
+          <div data-title="Tipo" className="ContentCell">
+            <span>{formatTipo(info.getValue())}</span>
+          </div>
+        ),
+      },
+      {
         accessorKey: "start_date",
         header: "Desde",
         meta: {
@@ -581,6 +602,8 @@ const StatusPill = styled.span`
 `;
 const Container = styled.div`
   /* min-height: calc(100dvh - 30px); */
+  width: 100%;
+  min-width: 0;
   padding: 20px 22px 28px;
   display: grid;
   gap: 16px;

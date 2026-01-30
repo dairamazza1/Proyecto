@@ -13,7 +13,6 @@ import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { v } from "./styles/variables";
-import { Icon } from "@iconify/react";
 
 
 function App() {
@@ -62,7 +61,7 @@ function App() {
                     className="notifyButton"
                     aria-label="Notificaciones"
                   >
-                    <Icon icon="mdi:bell-outline" />
+                    <v.iconoNotificaciones />
                     {unreadCount > 0 && (
                       <span className="badge">{unreadLabel}</span>
                     )}

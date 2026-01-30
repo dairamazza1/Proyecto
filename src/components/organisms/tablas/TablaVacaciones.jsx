@@ -21,6 +21,14 @@ const statusValues = {
 const formatStatus = (value) =>
   statusValues[String(value ?? "").toLowerCase()] ?? "-";
 
+const formatType = (value) => {
+  const raw = String(value ?? "").trim().toLowerCase();
+  if (!raw) return "-";
+  if (raw === "ordinarias") return "Ordinarias";
+  if (raw === "profilacticas") return "Profilacticas";
+  return value;
+};
+
 const formatDateTimeLabel = (value) => {
   if (!value) return "";
   const raw = String(value);
@@ -103,6 +111,20 @@ export function TablaVacaciones({
       ),
       enableSorting: true,
       sortingFn: "alphanumeric",
+    },
+    {
+      accessorKey: "type",
+      header: "Tipo",
+      meta: {
+        cardLabel: "Tipo",
+        cardValue: (row) => formatType(row.type),
+      },
+      cell: (info) => (
+        <div data-title="Tipo" className="ContentCell">
+          <span>{formatType(info.getValue())}</span>
+        </div>
+      ),
+      enableSorting: true,
     },
     {
       accessorKey: "start_date",

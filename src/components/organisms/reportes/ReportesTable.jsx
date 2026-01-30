@@ -172,15 +172,22 @@ const Container = styled.div`
     justify-content: space-between;
     gap: 12px;
     font-size: 0.95rem;
+    align-items: flex-start;
 
     .label {
       color: ${({ theme }) => theme.textsecundary};
+      flex: 1;
+      min-width: 0;
     }
 
     .value {
       color: ${({ theme }) => theme.text};
       font-weight: 600;
       text-align: right;
+      flex: 1;
+      min-width: 0;
+      overflow-wrap: anywhere;
+      word-break: break-word;
     }
   }
 

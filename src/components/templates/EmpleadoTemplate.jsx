@@ -129,8 +129,7 @@ export function EmpleadoTemplate({ id, empleado, isError, sucursalEmpleado }) {
           {/* Mensaje informativo para empleados */}
           {isEmployee() && (
             <InfoBanner>
-              ?? Est�s en modo solo lectura. Contacta a RRHH para
-              modificaciones.
+              ?? Estas en modo solo lectura. Contacta a RRHH para modificaciones.
             </InfoBanner>
           )}
 

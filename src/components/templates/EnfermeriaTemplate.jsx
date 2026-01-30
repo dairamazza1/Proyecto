@@ -231,8 +231,8 @@ export function EnfermeriaTemplate() {
         );
         Swal.fire({
           icon: "warning",
-          title: "Validación parcial",
-          text: "No se pudieron validar permisos, el sistema los comprobará al guardar.",
+          title: "Validacion parcial",
+          text: "No se pudieron validar permisos, el sistema los comprobara al guardar.",
         });
       }
       const turno = empleado?.shift;
