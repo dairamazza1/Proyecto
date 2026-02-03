@@ -390,6 +390,7 @@ export function EnfermeriaTemplate() {
           sucursalId={resolvedSucursalId}
           empleadoId={empleado?.id ?? null}
           responsableName={responsableName}
+          isAdminRole={isAdminRole}
           queryKey={recordsQueryKey}
           onClose={() => setOpenModal(false)}
         />

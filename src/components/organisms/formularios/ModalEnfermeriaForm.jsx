@@ -57,6 +57,7 @@ export function ModalEnfermeriaForm({
   sucursalId,
   empleadoId,
   responsableName,
+  isAdminRole = false,
   onClose,
   queryKey,
 }) {
@@ -197,6 +198,7 @@ export function ModalEnfermeriaForm({
                   {...register("registro_time", {
                     required: "Campo requerido",
                     validate: (value) => {
+                      if (isAdminRole) return true;
                       if (!shift) return true;
                       if (!isTimeInShift(value, shift)) {
                         const range = getShiftRangeLabel(shift);

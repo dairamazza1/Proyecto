@@ -61,7 +61,6 @@ export * from "./hooks/RoleRoute";
 export * from "./hooks/useNotificaciones";
 export * from "./hooks/usePerfilDisplayNames";
 export * from "./hooks/usePermissions";
-export * from "./main";
 export * from "./pages/Categories";
 export * from "./pages/Configurations";
 export * from "./pages/Empleado";

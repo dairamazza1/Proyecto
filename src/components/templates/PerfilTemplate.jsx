@@ -41,6 +41,7 @@ export function PerfilTemplate({ perfil, empleado, displayName, userEmail }) {
   const hireDate = formatDate(empleado?.hire_date);
   const terminationDate = formatDate(empleado?.termination_date);
   const statusLabel = empleado?.is_active ? "Activo" : "Inactivo";
+  const shiftLabel = formatShift(empleado?.shift);
 
   return (
     <Container>
@@ -111,6 +112,10 @@ export function PerfilTemplate({ perfil, empleado, displayName, userEmail }) {
               <InfoItem>
                 <span className="label">Puesto</span>
                 <span className="value">{empleado?.puesto ?? "-"}</span>
+              </InfoItem>
+              <InfoItem>
+                <span className="label">Turno</span>
+                <span className="value">{shiftLabel}</span>
               </InfoItem>
               <InfoItem>
                 <span className="label">Matricula profesional</span>
@@ -370,4 +375,13 @@ function formatDate(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleDateString("es-AR");
+}
+
+function formatShift(value) {
+  if (!value) return "-";
+  const raw = String(value).trim().toLowerCase();
+  if (raw === "manana") return "Mañana";
+  if (raw === "tarde") return "Tarde";
+  if (raw === "noche") return "Noche";
+  return value;
 }
