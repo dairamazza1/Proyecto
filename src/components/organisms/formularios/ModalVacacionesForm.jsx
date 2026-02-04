@@ -43,6 +43,7 @@ export function ModalVacacionesForm({ empleadoId, vacacion, onClose }) {
       start_date: "",
       end_date: "",
       days_taken: 0,
+      observations: "",
     },
   });
 
@@ -56,6 +57,7 @@ export function ModalVacacionesForm({ empleadoId, vacacion, onClose }) {
       start_date: vacacion.start_date ?? "",
       end_date: vacacion.end_date ?? "",
       days_taken: vacacion.days_taken ?? 0,
+      observations: vacacion.observations ?? "",
     });
   }, [vacacion, reset]);
 
@@ -82,6 +84,7 @@ export function ModalVacacionesForm({ empleadoId, vacacion, onClose }) {
         start_date: data.start_date,
         end_date: data.end_date,
         days_taken: data.days_taken,
+        observations: data.observations || null,
         created_at: new Date().toISOString(),
       };
 
@@ -204,6 +207,18 @@ export function ModalVacacionesForm({ empleadoId, vacacion, onClose }) {
               </article>
             )}
 
+            <article className="full">
+              <InputText>
+                <textarea
+                  className="form__field textarea"
+                  rows={3}
+                  placeholder="Observaciones"
+                  {...register("observations")}
+                />
+                <label className="form__label">Observaciones</label>
+              </InputText>
+            </article>
+
             <div className="acciones">
               <Btn1
                 icono={<v.iconocerrar />}
@@ -302,7 +317,17 @@ const Modal = styled.div`
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 18px 20px;
       }
+
+      .full {
+        grid-column: 1 / -1;
+      }
     }
+  }
+
+  .textarea {
+    resize: vertical;
+    min-height: 110px;
+    padding-top: 12px;
   }
 
   .acciones {

@@ -2,6 +2,7 @@ import styled from "styled-components";
 import { useEffect, useState } from "react";
 import {
   CambiosSection,
+  FaltasSection,
   LicenciasSection,
   SancionesSection,
   Title,
@@ -166,6 +167,13 @@ export function PerfilTemplate({ perfil, empleado, displayName, userEmail }) {
               Licencias
             </button>
             <button
+              className={`tab ${activeTab === "faltas" ? "active" : ""}`}
+              type="button"
+              onClick={() => setActiveTab("faltas")}
+            >
+              Faltas
+            </button>
+            <button
               className={`tab ${activeTab === "cambios" ? "active" : ""}`}
               type="button"
               onClick={() => setActiveTab("cambios")}
@@ -197,6 +205,13 @@ export function PerfilTemplate({ perfil, empleado, displayName, userEmail }) {
                 empleadoId={empleado.id}
                 embedded
                 title="Mis licencias"
+              />
+            )}
+            {activeTab === "faltas" && (
+              <FaltasSection
+                empleadoId={empleado.id}
+                embedded
+                title="Mis faltas"
               />
             )}
             {activeTab === "cambios" && (

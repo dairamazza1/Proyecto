@@ -61,6 +61,8 @@ const renderObservationCell = (value) => {
   );
 };
 
+const formatJustificado = (value) => (value ? "Sí" : "No");
+
 const formatDateTimeLabel = (value) => {
   if (!value) return "";
   const raw = String(value);
@@ -105,11 +107,13 @@ const renderLabelWithDateBreak = (value) => {
   );
 };
 
-const getTipoNombre = (licencia) => licencia?.licencia_tipo?.name ?? "-";
+const getTipoNombre = (falta) => falta?.falta_tipo?.name ?? "-";
+const getCategoriaNombre = (falta) =>
+  falta?.falta_tipo?.categoria?.name ?? "-";
 
-const getCertificadoPath = (licencia) => licencia?.documento?.file_path || "";
+const getCertificadoPath = (falta) => falta?.documento?.file_path || "";
 
-export function TablaLicencias({
+export function TablaFaltas({
   data,
   onEdit,
   onDelete,
@@ -131,8 +135,8 @@ export function TablaLicencias({
   const getRequestedByLabel = (row) =>
     buildPerfilDateLabel(row?.creador, row?.created_by, row?.created_at);
 
-  const handleOpenCertificate = async (licencia) => {
-    const filePath = getCertificadoPath(licencia);
+  const handleOpenCertificate = async (falta) => {
+    const filePath = getCertificadoPath(falta);
     if (!filePath) return;
     try {
       const signedUrl = await getDocumentoSignedUrl(filePath, 90);
@@ -180,7 +184,6 @@ export function TablaLicencias({
       ),
       enableSorting: true,
     },
-
     {
       accessorKey: "end_date",
       header: "Hasta",
@@ -195,7 +198,6 @@ export function TablaLicencias({
       ),
       enableSorting: true,
     },
-
     {
       accessorKey: "days",
       header: "Dias",
@@ -229,20 +231,50 @@ export function TablaLicencias({
       enableSorting: true,
     },
     {
-      id: "licencia_tipo",
-      accessorFn: (row) => row?.licencia_tipo?.name ?? "",
-      header: "Tipo de licencia",
+      id: "categoria",
+      accessorFn: (row) => getCategoriaNombre(row),
+      header: "Categoria",
       meta: {
-        cardLabel: "Tipo de licencia",
+        cardLabel: "Categoria",
+        cardValue: (row) => getCategoriaNombre(row),
+      },
+      cell: (info) => (
+        <div data-title="Categoria" className="ContentCell">
+          <span>{getCategoriaNombre(info.row.original)}</span>
+        </div>
+      ),
+      enableSorting: true,
+      sortingFn: "alphanumeric",
+    },
+    {
+      id: "falta_tipo",
+      accessorFn: (row) => row?.falta_tipo?.name ?? "",
+      header: "Tipo de falta",
+      meta: {
+        cardLabel: "Tipo de falta",
         cardValue: (row) => getTipoNombre(row),
       },
       cell: (info) => (
-        <div data-title="Tipo de licencia" className="ContentCell">
+        <div data-title="Tipo de falta" className="ContentCell">
           <span>{getTipoNombre(info.row.original)}</span>
         </div>
       ),
       enableSorting: true,
       sortingFn: "alphanumeric",
+    },
+    {
+      accessorKey: "is_justified",
+      header: "Justificado",
+      meta: {
+        cardLabel: "Justificado",
+        cardValue: (row) => formatJustificado(row.is_justified),
+      },
+      cell: (info) => (
+        <div data-title="Justificado" className="ContentCell">
+          <span>{formatJustificado(info.getValue())}</span>
+        </div>
+      ),
+      enableSorting: true,
     },
     {
       accessorKey: "status",
@@ -356,17 +388,17 @@ export function TablaLicencias({
     <Container>
       <div className="cards">
         {table.getRowModel().rows.map((row) => {
-          const licencia = row.original;
+          const falta = row.original;
           const cardFields = columns
             .filter((column) => column.meta?.cardLabel)
             .map((column) => {
               const value =
                 column.accessorKey === "status" ? (
-                  <StatusPill className={formatStatus(licencia.status)}>
-                    {formatStatus(licencia.status)}
+                  <StatusPill className={formatStatus(falta.status)}>
+                    {formatStatus(falta.status)}
                   </StatusPill>
                 ) : (
-                  column.meta?.cardValue?.(licencia)
+                  column.meta?.cardValue?.(falta)
                 );
               return {
                 label: column.meta?.cardLabel,
@@ -376,7 +408,7 @@ export function TablaLicencias({
           return (
             <article className="card" key={row.id}>
               <div className="cardHeader">
-                <h3>{getTipoNombre(licencia)}</h3>
+                <h3>{getTipoNombre(falta)}</h3>
               </div>
               <div className="cardBody">
                 {cardFields.map((field) => (
@@ -387,44 +419,38 @@ export function TablaLicencias({
                 ))}
               </div>
               <div className="cardActions">
-                {canApproveRejectSolicitud(licencia) &&
+                {canApproveRejectSolicitud(falta) &&
                   onApprove &&
-                  String(licencia?.status ?? "").toLowerCase() !==
+                  String(falta?.status ?? "").toLowerCase() !==
                     "approved" && (
-                    <button
-                      type="button"
-                      onClick={() => onApprove?.(licencia)}
-                    >
+                    <button type="button" onClick={() => onApprove?.(falta)}>
                       Aceptar
                     </button>
                   )}
-                {canApproveRejectSolicitud(licencia) &&
+                {canApproveRejectSolicitud(falta) &&
                   onReject &&
-                  String(licencia?.status ?? "").toLowerCase() !==
+                  String(falta?.status ?? "").toLowerCase() !==
                     "rejected" && (
-                    <button
-                      type="button"
-                      onClick={() => onReject?.(licencia)}
-                    >
+                    <button type="button" onClick={() => onReject?.(falta)}>
                       Rechazar
                     </button>
                   )}
-                {getCertificadoPath(licencia) && (
+                {getCertificadoPath(falta) && (
                   <button
                     type="button"
                     className="secondary"
-                    onClick={() => handleOpenCertificate(licencia)}
+                    onClick={() => handleOpenCertificate(falta)}
                   >
                     Ver certificado
                   </button>
                 )}
-                {canEditSolicitud(licencia) && (
-                  <button type="button" onClick={() => onEdit?.(licencia)}>
+                {canEditSolicitud(falta) && (
+                  <button type="button" onClick={() => onEdit?.(falta)}>
                     Editar
                   </button>
                 )}
-                {canDeleteSolicitud(licencia) && (
-                  <button type="button" onClick={() => onDelete?.(licencia)}>
+                {canDeleteSolicitud(falta) && (
+                  <button type="button" onClick={() => onDelete?.(falta)}>
                     Eliminar
                   </button>
                 )}
@@ -436,65 +462,65 @@ export function TablaLicencias({
 
       <div className="tableScroll">
         <table className="responsive-table">
-        <thead>
-          {table.getHeaderGroups().map((headerGroup) => (
-            <tr key={headerGroup.id}>
-              {headerGroup.headers.map((header) => {
-                const canSort = header.column.getCanSort();
-                const sorted = header.column.getIsSorted();
+          <thead>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <tr key={headerGroup.id}>
+                {headerGroup.headers.map((header) => {
+                  const canSort = header.column.getCanSort();
+                  const sorted = header.column.getIsSorted();
 
-                return (
-                  <th key={header.id}>
-                    <div
-                      className={canSort ? "thInner sortable" : "thInner"}
-                      onClick={
-                        canSort
-                          ? header.column.getToggleSortingHandler()
-                          : undefined
-                      }
-                      role={canSort ? "button" : undefined}
-                      tabIndex={canSort ? 0 : undefined}
-                      onKeyDown={
-                        canSort
-                          ? (e) => {
-                              if (e.key === "Enter" || e.key === " ") {
-                                e.preventDefault();
-                                header.column.getToggleSortingHandler()?.(e);
+                  return (
+                    <th key={header.id}>
+                      <div
+                        className={canSort ? "thInner sortable" : "thInner"}
+                        onClick={
+                          canSort
+                            ? header.column.getToggleSortingHandler()
+                            : undefined
+                        }
+                        role={canSort ? "button" : undefined}
+                        tabIndex={canSort ? 0 : undefined}
+                        onKeyDown={
+                          canSort
+                            ? (e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.preventDefault();
+                                  header.column.getToggleSortingHandler()?.(e);
+                                }
                               }
-                            }
-                          : undefined
-                      }
-                    >
-                      <span className="thLabel">
-                        {header.column.columnDef.header}
-                      </span>
-                      {canSort && (
-                        <span className={`sortIcon ${sorted ? "sorted" : ""}`}>
-                          {sorted === "asc"
-                            ? "▲"
-                            : sorted === "desc"
-                            ? "▼"
-                            : ""}
+                            : undefined
+                        }
+                      >
+                        <span className="thLabel">
+                          {header.column.columnDef.header}
                         </span>
-                      )}
-                    </div>
-                  </th>
-                );
-              })}
-            </tr>
-          ))}
-        </thead>
-        <tbody>
-          {table.getRowModel().rows.map((item) => (
-            <tr key={item.id}>
-              {item.getVisibleCells().map((cell) => (
-                <td key={cell.id}>
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
+                        {canSort && (
+                          <span className={`sortIcon ${sorted ? "sorted" : ""}`}>
+                            {sorted === "asc"
+                              ? "▲"
+                              : sorted === "desc"
+                              ? "▼"
+                              : ""}
+                          </span>
+                        )}
+                      </div>
+                    </th>
+                  );
+                })}
+              </tr>
+            ))}
+          </thead>
+          <tbody>
+            {table.getRowModel().rows.map((item) => (
+              <tr key={item.id}>
+                {item.getVisibleCells().map((cell) => (
+                  <td key={cell.id}>
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
         </table>
       </div>
       <Paginacion table={table} />

@@ -374,9 +374,9 @@ export function TablaCambios({
     },
     {
       accessorKey: "status",
-      header: "Estado",
+      header: "Estado de aprobación",
       meta: {
-        cardLabel: "Estado",
+        cardLabel: "Estado de aprobación",
         cardValue: (row) => formatStatus(row.status),
       },
       cell: (info) => (
@@ -487,10 +487,20 @@ export function TablaCambios({
           const cambio = row.original;
           const cardFields = columns
             .filter((column) => column.meta?.cardLabel)
-            .map((column) => ({
-              label: column.meta?.cardLabel,
-              value: column.meta?.cardValue?.(cambio),
-            }));
+            .map((column) => {
+              const value =
+                column.accessorKey === "status" ? (
+                  <StatusPill className={formatStatus(cambio.status)}>
+                    {formatStatus(cambio.status)}
+                  </StatusPill>
+                ) : (
+                  column.meta?.cardValue?.(cambio)
+                );
+              return {
+                label: column.meta?.cardLabel,
+                value,
+              };
+            });
           return (
             <article className="card" key={row.id}>
               <div className="cardHeader">

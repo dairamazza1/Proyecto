@@ -2,6 +2,7 @@ import styled from "styled-components";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
+import Swal from "sweetalert2";
 import {
   ReportesFilters,
   ReportesTable,
@@ -11,6 +12,7 @@ import {
   UserAuth,
   getActiveEmpleados,
   getReportCambios,
+  getReportFaltas,
   getReportLicencias,
   getReportSanciones,
   getReportVacaciones,
@@ -21,6 +23,42 @@ import { TABS, statusValues } from "../../utils/dataEstatica";
 
 const formatStatus = (value) =>
   statusValues[String(value ?? "").toLowerCase()] ?? "-";
+
+const OBSERVATION_MAX = 60;
+
+const normalizeObservation = (value) => String(value ?? "").trim();
+
+const buildObservationLabel = (value) => normalizeObservation(value) || "-";
+
+const renderObservationCell = (value) => {
+  const text = normalizeObservation(value);
+  if (!text) return <span>-</span>;
+  const truncated =
+    text.length > OBSERVATION_MAX
+      ? `${text.slice(0, OBSERVATION_MAX).trim()}...`
+      : text;
+  return (
+    <div className="observationCell">
+      <span className="observationText">{truncated}</span>
+      {text.length > OBSERVATION_MAX && (
+        <button
+          type="button"
+          className="observationLink"
+          onClick={() =>
+            Swal.fire({
+              title: "Observaciones",
+              text,
+            })
+          }
+        >
+          ver más
+        </button>
+      )}
+    </div>
+  );
+};
+
+const formatJustificado = (value) => (value ? "Sí" : "No");
 
 const formatTipo = (value) => {
   const raw = String(value ?? "").trim().toLowerCase();
@@ -96,6 +134,8 @@ export function ReportesTemplate() {
     switch (activeTab) {
       case "licencias":
         return getReportLicencias(normalizedFilters);
+      case "faltas":
+        return getReportFaltas(normalizedFilters);
       case "cambios":
         return getReportCambios(normalizedFilters);
       case "sanciones":
@@ -239,11 +279,171 @@ export function ReportesTemplate() {
           ),
         },
         {
+          accessorKey: "observations",
+          header: "Observaciones",
+          meta: {
+            cardLabel: "Observaciones",
+            cardValue: (row) => (
+              <span className="observationText">
+                {buildObservationLabel(row.observations)}
+              </span>
+            ),
+          },
+          cell: (info) => (
+            <div data-title="Observaciones" className="ContentCell observation">
+              {renderObservationCell(info.getValue())}
+            </div>
+          ),
+        },
+        {
           accessorKey: "status",
           header: "Estado",
           meta: {
             cardLabel: "Estado",
-            cardValue: (row) => formatStatus(row.status),
+            cardValue: (row) => (
+              <StatusPill className={formatStatus(row.status)}>
+                {formatStatus(row.status)}
+              </StatusPill>
+            ),
+          },
+          cell: (info) => (
+            <div data-title="Estado" className="ContentCell">
+              <StatusPill className={formatStatus(info.getValue())}>
+                {formatStatus(info.getValue())}
+              </StatusPill>
+            </div>
+          ),
+        },
+        {
+          id: "verified_by",
+          header: "Verificado por",
+          accessorFn: (row) => getVerifiedByLabel(row),
+          meta: {
+            cardLabel: "Verificado por",
+            cardValue: (row) => getVerifiedByLabel(row),
+          },
+          cell: (info) => (
+            <div data-title="Verificado por" className="ContentCell">
+              <span>{info.getValue() ?? "-"}</span>
+            </div>
+          ),
+          enableSorting: true,
+          sortingFn: "alphanumeric",
+        },
+      ];
+    }
+
+    if (activeTab === "faltas") {
+      return [
+        legajoColumn,
+        empleadoColumn,
+        {
+          id: "categoria",
+          header: "Categoria",
+          accessorFn: (row) => row.falta_tipo?.categoria?.name ?? "-",
+          meta: {
+            cardLabel: "Categoria",
+            cardValue: (row) => row.falta_tipo?.categoria?.name ?? "-",
+          },
+          cell: (info) => (
+            <div data-title="Categoria" className="ContentCell">
+              <span>{info.getValue() ?? "-"}</span>
+            </div>
+          ),
+        },
+        {
+          id: "tipo",
+          header: "Tipo",
+          accessorFn: (row) => row.falta_tipo?.name ?? "-",
+          meta: {
+            cardLabel: "Tipo",
+            cardValue: (row) => row.falta_tipo?.name ?? "-",
+          },
+          cell: (info) => (
+            <div data-title="Tipo" className="ContentCell">
+              <span>{info.getValue() ?? "-"}</span>
+            </div>
+          ),
+        },
+        {
+          accessorKey: "start_date",
+          header: "Desde",
+          meta: {
+            cardLabel: "Desde",
+            cardValue: (row) => formatDate(row.start_date),
+          },
+          cell: (info) => (
+            <div data-title="Desde" className="ContentCell">
+              <span>{formatDate(info.getValue())}</span>
+            </div>
+          ),
+        },
+        {
+          accessorKey: "end_date",
+          header: "Hasta",
+          meta: {
+            cardLabel: "Hasta",
+            cardValue: (row) => formatDate(row.end_date),
+          },
+          cell: (info) => (
+            <div data-title="Hasta" className="ContentCell">
+              <span>{formatDate(info.getValue())}</span>
+            </div>
+          ),
+        },
+        {
+          accessorKey: "days",
+          header: "Dias",
+          meta: {
+            cardLabel: "Dias",
+            cardValue: (row) => row.days ?? "-",
+          },
+          cell: (info) => (
+            <div data-title="Dias" className="ContentCell">
+              <span>{info.getValue() ?? "-"}</span>
+            </div>
+          ),
+        },
+        {
+          accessorKey: "observations",
+          header: "Observaciones",
+          meta: {
+            cardLabel: "Observaciones",
+            cardValue: (row) => (
+              <span className="observationText">
+                {buildObservationLabel(row.observations)}
+              </span>
+            ),
+          },
+          cell: (info) => (
+            <div data-title="Observaciones" className="ContentCell observation">
+              {renderObservationCell(info.getValue())}
+            </div>
+          ),
+        },
+        {
+          accessorKey: "is_justified",
+          header: "Justificado",
+          meta: {
+            cardLabel: "Justificado",
+            cardValue: (row) => formatJustificado(row.is_justified),
+          },
+          cell: (info) => (
+            <div data-title="Justificado" className="ContentCell">
+              <span>{formatJustificado(info.getValue())}</span>
+            </div>
+          ),
+        },
+        {
+          accessorKey: "status",
+          header: "Estado",
+          meta: {
+            cardLabel: "Estado",
+            cardValue: (row) => (
+              <StatusPill className={formatStatus(row.status)}>
+                {formatStatus(row.status)}
+              </StatusPill>
+            ),
           },
           cell: (info) => (
             <div data-title="Estado" className="ContentCell">
@@ -342,7 +542,11 @@ export function ReportesTemplate() {
           header: "Estado",
           meta: {
             cardLabel: "Estado",
-            cardValue: (row) => formatStatus(row.status),
+            cardValue: (row) => (
+              <StatusPill className={formatStatus(row.status)}>
+                {formatStatus(row.status)}
+              </StatusPill>
+            ),
           },
           cell: (info) => (
             <div data-title="Estado" className="ContentCell">
@@ -489,11 +693,32 @@ export function ReportesTemplate() {
         ),
       },
       {
+        accessorKey: "observations",
+        header: "Observaciones",
+        meta: {
+          cardLabel: "Observaciones",
+          cardValue: (row) => (
+            <span className="observationText">
+              {buildObservationLabel(row.observations)}
+            </span>
+          ),
+        },
+        cell: (info) => (
+          <div data-title="Observaciones" className="ContentCell observation">
+            {renderObservationCell(info.getValue())}
+          </div>
+        ),
+      },
+      {
         accessorKey: "status",
         header: "Estado",
         meta: {
           cardLabel: "Estado",
-          cardValue: (row) => formatStatus(row.status),
+          cardValue: (row) => (
+            <StatusPill className={formatStatus(row.status)}>
+              {formatStatus(row.status)}
+            </StatusPill>
+          ),
         },
         cell: (info) => (
           <div data-title="Estado" className="ContentCell">

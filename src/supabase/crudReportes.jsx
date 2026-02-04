@@ -39,6 +39,7 @@ export async function getReportVacaciones({
       start_date,
       end_date,
       days_taken,
+      observations,
       status,
       verified_by,
       created_at,
@@ -89,6 +90,7 @@ export async function getReportLicencias({
       start_date,
       end_date,
       days,
+      observations,
       status,
       verified_by,
       created_at,
@@ -98,6 +100,62 @@ export async function getReportLicencias({
         empleado:empleados(id, first_name, last_name)
       ),
       licencia_tipo:licencias_tipos(name),
+      empleado:empleados!inner(
+        id,
+        first_name,
+        last_name,
+        employee_id_number,
+        is_active,
+        empresa_id
+      )
+    `
+    )
+    .order("start_date", { ascending: false });
+
+  if (empleado_id) {
+    query = query.eq("empleado_id", empleado_id);
+  }
+  if (empresa_id) {
+    query = query.eq("empleado.empresa_id", empresa_id);
+  }
+
+  query = applyDateRange(query, "start_date", { fromDate, toDate });
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function getReportFaltas({
+  fromDate,
+  toDate,
+  empleado_id,
+  empresa_id,
+} = {}) {
+  let query = supabase
+    .from("empleados_faltas")
+    .select(
+      `
+      id,
+      empleado_id,
+      start_date,
+      end_date,
+      days,
+      observations,
+      status,
+      verified_by,
+      created_at,
+      is_justified,
+      verificador:perfiles!empleados_faltas_verified_by_fkey(
+        id,
+        email,
+        empleado:empleados(id, first_name, last_name)
+      ),
+      falta_tipo:faltas_tipos(
+        name,
+        categoria_falta_id,
+        categoria:faltas_categorias(name)
+      ),
       empleado:empleados!inner(
         id,
         first_name,

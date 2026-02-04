@@ -19,6 +19,10 @@ const formatTime = (value) => {
   return `${parts[0]}:${parts[1]}`;
 };
 
+const DETAIL_MAX = 60;
+
+const normalizeDetail = (value) => String(value ?? "").trim();
+
 export function TablaEnfermeria({ data, onEdit }) {
   const safeData = data ?? [];
   const [columnFilters] = useState([]);
@@ -58,17 +62,34 @@ export function TablaEnfermeria({ data, onEdit }) {
       },
       cell: (info) => {
         const row = info.row.original;
-        const detail = row?.details ?? "-";
+        const detail = normalizeDetail(row?.details);
+        const text = detail || "-";
+        const isTruncated = detail.length > DETAIL_MAX;
+        const truncated =
+          detail.length > DETAIL_MAX
+            ? `${detail.slice(0, DETAIL_MAX).trim()}...`
+            : text;
         return (
-          <div data-title="Detalle" className="ContentCell">
-            <button
-              type="button"
-              className="detailButton"
-              title={detail}
-              onClick={() => handlePreview(row)}
-            >
-              <span className="detailText">{detail}</span>
-            </button>
+          <div data-title="Detalle" className="ContentCell detailCell">
+            <div className="detailInline">
+              <button
+                type="button"
+                className={`detailButton${isTruncated ? " truncated" : ""}`}
+                title={text}
+                onClick={() => handlePreview(row)}
+              >
+                <span className="detailText">{truncated}</span>
+              </button>
+              {isTruncated && (
+                <button
+                  type="button"
+                  className="detailMore"
+                  onClick={() => handlePreview(row)}
+                >
+                  ver más
+                </button>
+              )}
+            </div>
           </div>
         );
       },
@@ -488,6 +509,11 @@ const Container = styled.div`
         }
       }
 
+      .ContentCell.detailCell {
+        justify-content: center;
+        text-align: center;
+      }
+
       .actionsCell {
         gap: 10px;
       }
@@ -524,20 +550,54 @@ const Container = styled.div`
     width: 100%;
     display: inline-flex;
     justify-content: center;
+    align-items: center;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .detailButton.truncated {
+    justify-content: flex-start;
+  }
+
+  .detailInline {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: min(280px, 100%);
+    flex-wrap: nowrap;
+
+    @media ${Device.laptop} {
+      width: min(360px, 100%);
+    }
   }
 
   .detailText {
-    display: inline-block;
-    max-width: 280px;
+    display: block;
+    width: 100%;
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
     vertical-align: middle;
     text-align: center;
+  }
 
-    @media ${Device.laptop} {
-      max-width: 360px;
-    }
+  .detailButton.truncated .detailText {
+    text-align: left;
+  }
+
+  .detailMore {
+    border: none;
+    background: transparent;
+    color: ${({ theme }) => theme.color1};
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    padding: 0;
+    flex-shrink: 0;
   }
 
   .tableScroll {

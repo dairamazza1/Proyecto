@@ -3,16 +3,17 @@ import styled from "styled-components";
 import { Btn1, InputText, Spinner1 } from "../../../index";
 import { useForm } from "react-hook-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { usePermissions } from "../../../hooks/usePermissions";
 import Swal from "sweetalert2";
 import {
-  getLicenciasCategorias,
-  getLicenciasTiposByCategoria,
-  getLicenciaTipoById,
-  insertEmpleadoDocumento,
-  insertEmpleadoLicencia,
-  updateEmpleadoLicencia,
-  uploadLicenciaCertificado,
-} from "../../../supabase/crudLicencias";
+  getFaltasCategorias,
+  getFaltasTiposByCategoria,
+  getFaltaTipoById,
+  insertEmpleadoFalta,
+  updateEmpleadoFalta,
+  uploadFaltaCertificado,
+} from "../../../supabase/crudFaltas";
+import { insertEmpleadoDocumento } from "../../../supabase/crudLicencias";
 import { calcDaysTakenInclusive } from "../../../utils/vacaciones";
 import {
   ALLOWED_DOCUMENT_TYPES,
@@ -21,11 +22,10 @@ import {
 import { v } from "../../../styles/variables";
 import { Device, DeviceMax } from "../../../styles/breakpoints";
 
-const _V = v;
-
-export function ModalLicenciasForm({ empleadoId, licencia, onClose }) {
+export function ModalFaltasForm({ empleadoId, falta, onClose }) {
   const queryClient = useQueryClient();
-  const isEdit = Boolean(licencia?.id);
+  const isEdit = Boolean(falta?.id);
+  const { profile } = usePermissions();
   const [selectedFile, setSelectedFile] = useState(null);
   const [fileError, setFileError] = useState("");
   const prevCategoriaRef = useRef();
@@ -40,8 +40,8 @@ export function ModalLicenciasForm({ empleadoId, licencia, onClose }) {
     setValue,
   } = useForm({
     defaultValues: {
-      licencia_categoria_id: "",
-      licencia_tipo_id: "",
+      falta_categoria_id: "",
+      falta_tipo_id: "",
       start_date: "",
       end_date: "",
       days: 0,
@@ -51,11 +51,10 @@ export function ModalLicenciasForm({ empleadoId, licencia, onClose }) {
 
   const startDate = watch("start_date");
   const endDate = watch("end_date");
-  const categoriaId = watch("licencia_categoria_id");
-  const tipoId = watch("licencia_tipo_id");
+  const categoriaId = watch("falta_categoria_id");
+  const tipoId = watch("falta_tipo_id");
 
-  const existingFilePath =
-    licencia?.documento?.file_path || "";
+  const existingFilePath = falta?.documento?.file_path || "";
   const hasExistingCertificate = Boolean(existingFilePath);
 
   const {
@@ -63,8 +62,8 @@ export function ModalLicenciasForm({ empleadoId, licencia, onClose }) {
     isLoading: isLoadingCategorias,
     error: errorCategorias,
   } = useQuery({
-    queryKey: ["licenciasCategorias"],
-    queryFn: getLicenciasCategorias,
+    queryKey: ["faltasCategorias"],
+    queryFn: getFaltasCategorias,
     refetchOnWindowFocus: false,
   });
 
@@ -73,16 +72,16 @@ export function ModalLicenciasForm({ empleadoId, licencia, onClose }) {
     isLoading: isLoadingTipos,
     error: errorTipos,
   } = useQuery({
-    queryKey: ["licenciasTipos", categoriaId],
-    queryFn: () => getLicenciasTiposByCategoria(categoriaId),
+    queryKey: ["faltasTipos", categoriaId],
+    queryFn: () => getFaltasTiposByCategoria(categoriaId),
     enabled: Boolean(categoriaId),
     refetchOnWindowFocus: false,
   });
 
   const { data: tipoById } = useQuery({
-    queryKey: ["licenciaTipo", licencia?.licencia_tipo_id],
-    queryFn: () => getLicenciaTipoById(licencia?.licencia_tipo_id),
-    enabled: Boolean(isEdit && licencia?.licencia_tipo_id && !categoriaId),
+    queryKey: ["faltaTipo", falta?.falta_tipo_id],
+    queryFn: () => getFaltaTipoById(falta?.falta_tipo_id),
+    enabled: Boolean(isEdit && falta?.falta_tipo_id && !categoriaId),
     refetchOnWindowFocus: false,
   });
 
@@ -96,32 +95,32 @@ export function ModalLicenciasForm({ empleadoId, licencia, onClose }) {
   const requiresCertificate = Boolean(selectedTipo?.requires_certificate);
 
   useEffect(() => {
-    if (!licencia) return;
+    if (!falta) return;
     reset({
-      licencia_categoria_id: "",
-      licencia_tipo_id: "",
-      start_date: licencia.start_date ?? "",
-      end_date: licencia.end_date ?? "",
-      days: licencia.days ?? 0,
-      observations: licencia.observations ?? "",
+      falta_categoria_id: "",
+      falta_tipo_id: "",
+      start_date: falta.start_date ?? "",
+      end_date: falta.end_date ?? "",
+      days: falta.days ?? 0,
+      observations: falta.observations ?? "",
     });
     setSelectedFile(null);
     setFileError("");
-  }, [licencia, reset]);
+  }, [falta, reset]);
 
   useEffect(() => {
     if (!isEdit || categoriaId) return;
-    const categoriaFromLicencia =
-      licencia?.licencia_tipo?.categoria_licencia_id ?? null;
+    const categoriaFromFalta =
+      falta?.falta_tipo?.categoria_falta_id ?? null;
     const resolvedCategoria =
-      categoriaFromLicencia ?? tipoById?.categoria_licencia_id ?? null;
+      categoriaFromFalta ?? tipoById?.categoria_falta_id ?? null;
     if (!resolvedCategoria) return;
     const existsInCategorias = categorias.some(
       (categoria) => String(categoria.id) === String(resolvedCategoria)
     );
     if (!existsInCategorias) return;
-    setValue("licencia_categoria_id", String(resolvedCategoria));
-  }, [isEdit, categoriaId, licencia, tipoById, categorias, setValue]);
+    setValue("falta_categoria_id", String(resolvedCategoria));
+  }, [isEdit, categoriaId, falta, tipoById, categorias, setValue]);
 
   useEffect(() => {
     const days = calcDaysTakenInclusive(startDate, endDate);
@@ -130,22 +129,22 @@ export function ModalLicenciasForm({ empleadoId, licencia, onClose }) {
 
   useEffect(() => {
     if (prevCategoriaRef.current && prevCategoriaRef.current !== categoriaId) {
-      setValue("licencia_tipo_id", "");
+      setValue("falta_tipo_id", "");
     }
     prevCategoriaRef.current = categoriaId;
   }, [categoriaId, setValue]);
 
   useEffect(() => {
     if (!isEdit) return;
-    const existingTipoId = licencia?.licencia_tipo_id;
+    const existingTipoId = falta?.falta_tipo_id;
     if (!existingTipoId || tipoId) return;
     const existsInOptions = tipos.some(
       (tipo) => String(tipo.id) === String(existingTipoId)
     );
     if (existsInOptions) {
-      setValue("licencia_tipo_id", String(existingTipoId));
+      setValue("falta_tipo_id", String(existingTipoId));
     }
-  }, [isEdit, licencia, tipoId, tipos, setValue]);
+  }, [isEdit, falta, tipoId, tipos, setValue]);
 
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -163,22 +162,22 @@ export function ModalLicenciasForm({ empleadoId, licencia, onClose }) {
         throw new Error("Debes adjuntar un certificado.");
       }
 
-      let documentId = licencia?.document_id ?? licencia?.documento?.id ?? null;
-      const existingTipoId = licencia?.licencia_tipo_id;
-      const resolvedTipoId = data.licencia_tipo_id || existingTipoId;
+      let documentId = falta?.document_id ?? falta?.documento?.id ?? null;
+      const existingTipoId = falta?.falta_tipo_id;
+      const resolvedTipoId = data.falta_tipo_id || existingTipoId;
 
       if (!resolvedTipoId) {
-        throw new Error("Selecciona un tipo de licencia.");
+        throw new Error("Selecciona un tipo de falta.");
       }
 
       if (selectedFile) {
-        const filePath = await uploadLicenciaCertificado({
+        const filePath = await uploadFaltaCertificado({
           empleadoId,
           file: selectedFile,
         });
         const documento = await insertEmpleadoDocumento({
           empleado_id: empleadoId,
-          document_type: "LICENCIA_CERTIFICADO",
+          document_type: "FALTA_CERTIFICADO",
           file_path: filePath,
           document_date: data.start_date,
           end_date: data.end_date || null,
@@ -189,7 +188,7 @@ export function ModalLicenciasForm({ empleadoId, licencia, onClose }) {
 
       const payload = {
         empleado_id: empleadoId,
-        licencia_tipo_id: Number(resolvedTipoId),
+        falta_tipo_id: Number(resolvedTipoId),
         start_date: data.start_date,
         end_date: data.end_date,
         days: data.days,
@@ -201,25 +200,28 @@ export function ModalLicenciasForm({ empleadoId, licencia, onClose }) {
       }
 
       if (isEdit) {
-        return updateEmpleadoLicencia(licencia.id, payload);
+        return updateEmpleadoFalta(falta.id, payload);
       }
       payload.status = "pending";
-      return insertEmpleadoLicencia(payload);
+      if (profile?.id) {
+        payload.created_by = profile.id;
+      }
+      return insertEmpleadoFalta(payload);
     },
     onError: (err) => {
       Swal.fire({
         icon: "error",
         title: "Oops...",
-        text: err?.message || "Error al guardar licencia.",
+        text: err?.message || "Error al guardar falta.",
       });
     },
     onSuccess: () => {
       Swal.fire({
         icon: "success",
-        title: isEdit ? "Licencia actualizada" : "Licencia registrada",
-        text: isEdit ? "Se actualizo la licencia." : "Se registro la licencia.",
+        title: isEdit ? "Falta actualizada" : "Falta registrada",
+        text: isEdit ? "Se actualizo la falta." : "Se registro la falta.",
       });
-      queryClient.invalidateQueries({ queryKey: ["licencias", empleadoId] });
+      queryClient.invalidateQueries({ queryKey: ["faltas", empleadoId] });
       onClose();
     },
   });
@@ -256,7 +258,7 @@ export function ModalLicenciasForm({ empleadoId, licencia, onClose }) {
   }
 
   if (errorCategorias || errorTipos) {
-    return <span>ha ocurrido un error al cargar licencias.</span>;
+    return <span>ha ocurrido un error al cargar faltas.</span>;
   }
 
   return (
@@ -264,7 +266,7 @@ export function ModalLicenciasForm({ empleadoId, licencia, onClose }) {
       <Modal>
         <div className="headers">
           <section>
-            <h1>{isEdit ? "Editar licencia" : "Registrar licencia"}</h1>
+            <h1>{isEdit ? "Editar falta" : "Registrar falta"}</h1>
           </section>
           <section>
             <span onClick={onClose}>x</span>
@@ -276,7 +278,7 @@ export function ModalLicenciasForm({ empleadoId, licencia, onClose }) {
               <InputText icono={<v.iconocategorias />}>
                 <select
                   className="form__field"
-                  {...register("licencia_categoria_id", {
+                  {...register("falta_categoria_id", {
                     required: "Campo requerido",
                   })}
                 >
@@ -291,9 +293,9 @@ export function ModalLicenciasForm({ empleadoId, licencia, onClose }) {
                     </option>
                   ))}
                 </select>
-                <label className="form__label">categoria licencia</label>
-                {errors.licencia_categoria_id?.message && (
-                  <p>{errors.licencia_categoria_id.message}</p>
+                <label className="form__label">Categoría de falta</label>
+                {errors.falta_categoria_id?.message && (
+                  <p>{errors.falta_categoria_id.message}</p>
                 )}
               </InputText>
             </article>
@@ -302,7 +304,7 @@ export function ModalLicenciasForm({ empleadoId, licencia, onClose }) {
               <InputText icono={<v.iconodocumento />}>
                 <select
                   className="form__field"
-                  {...register("licencia_tipo_id", {
+                  {...register("falta_tipo_id", {
                     required: "Campo requerido",
                   })}
                   disabled={!categoriaId || isLoadingTipos}
@@ -320,9 +322,9 @@ export function ModalLicenciasForm({ empleadoId, licencia, onClose }) {
                     </option>
                   ))}
                 </select>
-                <label className="form__label">tipo licencia</label>
-                {errors.licencia_tipo_id?.message && (
-                  <p>{errors.licencia_tipo_id.message}</p>
+                <label className="form__label">Tipo de falta</label>
+                {errors.falta_tipo_id?.message && (
+                  <p>{errors.falta_tipo_id.message}</p>
                 )}
               </InputText>
             </article>
@@ -334,7 +336,7 @@ export function ModalLicenciasForm({ empleadoId, licencia, onClose }) {
                   type="date"
                   {...register("start_date", { required: "Campo requerido" })}
                 />
-                <label className="form__label">fecha inicio</label>
+                <label className="form__label">Fecha de inicio</label>
                 {errors.start_date?.message && (
                   <p>{errors.start_date.message}</p>
                 )}
@@ -356,7 +358,7 @@ export function ModalLicenciasForm({ empleadoId, licencia, onClose }) {
                     },
                   })}
                 />
-                <label className="form__label">fecha fin</label>
+                <label className="form__label">Fecha de fin</label>
                 {errors.end_date?.message && <p>{errors.end_date.message}</p>}
               </InputText>
             </article>
@@ -370,7 +372,7 @@ export function ModalLicenciasForm({ empleadoId, licencia, onClose }) {
                   {...register("days")}
                   readOnly
                 />
-                <label className="form__label">dias</label>
+                <label className="form__label">Días</label>
               </InputText>
             </article>
 
@@ -395,7 +397,7 @@ export function ModalLicenciasForm({ empleadoId, licencia, onClose }) {
                   onChange={handleFileChange}
                   ref={fileInputRef}
                 />
-                <label className="form__label">certificado</label>
+                <label className="form__label">Adjuntar certificado</label>
               </InputText>
               {hasExistingCertificate && !selectedFile && (
                 <p className="helper">certificado cargado</p>

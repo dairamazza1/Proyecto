@@ -198,7 +198,7 @@ export function ModalEnfermeriaForm({
                   {...register("registro_time", {
                     required: "Campo requerido",
                     validate: (value) => {
-                      if (isAdminRole) return true;
+                      // if (isAdminRole) return true;
                       if (!shift) return true;
                       if (!isTimeInShift(value, shift)) {
                         const range = getShiftRangeLabel(shift);

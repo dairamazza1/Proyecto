@@ -1,14 +1,14 @@
 import { supabase } from "../index";
 
-const table = "empleados_licencias";
-const tableCategorias = "licencias_categorias";
-const tableTipos = "licencias_tipos";
-const tableDocumentos = "empleados_documentos";
+const table = "empleados_faltas";
+const tableCategorias = "faltas_categorias";
+const tableTipos = "faltas_tipos";
 const bucketDocuments = "documents";
+const documentsFolder = "licencias";
 const selectFields = `
   id,
   empleado_id,
-  licencia_tipo_id,
+  falta_tipo_id,
   start_date,
   end_date,
   days,
@@ -19,17 +19,24 @@ const selectFields = `
   created_at,
   verified_by,
   verified_at,
-  creador:perfiles!empleados_licencias_created_by_fkey(
+  is_justified,
+  creador:perfiles!empleados_faltas_created_by_fkey(
     id,
     email,
     empleado:empleados(id, first_name, last_name)
   ),
-  verificador:perfiles!empleados_licencias_verified_by_fkey(
+  verificador:perfiles!empleados_faltas_verified_by_fkey(
     id,
     email,
     empleado:empleados(id, first_name, last_name)
   ),
-  licencia_tipo:licencias_tipos(id, name, requires_certificate, categoria_licencia_id),
+  falta_tipo:faltas_tipos(
+    id,
+    name,
+    requires_certificate,
+    categoria_falta_id,
+    categoria:faltas_categorias(id, name)
+  ),
   documento:empleados_documentos(id, file_path, document_type)
 `;
 
@@ -41,44 +48,42 @@ function buildDocumentPath(empleadoId, fileName) {
     typeof crypto !== "undefined" && crypto.randomUUID
       ? crypto.randomUUID()
       : Date.now().toString();
-  return `licencias/${empleadoId}/${uniqueId}_${safeName}`;
+  return `${documentsFolder}/${empleadoId}/${uniqueId}_${safeName}`;
 }
 
-export async function getLicenciasCategorias() {
+export async function getFaltasCategorias() {
   const { data, error } = await supabase
-    
     .from(tableCategorias)
     .select("id, name")
     .order("name", { ascending: true });
+    
   if (error) throw error;
   return data ?? [];
 }
 
-export async function getLicenciasTiposByCategoria(categoriaId) {
+export async function getFaltasTiposByCategoria(categoriaId) {
   const { data, error } = await supabase
-    
     .from(tableTipos)
-    .select("id, name, requires_certificate, categoria_licencia_id")
-    .eq("categoria_licencia_id", categoriaId)
+    .select("id, name, requires_certificate, categoria_falta_id")
+    .eq("categoria_falta_id", categoriaId)
     .order("name", { ascending: true });
   if (error) throw error;
   return data ?? [];
 }
 
-export async function getLicenciaTipoById(tipoId) {
+export async function getFaltaTipoById(tipoId) {
   const { data, error } = await supabase
-    
     .from(tableTipos)
-    .select("id, name, requires_certificate, categoria_licencia_id")
+    .select("id, name, requires_certificate, categoria_falta_id")
     .eq("id", tipoId)
     .maybeSingle();
+    
   if (error) throw error;
   return data ?? null;
 }
 
-export async function getLicenciasByEmpleadoId(empleadoId) {
+export async function getFaltasByEmpleadoId(empleadoId) {
   const { data, error } = await supabase
-    
     .from(table)
     .select(selectFields)
     .eq("empleado_id", empleadoId)
@@ -87,9 +92,8 @@ export async function getLicenciasByEmpleadoId(empleadoId) {
   return data ?? [];
 }
 
-export async function insertEmpleadoLicencia(payload) {
+export async function insertEmpleadoFalta(payload) {
   const { data, error } = await supabase
-    
     .from(table)
     .insert(payload)
     .select()
@@ -98,9 +102,8 @@ export async function insertEmpleadoLicencia(payload) {
   return data;
 }
 
-export async function updateEmpleadoLicencia(id, payload) {
+export async function updateEmpleadoFalta(id, payload) {
   const { data, error } = await supabase
-    
     .from(table)
     .update(payload)
     .eq("id", id)
@@ -110,9 +113,8 @@ export async function updateEmpleadoLicencia(id, payload) {
   return data;
 }
 
-export async function deleteEmpleadoLicencia(id) {
+export async function deleteEmpleadoFalta(id) {
   const { error } = await supabase
-    
     .from(table)
     .delete()
     .eq("id", id);
@@ -120,18 +122,7 @@ export async function deleteEmpleadoLicencia(id) {
   return true;
 }
 
-export async function insertEmpleadoDocumento(payload) {
-  const { data, error } = await supabase
-    
-    .from(tableDocumentos)
-    .insert(payload)
-    .select()
-    .maybeSingle();
-  if (error) throw error;
-  return data;
-}
-
-export async function uploadLicenciaCertificado({ empleadoId, file }) {
+export async function uploadFaltaCertificado({ empleadoId, file }) {
   const filePath = buildDocumentPath(empleadoId, file?.name);
   const { error } = await supabase.storage
     .from(bucketDocuments)
@@ -143,13 +134,5 @@ export async function uploadLicenciaCertificado({ empleadoId, file }) {
   return filePath;
 }
 
-export async function getDocumentoSignedUrl(filePath, expiresInSeconds = 60) {
-  const { data, error } = await supabase.storage
-    .from(bucketDocuments)
-    .createSignedUrl(filePath, expiresInSeconds);
-  if (error) throw error;
-  return data?.signedUrl;
-}
-
-export const insertLicencia = insertEmpleadoLicencia;
-export const updateLicencia = updateEmpleadoLicencia;
+export const insertFalta = insertEmpleadoFalta;
+export const updateFalta = updateEmpleadoFalta;

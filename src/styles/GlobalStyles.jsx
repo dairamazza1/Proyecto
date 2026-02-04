@@ -74,6 +74,10 @@ export const GlobalStyles = createGlobalStyle`
         color: ${({theme})=>theme.text};
         font-family: "Poppins", sans-serif;
     }
+
+    .swal2-container{
+        z-index: 3000;
+    }
 `;
 
 

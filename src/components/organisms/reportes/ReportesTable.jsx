@@ -191,6 +191,36 @@ const Container = styled.div`
     }
   }
 
+  .observationCell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    width: 100%;
+    text-align: center;
+  }
+
+  .observationLink {
+    border: none;
+    background: transparent;
+    color: ${({ theme }) => theme.color1};
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    padding: 0;
+  }
+
+  .observationText {
+    display: inline-block;
+    width: 100%;
+    text-align-last: center;
+    overflow-wrap: anywhere;
+  }
+
   .cardActions {
     display: flex;
     justify-content: flex-end;
@@ -316,6 +346,13 @@ const Container = styled.div`
           justify-content: center;
           border-bottom: none;
         }
+      }
+
+      .ContentCell.observation {
+        height: auto;
+        min-height: 50px;
+        justify-content: center;
+        padding: 6px 0;
       }
 
       .ContentCell.acciones {

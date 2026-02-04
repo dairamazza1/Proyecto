@@ -4,6 +4,7 @@ import { v } from "../../../styles/variables";
 import { Device, DeviceMax } from "../../../styles/breakpoints";
 import { useState } from "react";
 import { usePermissions } from "../../../hooks/usePermissions";
+import Swal from "sweetalert2";
 import {
   flexRender,
   getCoreRowModel,
@@ -20,6 +21,40 @@ const statusValues = {
 
 const formatStatus = (value) =>
   statusValues[String(value ?? "").toLowerCase()] ?? "-";
+
+const OBSERVATION_MAX = 60;
+
+const normalizeObservation = (value) => String(value ?? "").trim();
+
+const buildObservationLabel = (value) => normalizeObservation(value) || "-";
+
+const renderObservationCell = (value) => {
+  const text = normalizeObservation(value);
+  if (!text) return <span>-</span>;
+  const truncated =
+    text.length > OBSERVATION_MAX
+      ? `${text.slice(0, OBSERVATION_MAX).trim()}...`
+      : text;
+  return (
+    <div className="observationCell">
+      <span className="observationText">{truncated}</span>
+      {text.length > OBSERVATION_MAX && (
+        <button
+          type="button"
+          className="observationLink"
+          onClick={() =>
+            Swal.fire({
+              title: "Observaciones",
+              text,
+            })
+          }
+        >
+          ver más
+        </button>
+      )}
+    </div>
+  );
+};
 
 const formatType = (value) => {
   const raw = String(value ?? "").trim().toLowerCase();
@@ -169,10 +204,28 @@ export function TablaVacaciones({
       enableSorting: true,
     },
     {
-      accessorKey: "status",
-      header: "Estado de aprobacion",
+      accessorKey: "observations",
+      header: "Observaciones",
       meta: {
-        cardLabel: "Estado de aprobacion",
+        cardLabel: "Observaciones",
+        cardValue: (row) => (
+          <span className="observationText">
+            {buildObservationLabel(row.observations)}
+          </span>
+        ),
+      },
+      cell: (info) => (
+        <div data-title="Observaciones" className="ContentCell observation">
+          {renderObservationCell(info.getValue())}
+        </div>
+      ),
+      enableSorting: true,
+    },
+    {
+      accessorKey: "status",
+      header: "Estado de aprobación",
+      meta: {
+        cardLabel: "Estado de aprobación",
         cardValue: (row) => formatStatus(row.status),
       },
       cell: (info) => (
@@ -275,10 +328,20 @@ export function TablaVacaciones({
           const vacacion = row.original;
           const cardFields = columns
             .filter((column) => column.meta?.cardLabel)
-            .map((column) => ({
-              label: column.meta?.cardLabel,
-              value: column.meta?.cardValue?.(vacacion),
-            }));
+            .map((column) => {
+              const value =
+                column.accessorKey === "status" ? (
+                  <StatusPill className={formatStatus(vacacion.status)}>
+                    {formatStatus(vacacion.status)}
+                  </StatusPill>
+                ) : (
+                  column.meta?.cardValue?.(vacacion)
+                );
+              return {
+                label: column.meta?.cardLabel,
+                value,
+              };
+            });
           return (
             <article className="card" key={row.id}>
               <div className="cardHeader">
@@ -511,6 +574,36 @@ const Container = styled.div`
     }
   }
 
+  .observationCell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    width: 100%;
+    text-align: center;
+  }
+
+  .observationLink {
+    border: none;
+    background: transparent;
+    color: ${({ theme }) => theme.color1};
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    padding: 0;
+  }
+
+  .observationText {
+    display: inline-block;
+    width: 100%;
+    text-align-last: center;
+    overflow-wrap: anywhere;
+  }
+
   .cardActions {
     display: flex;
     justify-content: flex-end;
@@ -650,6 +743,13 @@ const Container = styled.div`
           justify-content: center;
           border-bottom: none;
         }
+      }
+
+      .ContentCell.observation {
+        height: auto;
+        min-height: 50px;
+        justify-content: center;
+        padding: 6px 0;
       }
 
       td {

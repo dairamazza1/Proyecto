@@ -24,6 +24,7 @@ export const RESOURCES = {
   EMPLEADOS: 'empleados',
   VACACIONES: 'vacaciones',
   LICENCIAS: 'licencias',
+  FALTAS: 'faltas',
   CAMBIOS: 'cambios',
   SANCIONES: 'sanciones',
   CATEGORIAS: 'categorias',
@@ -59,6 +60,12 @@ export const PERMISSIONS = {
       [ACTIONS.DELETE]: true 
     },
     [RESOURCES.LICENCIAS]: { 
+      [ACTIONS.CREATE]: true, 
+      [ACTIONS.READ]: true, 
+      [ACTIONS.UPDATE]: true, 
+      [ACTIONS.DELETE]: true 
+    },
+    [RESOURCES.FALTAS]: { 
       [ACTIONS.CREATE]: true, 
       [ACTIONS.READ]: true, 
       [ACTIONS.UPDATE]: true, 
@@ -109,6 +116,12 @@ export const PERMISSIONS = {
       [ACTIONS.DELETE]: true 
     },
     [RESOURCES.LICENCIAS]: { 
+      [ACTIONS.CREATE]: true, 
+      [ACTIONS.READ]: true, 
+      [ACTIONS.UPDATE]: true, 
+      [ACTIONS.DELETE]: true 
+    },
+    [RESOURCES.FALTAS]: { 
       [ACTIONS.CREATE]: true, 
       [ACTIONS.READ]: true, 
       [ACTIONS.UPDATE]: true, 
@@ -165,6 +178,12 @@ export const PERMISSIONS = {
       [ACTIONS.UPDATE]: true, 
       [ACTIONS.DELETE]: true 
     },
+    [RESOURCES.FALTAS]: { 
+      [ACTIONS.CREATE]: true, 
+      [ACTIONS.READ]: true, 
+      [ACTIONS.UPDATE]: true, 
+      [ACTIONS.DELETE]: true 
+    },
     [RESOURCES.CAMBIOS]: { 
       [ACTIONS.CREATE]: true, 
       [ACTIONS.READ]: true, 
@@ -211,6 +230,12 @@ export const PERMISSIONS = {
       [ACTIONS.DELETE]: false 
     },
     [RESOURCES.LICENCIAS]: { 
+      [ACTIONS.CREATE]: true, 
+      [ACTIONS.READ]: true, 
+      [ACTIONS.UPDATE]: false, 
+      [ACTIONS.DELETE]: false 
+    },
+    [RESOURCES.FALTAS]: { 
       [ACTIONS.CREATE]: true, 
       [ACTIONS.READ]: true, 
       [ACTIONS.UPDATE]: false, 

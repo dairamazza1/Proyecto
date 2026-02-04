@@ -10,6 +10,7 @@ import {
   VacacionesSection,
   LicenciasSection,
   CambiosSection,
+  FaltasSection,
   SancionesSection,
   useCompanyStore,
 } from "../../index";
@@ -29,6 +30,7 @@ export function EmpleadoTemplate({ id, empleado, isError, sucursalEmpleado }) {
     const allowedTabs = new Set([
       "vacaciones",
       "licencias",
+      "faltas",
       "cambios",
       "sanciones",
     ]);
@@ -221,6 +223,13 @@ export function EmpleadoTemplate({ id, empleado, isError, sucursalEmpleado }) {
               Licencias
             </button>
             <button
+              className={`tab ${activeTab === "faltas" ? "active" : ""}`}
+              type="button"
+              onClick={() => setActiveTab("faltas")}
+            >
+              Faltas
+            </button>
+            <button
               className={`tab ${activeTab === "cambios" ? "active" : ""}`}
               type="button"
               onClick={() => setActiveTab("cambios")}
@@ -242,6 +251,9 @@ export function EmpleadoTemplate({ id, empleado, isError, sucursalEmpleado }) {
             )}
             {activeTab === "licencias" && (
               <LicenciasSection empleadoId={id} embedded />
+            )}
+            {activeTab === "faltas" && (
+              <FaltasSection empleadoId={id} embedded />
             )}
             {activeTab === "cambios" && (
               <CambiosSection empleadoId={id} embedded />

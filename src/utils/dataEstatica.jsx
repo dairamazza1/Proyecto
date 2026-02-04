@@ -21,6 +21,7 @@ export const DesplegableUser = [
 export const TABS = [
   { id: "vacaciones", label: "Vacaciones" },
   { id: "licencias", label: "Licencias" },
+  { id: "faltas", label: "Faltas" },
   { id: "cambios", label: "Cambios de turnos" },
   { id: "sanciones", label: "Sanciones" },
 ];

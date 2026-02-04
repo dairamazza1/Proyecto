@@ -8,6 +8,7 @@ const selectFields = `
   start_date,
   end_date,
   days_taken,
+  observations,
   status,
   created_by,
   created_at,

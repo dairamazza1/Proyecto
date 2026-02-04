@@ -12,18 +12,24 @@ const typeLabels = {
   vacaciones_pending: "Vacaciones",
   licencia_pending: "Licencia",
   cambio_pending: "Cambio de actividad",
+  falta_pending: "Falta",
+  
   vacaciones_modified: "Vacaciones",
   licencia_modified: "Licencia",
   cambio_modified: "Cambio de actividad",
+  falta_modified: "Falta",
 };
 
 const typeTabs = {
   vacaciones_pending: "vacaciones",
   licencia_pending: "licencias",
   cambio_pending: "cambios",
+  falta_pending: "faltas",
+
   vacaciones_modified: "vacaciones",
   licencia_modified: "licencias",
   cambio_modified: "cambios",
+  falta_modified: "faltas",
 };
 
 const formatDate = (value) => {
