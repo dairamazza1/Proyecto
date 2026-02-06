@@ -579,7 +579,7 @@ const Container = styled.div`
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    vertical-align: middle;
+    /* vertical-align: middle; */
     text-align: center;
   }
 

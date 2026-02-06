@@ -61,7 +61,7 @@ const renderObservationCell = (value) => {
   );
 };
 
-const formatJustificado = (value) => (value ? "Sí" : "No");
+const formatJustificado = (value) => (value ? "Si" : "No");
 
 const formatDateTimeLabel = (value) => {
   if (!value) return "";

@@ -58,7 +58,7 @@ const renderObservationCell = (value) => {
   );
 };
 
-const formatJustificado = (value) => (value ? "Sí" : "No");
+const formatJustificado = (value) => (value ? "Si" : "No");
 
 const formatTipo = (value) => {
   const raw = String(value ?? "").trim().toLowerCase();
