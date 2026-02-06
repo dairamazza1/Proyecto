@@ -146,6 +146,7 @@ export async function getReportFaltas({
       verified_by,
       created_at,
       is_justified,
+      empleado_replace_id,
       verificador:perfiles!empleados_faltas_verified_by_fkey(
         id,
         email,
@@ -156,7 +157,13 @@ export async function getReportFaltas({
         categoria_falta_id,
         categoria:faltas_categorias(name)
       ),
-      empleado:empleados!inner(
+      empleado_reemplazo:empleados!empleados_faltas_empleado_replace_id_fkey(
+        id,
+        first_name,
+        last_name,
+        is_active
+      ),
+      empleado:empleados!empleados_faltas_empleado_id_fkey!inner(
         id,
         first_name,
         last_name,
@@ -215,11 +222,6 @@ export async function getReportCambios({
         employee_id_number,
         is_active,
         empresa_id
-      ),
-      empleado_reemplazo:empleados!empleado_replace_id(
-        id,
-        first_name,
-        last_name
       )
     `
     )

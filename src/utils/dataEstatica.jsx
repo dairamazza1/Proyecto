@@ -22,8 +22,8 @@ export const TABS = [
   { id: "vacaciones", label: "Vacaciones" },
   { id: "licencias", label: "Licencias" },
   { id: "faltas", label: "Faltas" },
-  { id: "cambios", label: "Cambios de turnos" },
-  { id: "sanciones", label: "Sanciones" },
+  { id: "cambios", label: "Cambios de turnos (legajo)" },
+  { id: "sanciones", label: "Sanciones (legajo)" },
 ];
 
 export const statusValues = {

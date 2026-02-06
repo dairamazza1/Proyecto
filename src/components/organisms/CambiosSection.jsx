@@ -17,7 +17,7 @@ import Swal from "sweetalert2";
 
 export function CambiosSection({
   empleadoId,
-  title = "Cambios de turnos",
+  title = "Cambios de turnos (legajo)",
   embedded = false,
 }) {
   const [openModal, setOpenModal] = useState(false);

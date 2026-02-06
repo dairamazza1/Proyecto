@@ -15,13 +15,18 @@ export function PerfilTemplate({ perfil, empleado, displayName, userEmail }) {
   const { userRole } = usePermissions();
   const [activeTab, setActiveTab] = useState("vacaciones");
 
-  const canSeeSanciones = userRole !== "employee";
+  const canSeeRestricted = ["admin", "rrhh", "superadmin"].includes(
+    String(userRole ?? "")
+  );
 
   useEffect(() => {
-    if (!canSeeSanciones && activeTab === "sanciones") {
+    if (
+      !canSeeRestricted &&
+      (activeTab === "sanciones" || activeTab === "cambios")
+    ) {
       setActiveTab("vacaciones");
     }
-  }, [canSeeSanciones, activeTab]);
+  }, [canSeeRestricted, activeTab]);
 
   const email = perfil?.email || userEmail || "";
   const emailLabel = email || "-";
@@ -173,14 +178,16 @@ export function PerfilTemplate({ perfil, empleado, displayName, userEmail }) {
             >
               Faltas
             </button>
-            <button
-              className={`tab ${activeTab === "cambios" ? "active" : ""}`}
-              type="button"
-              onClick={() => setActiveTab("cambios")}
-            >
-              Cambios de turnos
-            </button>
-            {canSeeSanciones && (
+            {canSeeRestricted && (
+              <button
+                className={`tab ${activeTab === "cambios" ? "active" : ""}`}
+                type="button"
+                onClick={() => setActiveTab("cambios")}
+              >
+                Cambios de turnos (legajo)
+              </button>
+            )}
+            {canSeeRestricted && (
               <button
                 className={`tab ${activeTab === "sanciones" ? "active" : ""}`}
                 type="button"
@@ -214,14 +221,14 @@ export function PerfilTemplate({ perfil, empleado, displayName, userEmail }) {
                 title="Mis faltas"
               />
             )}
-            {activeTab === "cambios" && (
+            {activeTab === "cambios" && canSeeRestricted && (
               <CambiosSection
                 empleadoId={empleado.id}
                 embedded
                 title="Mis cambios de turnos"
               />
             )}
-            {activeTab === "sanciones" && canSeeSanciones && (
+            {activeTab === "sanciones" && canSeeRestricted && (
               <SancionesSection empleadoId={empleado.id} embedded />
             )}
           </ResultsCard>

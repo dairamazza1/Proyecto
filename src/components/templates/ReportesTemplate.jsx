@@ -1,5 +1,5 @@
 import styled from "styled-components";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import Swal from "sweetalert2";
@@ -17,6 +17,7 @@ import {
   getReportSanciones,
   getReportVacaciones,
   resolvePerfilDisplayName,
+  usePermissions,
   useCompanyStore,
 } from "../../index";
 import { TABS, statusValues } from "../../utils/dataEstatica";
@@ -60,6 +61,14 @@ const renderObservationCell = (value) => {
 
 const formatJustificado = (value) => (value ? "Si" : "No");
 
+const formatNombre = (persona) => {
+  if (!persona) return "-";
+  const firstName = persona.first_name ?? "";
+  const lastName = persona.last_name ?? "";
+  const fullName = `${firstName} ${lastName}`.trim();
+  return fullName || "-";
+};
+
 const formatTipo = (value) => {
   const raw = String(value ?? "").trim().toLowerCase();
   if (!raw) return "-";
@@ -100,6 +109,24 @@ export function ReportesTemplate() {
     empleadoId: "",
   });
 
+  const { userRole } = usePermissions();
+  const canSeeRestricted = useMemo(
+    () => ["rrhh", "admin", "superadmin"].includes(String(userRole ?? "")),
+    [userRole]
+  );
+
+  const visibleTabs = useMemo(() => {
+    if (canSeeRestricted) return TABS;
+    return TABS.filter((tab) => !["cambios", "sanciones"].includes(tab.id));
+  }, [canSeeRestricted]);
+
+  useEffect(() => {
+    if (canSeeRestricted) return;
+    if (activeTab === "cambios" || activeTab === "sanciones") {
+      setActiveTab("vacaciones");
+    }
+  }, [activeTab, canSeeRestricted]);
+
   const { dataCompany, showCompany } = useCompanyStore();
   const { user } = UserAuth();
 
@@ -137,8 +164,10 @@ export function ReportesTemplate() {
       case "faltas":
         return getReportFaltas(normalizedFilters);
       case "cambios":
+        if (!canSeeRestricted) return getReportVacaciones(normalizedFilters);
         return getReportCambios(normalizedFilters);
       case "sanciones":
+        if (!canSeeRestricted) return getReportVacaciones(normalizedFilters);
         return getReportSanciones(normalizedFilters);
       default:
         return getReportVacaciones(normalizedFilters);
@@ -435,6 +464,20 @@ export function ReportesTemplate() {
           ),
         },
         {
+          id: "empleado_reemplazo",
+          header: "Empleado de reemplazo",
+          accessorFn: (row) => formatNombre(row.empleado_reemplazo),
+          meta: {
+            cardLabel: "Empleado de reemplazo",
+            cardValue: (row) => formatNombre(row.empleado_reemplazo),
+          },
+          cell: (info) => (
+            <div data-title="Empleado de reemplazo" className="ContentCell">
+              <span>{info.getValue() ?? "-"}</span>
+            </div>
+          ),
+        },
+        {
           accessorKey: "status",
           header: "Estado",
           meta: {
@@ -511,28 +554,6 @@ export function ReportesTemplate() {
           },
           cell: (info) => (
             <div data-title="Motivo" className="ContentCell">
-              <span>{info.getValue() ?? "-"}</span>
-            </div>
-          ),
-        },
-        {
-          id: "empleado_reemplazo",
-          header: "Empleado de reemplazo",
-          accessorFn: (row) => {
-            const firstName = row.empleado_reemplazo?.first_name ?? "";
-            const lastName = row.empleado_reemplazo?.last_name ?? "";
-            return `${firstName} ${lastName}`.trim() || "-";
-          },
-          meta: {
-            cardLabel: "Empleado de reemplazo",
-            cardValue: (row) => {
-              const firstName = row.empleado_reemplazo?.first_name ?? "";
-              const lastName = row.empleado_reemplazo?.last_name ?? "";
-              return `${firstName} ${lastName}`.trim() || "-";
-            },
-          },
-          cell: (info) => (
-            <div data-title="Empleado de reemplazo" className="ContentCell">
               <span>{info.getValue() ?? "-"}</span>
             </div>
           ),
@@ -773,7 +794,11 @@ export function ReportesTemplate() {
         <Title>Reportes</Title>
       </Header>
 
-      <ReportesTabs tabs={TABS} activeTab={activeTab} onChange={setActiveTab} />
+      <ReportesTabs
+        tabs={visibleTabs}
+        activeTab={activeTab}
+        onChange={setActiveTab}
+      />
 
       <FiltersCard>
         <ReportesFilters

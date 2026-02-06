@@ -107,6 +107,14 @@ const renderLabelWithDateBreak = (value) => {
   );
 };
 
+const formatNombre = (persona) => {
+  if (!persona) return "-";
+  const firstName = persona.first_name ?? "";
+  const lastName = persona.last_name ?? "";
+  const fullName = `${firstName} ${lastName}`.trim();
+  return fullName || "-";
+};
+
 const getTipoNombre = (falta) => falta?.falta_tipo?.name ?? "-";
 const getCategoriaNombre = (falta) =>
   falta?.falta_tipo?.categoria?.name ?? "-";
@@ -275,6 +283,22 @@ export function TablaFaltas({
         </div>
       ),
       enableSorting: true,
+    },
+    {
+      id: "empleado_reemplazado",
+      header: "Reemplazado por",
+      accessorFn: (row) => formatNombre(row.empleado_reemplazo),
+      meta: {
+        cardLabel: "Reemplazado por",
+        cardValue: (row) => formatNombre(row.empleado_reemplazo),
+      },
+      cell: (info) => (
+        <div data-title="Reemplazado por" className="ContentCell">
+          <span>{info.getValue() ?? "-"}</span>
+        </div>
+      ),
+      enableSorting: true,
+      sortingFn: "alphanumeric",
     },
     {
       accessorKey: "status",
@@ -855,3 +879,4 @@ const Container = styled.div`
     -webkit-overflow-scrolling: touch;
   }
 `;
+

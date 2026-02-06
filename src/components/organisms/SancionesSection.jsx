@@ -15,7 +15,7 @@ import Swal from "sweetalert2";
 
 export function SancionesSection({
   empleadoId,
-  title = "Sanciones",
+  title = "Sanciones (legajo)",
   embedded = false,
 }) {
   const [openModal, setOpenModal] = useState(false);

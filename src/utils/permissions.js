@@ -242,8 +242,8 @@ export const PERMISSIONS = {
       [ACTIONS.DELETE]: false 
     },
     [RESOURCES.CAMBIOS]: { 
-      [ACTIONS.CREATE]: true, 
-      [ACTIONS.READ]: true, 
+      [ACTIONS.CREATE]: false, 
+      [ACTIONS.READ]: false, 
       [ACTIONS.UPDATE]: false, 
       [ACTIONS.DELETE]: false 
     },

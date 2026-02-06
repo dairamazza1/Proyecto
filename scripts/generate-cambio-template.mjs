@@ -19,7 +19,7 @@ const doc = new Document({
           alignment: AlignmentType.LEFT,
         }),
         new Paragraph({
-          text: "Cambio de turnos/actividades",
+          text: "Cambio de turnos",
           heading: HeadingLevel.HEADING_2,
           alignment: AlignmentType.CENTER,
         }),

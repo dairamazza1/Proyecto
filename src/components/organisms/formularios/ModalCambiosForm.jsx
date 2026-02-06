@@ -1,11 +1,10 @@
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import styled from "styled-components";
 import { Btn1, InputText, Spinner1, usePermissions } from "../../../index";
 import { useForm } from "react-hook-form";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import Swal from "sweetalert2";
 import {
-  getEmpleadosReemplazoOptions,
   insertCambio,
   updateCambio,
 } from "../../../supabase/crudCambios";
@@ -37,52 +36,12 @@ export function ModalCambiosForm({ empleadoId, cambio, onClose }) {
       duration_type: "transitorio",
       start_date: "",
       end_date: "",
-      empleado_replace_id: "",
     },
   });
 
-  const empleadoReplaceId = watch("empleado_replace_id");
   const durationType = watch("duration_type");
   const startDate = watch("start_date");
   const isTransitorio = durationType !== "permanente";
-
-  const { data: reemplazoOptions = [], isLoading: loadingReemplazos } =
-    useQuery({
-      queryKey: ["empleadosReemplazoOptions", empleadoId],
-      queryFn: () => getEmpleadosReemplazoOptions({ empleadoId }),
-      enabled: Boolean(empleadoId),
-      refetchOnWindowFocus: false,
-      onError: (err) => {
-        Swal.fire({
-          icon: "error",
-          title: "Oops...",
-          text: err?.message || "Error al cargar empleados de reemplazo.",
-        });
-      },
-    });
-
-  const optionsWithSelected = useMemo(() => {
-    const base = [...reemplazoOptions];
-    if (!isEdit || !cambio?.empleado_reemplazo) {
-      return base;
-    }
-    const exists = base.some(
-      (item) => String(item.id) === String(cambio.empleado_reemplazo.id ?? ""),
-    );
-    if (exists) return base;
-    const firstName = cambio.empleado_reemplazo.first_name ?? "";
-    const lastName = cambio.empleado_reemplazo.last_name ?? "";
-    return [
-      {
-        id: cambio.empleado_reemplazo.id,
-        first_name: firstName,
-        last_name: lastName,
-        full_name: `${firstName} ${lastName}`.trim(),
-        is_inactive: cambio.empleado_reemplazo.is_active === false,
-      },
-      ...base,
-    ];
-  }, [reemplazoOptions, isEdit, cambio]);
 
   useEffect(() => {
     if (!cambio) return;
@@ -95,9 +54,6 @@ export function ModalCambiosForm({ empleadoId, cambio, onClose }) {
       duration_type: cambio.duration_type ?? "transitorio",
       start_date: cambio.start_date ?? "",
       end_date: cambio.end_date ?? "",
-      empleado_replace_id: cambio.empleado_replace_id
-        ? String(cambio.empleado_replace_id)
-        : "",
     });
   }, [cambio, reset]);
 
@@ -106,27 +62,6 @@ export function ModalCambiosForm({ empleadoId, cambio, onClose }) {
     setValue("start_date", "");
     setValue("end_date", "");
   }, [isTransitorio, setValue]);
-
-  useEffect(() => {
-    if (!isEdit || !cambio?.empleado_replace_id) return;
-    if (!optionsWithSelected.length) return;
-    const exists = optionsWithSelected.some(
-      (item) => String(item.id) === String(cambio.empleado_replace_id ?? ""),
-    );
-    if (!exists) return;
-    if (empleadoReplaceId) return;
-    setValue("empleado_replace_id", String(cambio.empleado_replace_id));
-  }, [isEdit, cambio, optionsWithSelected, empleadoReplaceId, setValue]);
-
-  useEffect(() => {
-    if (loadingReemplazos || !empleadoReplaceId) return;
-    const exists = optionsWithSelected.some(
-      (item) => String(item.id) === String(empleadoReplaceId),
-    );
-    if (!exists) {
-      setValue("empleado_replace_id", "");
-    }
-  }, [loadingReemplazos, empleadoReplaceId, optionsWithSelected, setValue]);
 
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -151,7 +86,6 @@ export function ModalCambiosForm({ empleadoId, cambio, onClose }) {
         duration_type: data.duration_type ?? "transitorio",
         start_date: isTransitorioPayload ? data.start_date : null,
         end_date: isTransitorioPayload ? data.end_date || null : null,
-        empleado_replace_id: data.empleado_replace_id ?? null,
       };
 
       if (isEdit) {
@@ -383,34 +317,6 @@ export function ModalCambiosForm({ empleadoId, cambio, onClose }) {
               </>
             )}
 
-            <article>
-              <InputText icono={<v.iconocodigobarras />}>
-                <select
-                  className="form__field"
-                  {...register("empleado_replace_id", {
-                    setValueAs: (value) => (value ? Number(value) : null),
-                  })}
-                  disabled={loadingReemplazos || !optionsWithSelected.length}
-                >
-                  <option value="">
-                    {loadingReemplazos
-                      ? "Cargando empleados..."
-                      : optionsWithSelected.length
-                        ? "Seleccionar empleado reemplazo"
-                        : "Sin empleados disponibles"}
-                  </option>
-                  {optionsWithSelected.map((option) => (
-                    <option key={option.id} value={option.id}>
-                      {option.full_name || `Empleado ${option.id}`}
-                      {option.is_inactive ? " (inactivo)" : ""}
-                    </option>
-                  ))}
-                </select>
-                <label className="form__label">
-                  Empleado reemplazo (opcional)
-                </label>
-              </InputText>
-            </article>
             <div className="acciones">
               <Btn1
                 icono={<v.iconocerrar />}

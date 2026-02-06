@@ -148,7 +148,6 @@ const resolveEmpresaNombre = (cambio, empresaNombre) => {
 const buildTemplateData = (cambio, empresaNombre) => ({
   empresa_nombre: resolveEmpresaNombre(cambio, empresaNombre),
   empleado: formatNombre(cambio?.empleado),
-  empleado_reemplazo: formatNombre(cambio?.empleado_reemplazo),
   start_date: formatDate(cambio?.start_date) ?? "-",
   end_date: formatDate(cambio?.end_date) ?? "-",
   duration_type: formatDurationType(cambio?.duration_type),
@@ -356,22 +355,6 @@ export function TablaCambios({
       enableSorting: true,
     },
     
-    {
-      id: "empleado_reemplazado",
-      header: "Reemplazado por",
-      accessorFn: (row) => formatNombre(row.empleado_reemplazo),
-      meta: {
-        cardLabel: "Reemplazado por",
-        cardValue: (row) => formatNombre(row.empleado_reemplazo),
-      },
-      cell: (info) => (
-        <div data-title="Reemplazado por" className="ContentCell">
-          <span>{formatNombre(info.row.original.empleado_reemplazo)}</span>
-        </div>
-      ),
-      enableSorting: true,
-      sortingFn: "alphanumeric",
-    },
     {
       accessorKey: "status",
       header: "Estado de aprobación",
@@ -652,13 +635,6 @@ export function TablaCambios({
                     {formatNombre(previewCambio.empleado)}
                   </span>
                 </div>
-                <div className="previewRow">
-                  <span className="label">Reemplazado por</span>
-                  <span className="value">
-                    {formatNombre(previewCambio.empleado_reemplazo)}
-                  </span>
-                </div>
-
                 <div className="previewRow">
                   <span className="label">Tipo de duracion</span>
                   <span className="value">

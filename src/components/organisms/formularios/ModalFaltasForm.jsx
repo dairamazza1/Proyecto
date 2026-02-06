@@ -9,6 +9,7 @@ import {
   getFaltasCategorias,
   getFaltasTiposByCategoria,
   getFaltaTipoById,
+  getEmpleadosReemplazoOptions,
   insertEmpleadoFalta,
   updateEmpleadoFalta,
   uploadFaltaCertificado,
@@ -46,6 +47,7 @@ export function ModalFaltasForm({ empleadoId, falta, onClose }) {
       end_date: "",
       days: 0,
       observations: "",
+      empleado_replace_id: "",
     },
   });
 
@@ -53,6 +55,7 @@ export function ModalFaltasForm({ empleadoId, falta, onClose }) {
   const endDate = watch("end_date");
   const categoriaId = watch("falta_categoria_id");
   const tipoId = watch("falta_tipo_id");
+  const empleadoReplaceId = watch("empleado_replace_id");
 
   const existingFilePath = falta?.documento?.file_path || "";
   const hasExistingCertificate = Boolean(existingFilePath);
@@ -85,12 +88,52 @@ export function ModalFaltasForm({ empleadoId, falta, onClose }) {
     refetchOnWindowFocus: false,
   });
 
+  const {
+    data: reemplazoOptions = [],
+    isLoading: loadingReemplazos,
+  } = useQuery({
+    queryKey: ["faltasReemplazoOptions", empleadoId],
+    queryFn: () => getEmpleadosReemplazoOptions({ empleadoId }),
+    enabled: Boolean(empleadoId),
+    refetchOnWindowFocus: false,
+    onError: (err) => {
+      Swal.fire({
+        icon: "error",
+        title: "Oops...",
+        text: err?.message || "Error al cargar empleados de reemplazo.",
+      });
+    },
+  });
+
   const selectedTipo = useMemo(() => {
     const normalizedTipoId = String(tipoId ?? "");
     const fromList =
       tipos.find((tipo) => String(tipo.id) === normalizedTipoId) || null;
     return fromList || tipoById || null;
   }, [tipos, tipoId, tipoById]);
+
+  const optionsWithSelected = useMemo(() => {
+    const base = [...reemplazoOptions];
+    if (!isEdit || !falta?.empleado_reemplazo) {
+      return base;
+    }
+    const exists = base.some(
+      (item) => String(item.id) === String(falta.empleado_reemplazo.id ?? "")
+    );
+    if (exists) return base;
+    const firstName = falta.empleado_reemplazo.first_name ?? "";
+    const lastName = falta.empleado_reemplazo.last_name ?? "";
+    return [
+      {
+        id: falta.empleado_reemplazo.id,
+        first_name: firstName,
+        last_name: lastName,
+        full_name: `${firstName} ${lastName}`.trim(),
+        is_inactive: falta.empleado_reemplazo.is_active === false,
+      },
+      ...base,
+    ];
+  }, [reemplazoOptions, isEdit, falta]);
 
   const requiresCertificate = Boolean(selectedTipo?.requires_certificate);
 
@@ -103,6 +146,9 @@ export function ModalFaltasForm({ empleadoId, falta, onClose }) {
       end_date: falta.end_date ?? "",
       days: falta.days ?? 0,
       observations: falta.observations ?? "",
+      empleado_replace_id: falta.empleado_replace_id
+        ? String(falta.empleado_replace_id)
+        : "",
     });
     setSelectedFile(null);
     setFileError("");
@@ -145,6 +191,27 @@ export function ModalFaltasForm({ empleadoId, falta, onClose }) {
       setValue("falta_tipo_id", String(existingTipoId));
     }
   }, [isEdit, falta, tipoId, tipos, setValue]);
+
+  useEffect(() => {
+    if (!isEdit || !falta?.empleado_replace_id) return;
+    if (!optionsWithSelected.length) return;
+    const exists = optionsWithSelected.some(
+      (item) => String(item.id) === String(falta.empleado_replace_id ?? "")
+    );
+    if (!exists) return;
+    if (empleadoReplaceId) return;
+    setValue("empleado_replace_id", String(falta.empleado_replace_id));
+  }, [isEdit, falta, optionsWithSelected, empleadoReplaceId, setValue]);
+
+  useEffect(() => {
+    if (loadingReemplazos || !empleadoReplaceId) return;
+    const exists = optionsWithSelected.some(
+      (item) => String(item.id) === String(empleadoReplaceId)
+    );
+    if (!exists) {
+      setValue("empleado_replace_id", "");
+    }
+  }, [loadingReemplazos, empleadoReplaceId, optionsWithSelected, setValue]);
 
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -193,6 +260,7 @@ export function ModalFaltasForm({ empleadoId, falta, onClose }) {
         end_date: data.end_date,
         days: data.days,
         observations: data.observations || null,
+        empleado_replace_id: data.empleado_replace_id ?? null,
       };
 
       if (documentId) {
@@ -385,6 +453,35 @@ export function ModalFaltasForm({ empleadoId, falta, onClose }) {
                   {...register("observations")}
                 />
                 <label className="form__label">Observaciones</label>
+              </InputText>
+            </article>
+
+            <article>
+              <InputText icono={<v.iconocodigobarras />}>
+                <select
+                  className="form__field"
+                  {...register("empleado_replace_id", {
+                    setValueAs: (value) => (value ? Number(value) : null),
+                  })}
+                  disabled={loadingReemplazos || !optionsWithSelected.length}
+                >
+                  <option value="">
+                    {loadingReemplazos
+                      ? "Cargando empleados..."
+                      : optionsWithSelected.length
+                        ? "Seleccionar empleado reemplazo"
+                        : "Sin empleados disponibles"}
+                  </option>
+                  {optionsWithSelected.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.full_name || `Empleado ${option.id}`}
+                      {option.is_inactive ? " (inactivo)" : ""}
+                    </option>
+                  ))}
+                </select>
+                <label className="form__label">
+                  Empleado reemplazo (opcional)
+                </label>
               </InputText>
             </article>
 
