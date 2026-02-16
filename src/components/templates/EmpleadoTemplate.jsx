@@ -27,25 +27,28 @@ export function EmpleadoTemplate({ id, empleado, isError, sucursalEmpleado }) {
   const tabParam = searchParams.get("tab");
 
   // Hook de permisos
-  const { canUpdate, isEmployee, userRole } = usePermissions();
-  const canInvite = useMemo(
-    () => ["rrhh", "admin"].includes(String(userRole ?? "")),
-    [userRole]
+  const { canUpdate, canRead, canCreate, isEmployee } = usePermissions();
+  const canInvite = useMemo(() => canCreate("empleados"), [canCreate]);
+  const canSeeCambios = useMemo(
+    () => canRead("cambios_turno"),
+    [canRead]
   );
-  const canSeeRestricted = useMemo(
-    () => ["rrhh", "admin", "superadmin"].includes(String(userRole ?? "")),
-    [userRole]
+  const canSeeSanciones = useMemo(
+    () => canRead("sanciones"),
+    [canRead]
   );
 
   useEffect(() => {
     const allowedTabs = new Set(["vacaciones", "licencias", "faltas"]);
-    if (canSeeRestricted) {
+    if (canSeeCambios) {
       allowedTabs.add("cambios");
+    }
+    if (canSeeSanciones) {
       allowedTabs.add("sanciones");
     }
     const nextTab = tabParam ? String(tabParam).toLowerCase() : "vacaciones";
     setActiveTab(allowedTabs.has(nextTab) ? nextTab : "vacaciones");
-  }, [tabParam, canSeeRestricted]);
+  }, [tabParam, canSeeCambios, canSeeSanciones]);
 
   const { user } = UserAuth();
   const { dataCompany, showCompany } = useCompanyStore();
@@ -217,13 +220,7 @@ export function EmpleadoTemplate({ id, empleado, isError, sucursalEmpleado }) {
             >
               Vacaciones
             </button>
-            <button
-              className={`tab ${activeTab === "licencias" ? "active" : ""}`}
-              type="button"
-              onClick={() => setActiveTab("licencias")}
-            >
-              Licencias
-            </button>
+           
             <button
               className={`tab ${activeTab === "faltas" ? "active" : ""}`}
               type="button"
@@ -231,7 +228,14 @@ export function EmpleadoTemplate({ id, empleado, isError, sucursalEmpleado }) {
             >
               Faltas
             </button>
-            {canSeeRestricted && (
+             <button
+              className={`tab ${activeTab === "licencias" ? "active" : ""}`}
+              type="button"
+              onClick={() => setActiveTab("licencias")}
+            >
+              Licencias (extendidas)
+            </button>
+            {canSeeCambios && (
               <button
                 className={`tab ${activeTab === "cambios" ? "active" : ""}`}
                 type="button"
@@ -240,7 +244,7 @@ export function EmpleadoTemplate({ id, empleado, isError, sucursalEmpleado }) {
                 Cambios de turnos (legajo)
               </button>
             )}
-            {canSeeRestricted && (
+            {canSeeSanciones && (
               <button
                 className={`tab ${activeTab === "sanciones" ? "active" : ""}`}
                 type="button"
@@ -261,10 +265,10 @@ export function EmpleadoTemplate({ id, empleado, isError, sucursalEmpleado }) {
             {activeTab === "faltas" && (
               <FaltasSection empleadoId={id} embedded />
             )}
-            {activeTab === "cambios" && canSeeRestricted && (
+            {activeTab === "cambios" && canSeeCambios && (
               <CambiosSection empleadoId={id} embedded />
             )}
-            {activeTab === "sanciones" && canSeeRestricted && (
+            {activeTab === "sanciones" && canSeeSanciones && (
               <SancionesSection empleadoId={id} embedded />
             )}
           </ResultsCard>

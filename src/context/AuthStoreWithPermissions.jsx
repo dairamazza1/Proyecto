@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { supabase } from "../supabase/supabase.config.jsx";
 import { getUsers } from "../supabase/crudUsers";
+import { ROLE_IDS } from "../utils/permissions";
 import { getEmpleadoByPerfil } from "../index.js";
 
 /**
@@ -10,11 +11,11 @@ import { getEmpleadoByPerfil } from "../index.js";
  * 
  * Store centralizado que maneja:
  * - Autenticación (user, session)
- * - Perfil del usuario (profile con app_role)
+ * - Perfil del usuario (profile con app_role_id)
  * - Estado de carga
  * 
  * CAMBIOS PRINCIPALES:
- * 1. Se agregó campo 'profile' que contiene app_role
+ * 1. Se agregó campo 'profile' que contiene app_role_id
  * 2. Se carga el perfil automáticamente después del login
  * 3. Se expone el rol para usar en toda la app
  */
@@ -23,7 +24,7 @@ export const useAuthStore = create((set, get) => ({
   // Estado
   user: null,
   session: null,
-  profile: null,  // ← NUEVO: Contiene { id, email, app_role, ... }
+  profile: null,  // ← NUEVO: Contiene { id, email, app_role_id, ... }
   empleado: null,
   loading: true,
   error: null,
@@ -109,7 +110,11 @@ export const useAuthStore = create((set, get) => ({
 
     set({ empleado });
     
-    if ((!empleado || !empleado.is_active) && (profile.app_role == "employee") ) {
+    const roleId =
+      typeof profile?.app_role_id === "number"
+        ? profile.app_role_id
+        : ROLE_IDS.EMPLOYEE;
+    if ((!empleado || !empleado.is_active) && roleId === ROLE_IDS.EMPLOYEE) {
       return { ok: false, reason: "Empleado no activo" };
     }
 
@@ -219,31 +224,26 @@ export const useAuthStore = create((set, get) => ({
   // ============================================
   
   // Obtener rol del usuario actual
-  getUserRole: () => {
+  getUserRoleId: () => {
     const profile = get().profile;
-    return profile?.app_role || 'employee'; // Default: employee
-  },
-
-  // Verificar si el usuario es superadmin
-  isSuperAdmin: () => {
-    return get().getUserRole() === 'superadmin';
+    return typeof profile?.app_role_id === "number"
+      ? profile.app_role_id
+      : ROLE_IDS.EMPLOYEE;
   },
 
   // Verificar si el usuario es RRHH
   isRRHH: () => {
-    return get().getUserRole() === 'rrhh';
+    return get().getUserRoleId() === ROLE_IDS.RRHH;
   },
-
 
   // Verificar si el usuario es admin
   isAdmin: () => {
-    const role = get().getUserRole();
-    return role === 'admin' || role === 'superadmin';
+    return get().getUserRoleId() === ROLE_IDS.ADMIN;
   },
 
   // Verificar si es empleado enfermero/a
   isNurseEmployee: () => {
-    if (get().getUserRole() !== 'employee') return false;
+    if (get().getUserRoleId() !== ROLE_IDS.EMPLOYEE) return false;
     const empleado = get().empleado;
     const puesto = empleado?.puesto?.name ?? empleado?.puesto ?? '';
     return String(puesto).trim().toLowerCase() === 'enfermero/a';
@@ -260,9 +260,9 @@ export const useAuthStore = create((set, get) => ({
 
   // Permiso de edicion para registros de enfermeria
   canEditNurseRecord: (row) => {
-    const role = get().getUserRole();
-    if (role === 'admin' || role === 'superadmin') return true;
-    if (role !== 'employee') return false;
+    const role = get().getUserRoleId();
+    if (role === ROLE_IDS.ADMIN) return true;
+    if (role !== ROLE_IDS.EMPLOYEE) return false;
     const empleado = get().empleado;
     const puesto = empleado?.puesto?.name ?? empleado?.puesto ?? '';
     if (String(puesto).trim().toLowerCase() !== 'enfermero/a') return false;
@@ -282,7 +282,7 @@ export const useAuthStore = create((set, get) => ({
   },
   // Verificar si el usuario es empleado básico
   isEmployee: () => {
-    return get().getUserRole() === 'employee';
+    return get().getUserRoleId() === ROLE_IDS.EMPLOYEE;
   },
 
   // Limpiar errores

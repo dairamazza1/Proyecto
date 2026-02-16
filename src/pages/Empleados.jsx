@@ -10,8 +10,8 @@ import {
 } from "../index";
 
 export function Empleados() {
-  const { userRole } = usePermissions();
-  const isEmployee = userRole === "employee";
+  const { canRead } = usePermissions();
+  const canViewEmpleados = canRead("empleados");
   const { showEmpleados, searchEmpleados, buscador, setDataEmpleados } =
     useEmpleadosStore();
   const { dataCompany } = useCompanyStore();
@@ -25,7 +25,7 @@ export function Empleados() {
   useQuery({
     queryKey: ["mostrar sucursales", dataCompany?.id],
     queryFn: () => showSucursales({ empresa_id: dataCompany?.id }),
-    enabled: !!dataCompany && !isEmployee,
+    enabled: !!dataCompany && canViewEmpleados,
     refetchOnWindowFocus: false,
   });
 
@@ -64,18 +64,18 @@ export function Empleados() {
   const { isLoading, error } = useQuery({
     queryKey: ["mostrar empleados", dataCompany?.id, sucursalSeleccionada],
     queryFn,
-    enabled: !!dataCompany && !isEmployee,
+    enabled: !!dataCompany && canViewEmpleados,
     refetchOnWindowFocus: false,
   });
 
   const { error: searchError } = useQuery({
     queryKey: ["buscar empleados", buscador, dataCompany?.id, sucursalSeleccionada],
     queryFn: searchQueryFn,
-    enabled: !!dataCompany && !isEmployee,
+    enabled: !!dataCompany && canViewEmpleados,
     refetchOnWindowFocus: false,
   });
 
-  if (isEmployee) {
+  if (!canViewEmpleados) {
     return <Navigate to="/perfil" replace />;
   }
 

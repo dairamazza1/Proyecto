@@ -1,4 +1,5 @@
 import { v } from "../styles/variables";
+import { FEATURES } from "./features";
 
 export const DesplegableUser = [
   {
@@ -7,12 +8,12 @@ export const DesplegableUser = [
     tipo: "miperfil",
   },
   {
-    text: "configuración",
+    text: "configuraciÃ³n",
     icono: <v.iconoSettings />,
-    tipo: "configuración",
+    tipo: "configuraciÃ³n",
   },
   {
-    text: "Cerrar sesión",
+    text: "Cerrar sesiÃ³n",
     icono: <v.iconoCerrarSesion />,
     tipo: "cerrarsesion",
   },
@@ -20,8 +21,9 @@ export const DesplegableUser = [
 
 export const TABS = [
   { id: "vacaciones", label: "Vacaciones" },
-  { id: "licencias", label: "Licencias" },
+
   { id: "faltas", label: "Faltas" },
+  { id: "licencias", label: "Licencias extendidas" },
   { id: "cambios", label: "Cambios de turnos (legajo)" },
   { id: "sanciones", label: "Sanciones (legajo)" },
 ];
@@ -38,26 +40,25 @@ export const LinksArray = [
     label: "Inicio",
     icon: "streamline-flex:home-2",
     to: "/",
-    roles: ["admin", "rrhh", "employee"],
+    feature: FEATURES.PERFIL,
   },
   {
     label: "Empleados",
     icon: "streamline-flex:office-building-1",
     to: "/empleados",
-    roles: ["admin", "rrhh"],
+    feature: FEATURES.EMPLEADOS,
   },
   {
     label: "Reportes",
     icon: "streamline-flex:new-sticky-note",
     to: "/reportes",
-    roles: ["admin", "rrhh"],
+    feature: FEATURES.REPORTES,
   },
   {
     label: "Enfermeria",
     icon: "mdi:stethoscope",
     to: "/enfermeria",
-    roles: ["admin", "employee"],
-    requiresNurse: true,
+    feature: FEATURES.ENFERMERIA,
   },
 ];
 export const SecondarylinksArray = [
@@ -65,19 +66,19 @@ export const SecondarylinksArray = [
     label: "Notificaciones",
     icon: "mdi:bell-outline",
     to: "/notificaciones",
-    roles: ["admin", "rrhh"],
+    feature: FEATURES.NOTIFICACIONES,
   },
   {
     label: "Mi perfil",
     icon: "streamline-flex:user-circle-single",
     to: "/perfil",
-    roles: ["admin", "rrhh", "employee"],
+    feature: FEATURES.PERFIL,
   },
 
   {
     label: "Configuración",
     icon: "streamline-flex:sun",
     to: "/configuracion",
-    roles: ["admin", "rrhh", "employee"],
+    feature: FEATURES.PERFIL,
   },
 ];

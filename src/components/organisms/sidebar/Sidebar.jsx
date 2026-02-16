@@ -11,9 +11,9 @@ import { NavLink } from "react-router-dom";
 import { Icon } from "@iconify/react";
 
 export function Sidebar({ state, setState }) {
-  const { userRole, isAdmin, isNurseEmployee } = usePermissions();
-  const canSeeNotifications = ["admin", "rrhh"].includes(userRole);
-  const canSeeEnfermeria = isAdmin() || isNurseEmployee();
+  const { canRead } = usePermissions();
+  const canSeeNotifications = canRead("notificaciones");
+  const canSeeEnfermeria = canRead("enfermeria");
 
   const { data: unreadCount = 0 } = useNotificationsUnreadCount(
     { limit: 500 },
@@ -21,9 +21,11 @@ export function Sidebar({ state, setState }) {
   );
   const unreadLabel = unreadCount > 99 ? "99+" : unreadCount;
   const filterByRole = (links) =>
-    links
-      .filter((link) => !link.roles || link.roles.includes(userRole))
-      .filter((link) => !link.requiresNurse || canSeeEnfermeria);
+    links.filter((link) => {
+      if (!link.feature) return true;
+      if (link.feature === "enfermeria") return canSeeEnfermeria;
+      return canRead(link.feature);
+    });
   const primaryLinks = filterByRole(LinksArray);
   const secondaryLinks = filterByRole(SecondarylinksArray);
 

@@ -8,6 +8,7 @@ import {
   InputText,
   Spinner1,
   getAvailableEmpleados,
+  useAppRoles,
   inviteUser,
 } from "../../../index";
 import { v } from "../../../styles/variables";
@@ -49,7 +50,7 @@ export function ModalInvitarUsuario({
   } = useForm({
     defaultValues: {
       email: "",
-      app_role: "employee",
+      app_role_id: "",
       empleado_id: "",
     },
   });
@@ -67,6 +68,13 @@ export function ModalInvitarUsuario({
       });
     },
   });
+
+  const {
+    data: roles = [],
+    isLoading: loadingRoles,
+    error: rolesError,
+  } = useAppRoles();
+  const hasRoles = roles.length > 0;
 
   useEffect(() => {
     if (!lockedEmpleadoId) return;
@@ -94,7 +102,7 @@ export function ModalInvitarUsuario({
       return inviteUser({
         empresa_id: empresaId,
         email: formData.email.trim(),
-        app_role: formData.app_role,
+        app_role_id: formData.app_role_id,
         empleado_id: lockedEmpleadoId ?? (formData.empleado_id || null),
       });
     },
@@ -188,12 +196,35 @@ export function ModalInvitarUsuario({
               <InputText icono={<v.iconoUser />}>
                 <select
                   className="form__field"
-                  {...register("app_role", { required: true })}
+                  {...register("app_role_id", {
+                    required: true,
+                    valueAsNumber: true,
+                  })}
+                  disabled={loadingRoles || !hasRoles}
                 >
-                  <option value="employee">Empleado</option>
-                  <option value="rrhh">RRHH</option>
+                  <option value="">
+                    {loadingRoles ? "Cargando roles..." : "Seleccionar rol"}
+                  </option>
+                  {hasRoles ? (
+                    roles.map((role) => (
+                      <option key={role.id} value={role.id}>
+                        {role.name}
+                      </option>
+                    ))
+                  ) : (
+                    <option value="" disabled>
+                      Sin roles disponibles
+                    </option>
+                  )}
                 </select>
                 <label className="form__label">Rol</label>
+                {errors.app_role_id && <p>Campo requerido</p>}
+                {rolesError && (
+                  <p>No se pudieron cargar los roles disponibles.</p>
+                )}
+                {!loadingRoles && !rolesError && !hasRoles && (
+                  <p>Sin roles disponibles en la tabla app_roles.</p>
+                )}
               </InputText>
             </article>
 

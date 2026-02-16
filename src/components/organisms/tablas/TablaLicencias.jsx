@@ -9,6 +9,7 @@ import { v } from "../../../styles/variables";
 import { Device, DeviceMax } from "../../../styles/breakpoints";
 import { useState } from "react";
 import { usePermissions } from "../../../hooks/usePermissions";
+import { FEATURES } from "../../../utils/features";
 import Swal from "sweetalert2";
 import {
   flexRender,
@@ -284,9 +285,12 @@ export function TablaLicencias({
         const status = String(row?.status ?? "").toLowerCase();
         const isApproved = status === "approved";
         const isRejected = status === "rejected";
-        const canApproveReject = canApproveRejectSolicitud(row);
-        const canEdit = canEditSolicitud(row);
-        const canDelete = canDeleteSolicitud(row);
+        const canApproveReject = canApproveRejectSolicitud(
+          row,
+          FEATURES.LICENCIAS
+        );
+        const canEdit = canEditSolicitud(row, FEATURES.LICENCIAS);
+        const canDelete = canDeleteSolicitud(row, FEATURES.LICENCIAS);
         return (
           <div data-title="Acciones" className="ContentCell acciones">
             {canApproveReject && onApprove && !isApproved && (
@@ -387,7 +391,7 @@ export function TablaLicencias({
                 ))}
               </div>
               <div className="cardActions">
-                {canApproveRejectSolicitud(licencia) &&
+                {canApproveRejectSolicitud(licencia, FEATURES.LICENCIAS) &&
                   onApprove &&
                   String(licencia?.status ?? "").toLowerCase() !==
                     "approved" && (
@@ -398,7 +402,7 @@ export function TablaLicencias({
                       Aceptar
                     </button>
                   )}
-                {canApproveRejectSolicitud(licencia) &&
+                {canApproveRejectSolicitud(licencia, FEATURES.LICENCIAS) &&
                   onReject &&
                   String(licencia?.status ?? "").toLowerCase() !==
                     "rejected" && (
@@ -418,12 +422,12 @@ export function TablaLicencias({
                     Ver certificado
                   </button>
                 )}
-                {canEditSolicitud(licencia) && (
+                {canEditSolicitud(licencia, FEATURES.LICENCIAS) && (
                   <button type="button" onClick={() => onEdit?.(licencia)}>
                     Editar
                   </button>
                 )}
-                {canDeleteSolicitud(licencia) && (
+                {canDeleteSolicitud(licencia, FEATURES.LICENCIAS) && (
                   <button type="button" onClick={() => onDelete?.(licencia)}>
                     Eliminar
                   </button>

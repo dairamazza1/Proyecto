@@ -2,8 +2,8 @@ import { Navigate } from "react-router-dom";
 import { NotificacionesTemplate, usePermissions } from "../index";
 
 export function Notificaciones() {
-  const { userRole } = usePermissions();
-  const canAccess = ["admin", "rrhh"].includes(userRole);
+  const { canRead } = usePermissions();
+  const canAccess = canRead("notificaciones");
 
   if (!canAccess) {
     return <Navigate to="/perfil" replace />;

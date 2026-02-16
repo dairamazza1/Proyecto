@@ -4,6 +4,7 @@ import { v } from "../../../styles/variables";
 import { Device, DeviceMax } from "../../../styles/breakpoints";
 import { useState } from "react";
 import { usePermissions } from "../../../hooks/usePermissions";
+import { FEATURES } from "../../../utils/features";
 import Swal from "sweetalert2";
 import {
   flexRender,
@@ -261,9 +262,12 @@ export function TablaVacaciones({
         const status = String(row?.status ?? "").toLowerCase();
         const isApproved = status === "approved";
         const isRejected = status === "rejected";
-        const canApproveReject = canApproveRejectSolicitud(row);
-        const canEdit = canEditSolicitud(row);
-        const canDelete = canDeleteSolicitud(row);
+        const canApproveReject = canApproveRejectSolicitud(
+          row,
+          FEATURES.VACACIONES
+        );
+        const canEdit = canEditSolicitud(row, FEATURES.VACACIONES);
+        const canDelete = canDeleteSolicitud(row, FEATURES.VACACIONES);
         return (
           <div data-title="Acciones" className="ContentCell">
             {canApproveReject && onApprove && !isApproved && (
@@ -359,7 +363,7 @@ export function TablaVacaciones({
                 ))}
               </div>
               <div className="cardActions">
-                {canApproveRejectSolicitud(vacacion) &&
+                {canApproveRejectSolicitud(vacacion, FEATURES.VACACIONES) &&
                   onApprove &&
                   String(vacacion?.status ?? "").toLowerCase() !==
                     "approved" && (
@@ -370,7 +374,7 @@ export function TablaVacaciones({
                       Aceptar
                     </button>
                   )}
-                {canApproveRejectSolicitud(vacacion) &&
+                {canApproveRejectSolicitud(vacacion, FEATURES.VACACIONES) &&
                   onReject &&
                   String(vacacion?.status ?? "").toLowerCase() !==
                     "rejected" && (
@@ -381,12 +385,12 @@ export function TablaVacaciones({
                       Rechazar
                     </button>
                   )}
-                {canEditSolicitud(vacacion) && (
+                {canEditSolicitud(vacacion, FEATURES.VACACIONES) && (
                   <button type="button" onClick={() => onEdit?.(vacacion)}>
                     Editar
                   </button>
                 )}
-                {canDeleteSolicitud(vacacion) && (
+                {canDeleteSolicitud(vacacion, FEATURES.VACACIONES) && (
                   <button type="button" onClick={() => onDelete?.(vacacion)}>
                     Eliminar
                   </button>

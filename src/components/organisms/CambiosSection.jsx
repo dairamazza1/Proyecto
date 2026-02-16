@@ -12,6 +12,7 @@ import {
 } from "../../index";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePermissions } from "../../hooks/usePermissions";
+import { FEATURES } from "../../utils/features";
 import { v } from "../../styles/variables";
 import Swal from "sweetalert2";
 
@@ -24,7 +25,7 @@ export function CambiosSection({
   const [selectedCambio, setSelectedCambio] = useState(null);
   const { dataCompany } = useCompanyStore();
   const queryClient = useQueryClient();
-  const { canUpdate, profile } = usePermissions();
+  const { canValidate, canDelete, profile } = usePermissions();
   
   
   const empresaNombre =
@@ -99,6 +100,7 @@ export function CambiosSection({
   });
 
   const handleEliminar = (cambio) => {
+    if (!canDelete(FEATURES.CAMBIOS_TURNO)) return;
     Swal.fire({
       title: "Estas seguro(a)?",
       text: "Una vez eliminado, no podras recuperar este registro.",
@@ -115,7 +117,7 @@ export function CambiosSection({
   };
 
   const handleActualizarEstado = (cambio, status) => {
-    if (!canUpdate("cambios")) return;
+    if (!canValidate(FEATURES.CAMBIOS_TURNO)) return;
     const actionLabel = status === "approved" ? "Aprobar" : "Rechazar";
     Swal.fire({
       title: `${actionLabel} cambio`,

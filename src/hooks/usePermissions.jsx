@@ -1,46 +1,52 @@
 import { useAuthStore } from "../context/AuthStoreWithPermissions";
-import { hasPermission, canWrite, getResourcePermissions } from "../utils/permissions";
+import { usePermissionsContext } from "../context/PermissionsProvider";
+import { FEATURE_ALIASES } from "../utils/features";
+import { ROLE_IDS } from "../utils/permissions";
 
 /**
  * ============================================
  * HOOK: usePermissions
  * ============================================
- * 
+ *
  * Hook personalizado que expone funciones para verificar permisos
  * en componentes de React.
- * 
+ *
  * EJEMPLO DE USO:
- * 
- * const { can, canCreate, canUpdate, canDelete, userRole } = usePermissions();
- * 
- * // Verificar permiso específico
- * if (can('empleados', 'create')) {
+ *
+ * const { can, canCreate, canUpdate, canDelete } = usePermissions();
+ *
+ * // Verificar permiso especÃ­fico
+ * if (can("empleados", "create")) {
  *   <button>Crear empleado</button>
  * }
- * 
+ *
  * // Helpers directos
- * {canCreate('empleados') && <button>Crear</button>}
- * {canUpdate('empleados') && <button>Editar</button>}
- * {canDelete('empleados') && <button>Eliminar</button>}
+ * {canCreate("empleados") && <button>Crear</button>}
+ * {canUpdate("empleados") && <button>Editar</button>}
+ * {canDelete("empleados") && <button>Eliminar</button>}
  */
 
 export function usePermissions() {
   // Suscribirse a profile para que se actualice cuando cambie el usuario
   const profile = useAuthStore((state) => state.profile);
   const empleado = useAuthStore((state) => state.empleado);
-  
+  const permissionsContext = usePermissionsContext();
+
   // Calcular el rol directamente desde profile para asegurar reactividad
-  const userRole = profile?.app_role || 'employee';
-  const isAdminRole = userRole === 'admin' || userRole === 'superadmin';
-  const isRRHHRole = userRole === 'rrhh';
-  const isEmployeeRole = userRole === 'employee';
+  const userRoleId =
+    typeof profile?.app_role_id === "number"
+      ? profile.app_role_id
+      : ROLE_IDS.EMPLOYEE;
+  const isAdminRole = userRoleId === ROLE_IDS.ADMIN;
+  const isRRHHRole = userRoleId === ROLE_IDS.RRHH;
+  const isEmployeeRole = userRoleId === ROLE_IDS.EMPLOYEE;
+  const isAuditorRole = userRoleId === ROLE_IDS.AUDITOR;
 
   const normalizeStatus = (value) => String(value ?? "").toLowerCase();
   const normalizeShift = (value) => String(value ?? "").trim().toLowerCase();
   const normalizePuesto = (value) => String(value ?? "").trim().toLowerCase();
 
-  const isPendingStatus = (row) =>
-    normalizeStatus(row?.status) === "pending";
+  const isPendingStatus = (row) => normalizeStatus(row?.status) === "pending";
 
   const isCreatedByCurrentUser = (row) => {
     const perfilId = profile?.id;
@@ -57,25 +63,33 @@ export function usePermissions() {
     return Date.now() <= createdAtMs + 24 * 60 * 60 * 1000;
   };
 
-  const canEditSolicitud = (row) => {
-    if (isAdminRole || isRRHHRole) return true;
-    if (isEmployeeRole) {
-      return (
-        isCreatedByCurrentUser(row) &&
-        isPendingStatus(row) &&
-        isWithinEditWindow(row)
-      );
-    }
-    return false;
+  const resolveFeature = (resource) =>
+    FEATURE_ALIASES[resource] ?? resource;
+
+  const can = (resource, action = "view") => {
+    if (!permissionsContext?.can) return false;
+    return permissionsContext.can(resolveFeature(resource), action);
   };
 
-  const canDeleteSolicitud = (_row) => isAdminRole;
+  const canEditSolicitud = (row, resource) => {
+    if (can(resource, "update")) return true;
+    if (!can(resource, "create")) return false;
+    if (!isEmployeeRole) return false;
+    return (
+      isCreatedByCurrentUser(row) &&
+      isPendingStatus(row) &&
+      isWithinEditWindow(row)
+    );
+  };
 
-  const canApproveRejectSolicitud = (_row) => isAdminRole || isRRHHRole;
+  const canDeleteSolicitud = (_row, resource) => can(resource, "delete");
+
+  const canApproveRejectSolicitud = (_row, resource) =>
+    can(resource, "validate");
 
   const isNurseEmployee = () => {
     if (!isEmployeeRole) return false;
-    const puesto = empleado?.puesto?.name ?? empleado?.puesto ?? "";    
+    const puesto = empleado?.puesto?.name ?? empleado?.puesto ?? "";
     return normalizePuesto(puesto) === "enfermero/a";
   };
 
@@ -95,77 +109,72 @@ export function usePermissions() {
 
   return {
     // Rol del usuario
-    userRole,
+    userRoleId,
     profile,
     empleado,
 
     /**
-     * Verificar si el usuario tiene un permiso específico
+     * Verificar si el usuario tiene un permiso especÃ­fico
      * @param {string} resource - Recurso (ej: 'empleados', 'vacaciones')
-     * @param {string} action - Acción (ej: 'create', 'read', 'update', 'delete')
+     * @param {string} action - AcciÃ³n (ej: 'create', 'view', 'update', 'delete')
      * @returns {boolean}
      */
-    can: (resource, action) => {
-      return hasPermission(userRole, resource, action);
-    },
+    can,
 
     /**
      * Verificar si puede CREAR en un recurso
      */
-    canCreate: (resource) => {
-      return hasPermission(userRole, resource, 'create');
-    },
+    canCreate: (resource) => can(resource, "create"),
 
     /**
-     * Verificar si puede LEER un recurso
+     * Verificar si puede LEER/VER un recurso
      */
-    canRead: (resource) => {
-      return hasPermission(userRole, resource, 'read');
-    },
+    canRead: (resource) => can(resource, "view"),
 
     /**
      * Verificar si puede exportar (descargar) recursos
      */
-    canExport: (resource) => {
-      const hasRead = hasPermission(userRole, resource, 'read');
-      const allowedRoles = ['rrhh', 'admin', 'superadmin'];
-      return hasRead && allowedRoles.includes(userRole);
-    },
+    canExport: (resource) => can(resource, "view"),
 
     /**
      * Verificar si puede ACTUALIZAR un recurso
      */
-    canUpdate: (resource) => {
-      return hasPermission(userRole, resource, 'update');
-    },
+    canUpdate: (resource) => can(resource, "update"),
 
     /**
      * Verificar si puede ELIMINAR en un recurso
      */
-    canDelete: (resource) => {
-      return hasPermission(userRole, resource, 'delete');
-    },
+    canDelete: (resource) => can(resource, "delete"),
+
+    /**
+     * Verificar si puede VALIDAR (aprobar/rechazar) un recurso
+     */
+    canValidate: (resource) => can(resource, "validate"),
 
     /**
      * Verificar si puede hacer cualquier escritura (CREATE, UPDATE, DELETE)
      */
-    canWrite: (resource) => {
-      return canWrite(userRole, resource);
-    },
+    canWrite: (resource) =>
+      can(resource, "create") ||
+      can(resource, "update") ||
+      can(resource, "delete"),
 
     /**
      * Obtener todos los permisos de un recurso
      */
-    getPermissions: (resource) => {
-      return getResourcePermissions(userRole, resource);
-    },
+    getPermissions: (resource) =>
+      permissionsContext?.getPermissions?.(resolveFeature(resource)) ?? {
+        can_view: false,
+        can_create: false,
+        can_update: false,
+        can_delete: false,
+        can_validate: false,
+      },
 
     /**
-     * Verificar si es superadmin
+     * Compat: no existe superadmin en app_roles
      */
-    isSuperAdmin: () => {
-      return userRole === 'superadmin';
-    },
+    isSuperAdmin: () => false,
 
     /**
      * Verificar si es admin
@@ -189,6 +198,13 @@ export function usePermissions() {
     },
 
     /**
+     * Verificar si es auditor
+     */
+    isAuditor: () => {
+      return isAuditorRole;
+    },
+
+    /**
      * Permisos para solicitudes (vacaciones/licencias/cambios)
      */
     canEditSolicitud,
@@ -200,6 +216,9 @@ export function usePermissions() {
      */
     isNurseEmployee,
     canEditNurseRecord,
-    defaultTabFromShift
+    defaultTabFromShift,
+
+    permissionsLoading: permissionsContext?.isLoading ?? false,
+    permissionsError: permissionsContext?.error ?? null,
   };
 }

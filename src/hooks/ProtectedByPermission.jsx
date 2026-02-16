@@ -48,7 +48,11 @@ export function ProtectedByPermission({
   can,
   row = null
 }) {
-  const { can: canRole } = usePermissions();
+  const { can: canRole, permissionsLoading } = usePermissions();
+
+  if (permissionsLoading) {
+    return null;
+  }
 
   const hasAccess =
     typeof can === "function"
@@ -75,14 +79,14 @@ export function ProtectedByPermission({
  * Componente que verifica roles específicos
  * 
  * EJEMPLO:
- * <RequireRole roles={['rrhh', 'superadmin']} fallback={<p>Acceso denegado</p>}>
+ * <RequireRole roles={[2]} fallback={<p>Acceso denegado</p>}>
  *   <AdminPanel />
  * </RequireRole>
  */
 export function RequireRole({ roles = [], children, fallback = null, redirectTo = null }) {
-  const { userRole } = usePermissions();
+  const { userRoleId } = usePermissions();
 
-  const hasRole = roles.includes(userRole);
+  const hasRole = roles.includes(userRoleId);
 
   if (!hasRole) {
     if (redirectTo) {

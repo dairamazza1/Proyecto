@@ -9,6 +9,7 @@ import {
   Spinner1,
 } from "../../index";
 import { usePermissions } from "../../hooks/usePermissions";
+import { FEATURES } from "../../utils/features";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { v } from "../../styles/variables";
 import Swal from "sweetalert2";
@@ -89,7 +90,7 @@ export function SancionesSection({
     <Section $embedded={embedded}>
       <div className="sectionHeader">
         <h3>{title}</h3>
-        {canCreate("sanciones") && (
+        {canCreate(FEATURES.SANCIONES) && (
           <Btn1
             icono={<v.iconoagregar />}
             titulo="nuevo"

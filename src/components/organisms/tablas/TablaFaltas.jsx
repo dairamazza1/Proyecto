@@ -9,6 +9,7 @@ import { v } from "../../../styles/variables";
 import { Device, DeviceMax } from "../../../styles/breakpoints";
 import { useState } from "react";
 import { usePermissions } from "../../../hooks/usePermissions";
+import { FEATURES } from "../../../utils/features";
 import Swal from "sweetalert2";
 import {
   flexRender,
@@ -340,9 +341,12 @@ export function TablaFaltas({
         const status = String(row?.status ?? "").toLowerCase();
         const isApproved = status === "approved";
         const isRejected = status === "rejected";
-        const canApproveReject = canApproveRejectSolicitud(row);
-        const canEdit = canEditSolicitud(row);
-        const canDelete = canDeleteSolicitud(row);
+        const canApproveReject = canApproveRejectSolicitud(
+          row,
+          FEATURES.FALTAS
+        );
+        const canEdit = canEditSolicitud(row, FEATURES.FALTAS);
+        const canDelete = canDeleteSolicitud(row, FEATURES.FALTAS);
         return (
           <div data-title="Acciones" className="ContentCell acciones">
             {canApproveReject && onApprove && !isApproved && (
@@ -443,7 +447,7 @@ export function TablaFaltas({
                 ))}
               </div>
               <div className="cardActions">
-                {canApproveRejectSolicitud(falta) &&
+                {canApproveRejectSolicitud(falta, FEATURES.FALTAS) &&
                   onApprove &&
                   String(falta?.status ?? "").toLowerCase() !==
                     "approved" && (
@@ -451,7 +455,7 @@ export function TablaFaltas({
                       Aceptar
                     </button>
                   )}
-                {canApproveRejectSolicitud(falta) &&
+                {canApproveRejectSolicitud(falta, FEATURES.FALTAS) &&
                   onReject &&
                   String(falta?.status ?? "").toLowerCase() !==
                     "rejected" && (
@@ -468,12 +472,12 @@ export function TablaFaltas({
                     Ver certificado
                   </button>
                 )}
-                {canEditSolicitud(falta) && (
+                {canEditSolicitud(falta, FEATURES.FALTAS) && (
                   <button type="button" onClick={() => onEdit?.(falta)}>
                     Editar
                   </button>
                 )}
-                {canDeleteSolicitud(falta) && (
+                {canDeleteSolicitud(falta, FEATURES.FALTAS) && (
                   <button type="button" onClick={() => onDelete?.(falta)}>
                     Eliminar
                   </button>

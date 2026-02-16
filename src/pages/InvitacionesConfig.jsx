@@ -4,8 +4,8 @@ import { Navigate } from "react-router-dom";
 import { InvitacionesConfigTemplate, usePermissions } from "../index";
 
 export function InvitacionesConfig() {
-  const { userRole } = usePermissions();
-  if (userRole === "employee") {
+  const { canCreate } = usePermissions();
+  if (!canCreate("empleados")) {
     return <Navigate to="/perfil" replace />;
   }
   return <InvitacionesConfigTemplate />;

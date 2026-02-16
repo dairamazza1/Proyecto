@@ -4,6 +4,7 @@ import { v } from "../../../styles/variables";
 import { Device, DeviceMax } from "../../../styles/breakpoints";
 import { useRef, useState } from "react";
 import { usePermissions } from "../../../hooks/usePermissions";
+import { FEATURES } from "../../../utils/features";
 import Swal from "sweetalert2";
 import { saveAs } from "file-saver";
 import Docxtemplater from "docxtemplater";
@@ -152,7 +153,7 @@ export function TablaSanciones({ data, onEdit, onDelete }) {
   
   // Hook de permisos
   const { canUpdate, canDelete, canExport } = usePermissions();
-  const canExportDocs = canExport("sanciones");
+  const canExportDocs = canExport(FEATURES.SANCIONES);
   const safeData = data ?? [];
   const getCreatedByName = (row) =>
     resolvePerfilDisplayName(row?.creador, row?.created_by);

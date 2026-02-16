@@ -181,7 +181,7 @@ export async function getInvitations({
   empresa_id,
   status,
   search,
-  app_role,
+  app_role_id,
   limit = 200,
 } = {}) {
   if (!empresa_id) return [];
@@ -190,7 +190,7 @@ export async function getInvitations({
 
     .from(table)
     .select(
-      "id, empresa_id, empleado_id, email, app_role, status, invited_by, auth_user_id, created_at, accepted_at"
+      "id, empresa_id, empleado_id, email, app_role_id, status, invited_by, auth_user_id, created_at, accepted_at, app_role:app_roles(name)"
     )
     .eq("empresa_id", empresa_id)
     .order("created_at", { ascending: false })
@@ -200,8 +200,8 @@ export async function getInvitations({
     query = query.eq("status", status);
   }
 
-  if (app_role && app_role !== "all") {
-    query = query.eq("app_role", app_role);
+  if (app_role_id && app_role_id !== "all") {
+    query = query.eq("app_role_id", app_role_id);
   }
 
   const term = (search ?? "").trim();

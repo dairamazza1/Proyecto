@@ -1,6 +1,12 @@
 import { useEffect } from "react";
 import styled from "styled-components";
-import { Btn1, InputText, Spinner1, usePermissions } from "../../../index";
+import {
+  Btn1,
+  InputText,
+  Spinner1,
+  ROLE_IDS,
+  usePermissions,
+} from "../../../index";
 import { useForm } from "react-hook-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import Swal from "sweetalert2";
@@ -16,8 +22,8 @@ const _V = v;
 export function ModalCambiosForm({ empleadoId, cambio, onClose }) {
   const queryClient = useQueryClient();
   const isEdit = Boolean(cambio?.id);
-  const { userRole } = usePermissions();
-  const isEmployee = userRole === "employee";
+  const { userRoleId } = usePermissions();
+  const isEmployee = userRoleId === ROLE_IDS.EMPLOYEE;
 
   const {
     register,

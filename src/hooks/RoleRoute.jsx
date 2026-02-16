@@ -4,11 +4,11 @@ import { usePermissions } from "./usePermissions";
 
 export const RoleRoute = ({ roles = [], redirectTo = "/perfil", children }) => {
   const loading = useAuthStore((state) => state.loading);
-  const { userRole } = usePermissions();
+  const { userRoleId } = usePermissions();
 
   if (loading) return null;
 
-  if (roles.length && !roles.includes(userRole)) {
+  if (roles.length && !roles.includes(userRoleId)) {
     return <Navigate replace to={redirectTo} />;
   }
 

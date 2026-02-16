@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import App from "./App.jsx";
 import { BrowserRouter, useLocation } from "react-router-dom";
 import { useAuthStore } from "./context/AuthStoreWithPermissions.jsx";
+import { PermissionsProvider } from "./context/PermissionsProvider.jsx";
 import {
   // useQuery,
   // useMutation,
@@ -39,7 +40,9 @@ createRoot(document.getElementById("root")).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <AppWrapper />
+        <PermissionsProvider>
+          <AppWrapper />
+        </PermissionsProvider>
       </BrowserRouter>
     </QueryClientProvider>
   </StrictMode>

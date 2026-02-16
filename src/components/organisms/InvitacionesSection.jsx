@@ -17,6 +17,7 @@ import {
   getEmpleados
 } from "../../index";
 import { usePermissions } from "../../hooks/usePermissions";
+import { useAppRoles } from "../../hooks/useAppRoles";
 import { v } from "../../styles/variables";
 
 const statusLabels = {
@@ -24,12 +25,6 @@ const statusLabels = {
   accepted: "Aceptada",
   linked: "Vinculada",
   expired: "Expirada",
-};
-
-const roleLabels = {
-  employee: "Empleado",
-  rrhh: "RRHH",
-  admin: "Admin",
 };
 
 const formatDate = (value) => {
@@ -63,16 +58,17 @@ export function InvitacionesSection() {
   const [filters, setFilters] = useState({
     search: "",
     status: "all",
-    app_role: "all",
+    app_role_id: "all",
   });
 
   const { user } = UserAuth();
   const { dataCompany, showCompany } = useCompanyStore();
-  const { profile } = usePermissions();
+  const { canCreate, canUpdate, canDelete } = usePermissions();
+  const canInvite = canCreate("empleados");
+  const canEditInvitaciones = canUpdate("empleados");
+  const canDeleteInvitaciones = canDelete("empleados");
 
-  const canInvite = ["rrhh", "admin"].includes(
-    String(profile?.app_role ?? "")
-  );
+  const { data: roles = [] } = useAppRoles();
 
   useQuery({
     queryKey: ["empresa", user?.id],
@@ -95,7 +91,7 @@ export function InvitacionesSection() {
       return inviteUser({
         empresa_id: empresaId,
         email: row.email,
-        app_role: row.app_role ?? "employee",
+        app_role_id: row.app_role_id,
         empleado_id: row.empleado_id ?? null,
       });
     },
@@ -182,7 +178,10 @@ export function InvitacionesSection() {
       empresa_id: empresaId,
       status: filters.status,
       search: filters.search,
-      app_role: filters.app_role,
+      app_role_id:
+        filters.app_role_id === "all"
+          ? "all"
+          : Number(filters.app_role_id),
     }),
     [empresaId, filters]
   );
@@ -234,8 +233,10 @@ export function InvitacionesSection() {
 
   const renderCardActions = useCallback(
     (row) => {
-      const canResend = ["pending", "expired"].includes(row.status);
+      const canResend =
+        canEditInvitaciones && ["pending", "expired"].includes(row.status);
       const canUnlink =
+        canEditInvitaciones &&
         Boolean(row.empleado_id) &&
         ["accepted", "linked"].includes(row.status);
       return (
@@ -256,16 +257,18 @@ export function InvitacionesSection() {
               icono={<v.iconoCerrarSesion />}
             />
           )}
-          <AccionTabla
-            funcion={() => handleDelete(row)}
-            fontSize="18px"
-            color={v.rojo}
-            icono={<v.iconeliminarTabla />}
-          />
+          {canDeleteInvitaciones && (
+            <AccionTabla
+              funcion={() => handleDelete(row)}
+              fontSize="18px"
+              color={v.rojo}
+              icono={<v.iconeliminarTabla />}
+            />
+          )}
         </>
       );
     },
-    [handleDelete, handleResend, handleUnlink]
+    [handleDelete, handleResend, handleUnlink, canEditInvitaciones, canDeleteInvitaciones]
   );
 
   const {
@@ -306,18 +309,16 @@ export function InvitacionesSection() {
         ),
       },
       {
-        accessorKey: "app_role",
+        id: "app_role",
         header: "Rol",
+        accessorFn: (row) => row.app_role?.name ?? "-",
         meta: {
           cardLabel: "Rol",
-          cardValue: (row) =>
-            roleLabels[row.app_role] || row.app_role || "-",
+          cardValue: (row) => row.app_role?.name ?? "-",
         },
         cell: (info) => (
           <div data-title="Rol" className="ContentCell">
-            <span>
-              {roleLabels[info.getValue()] || info.getValue() || "-"}
-            </span>
+            <span>{info.getValue() ?? "-"}</span>
           </div>
         ),
       },
@@ -395,8 +396,10 @@ export function InvitacionesSection() {
         header: "Acciones",
         cell: (info) => {
           const row = info.row.original;
-          const canResend = ["pending", "expired"].includes(row.status);
+          const canResend =
+            canEditInvitaciones && ["pending", "expired"].includes(row.status);
           const canUnlink =
+            canEditInvitaciones &&
             Boolean(row.empleado_id) &&
             ["accepted", "linked"].includes(row.status);
           return (
@@ -417,12 +420,14 @@ export function InvitacionesSection() {
                   icono={<v.iconoCerrarSesion />}
                 />
               )}
-              <AccionTabla
-                funcion={() => handleDelete(row)}
-                fontSize="18px"
-                color={v.rojo}
-                icono={<v.iconeliminarTabla />}
-              />
+              {canDeleteInvitaciones && (
+                <AccionTabla
+                  funcion={() => handleDelete(row)}
+                  fontSize="18px"
+                  color={v.rojo}
+                  icono={<v.iconeliminarTabla />}
+                />
+              )}
             </div>
           );
         },
@@ -483,14 +488,16 @@ export function InvitacionesSection() {
         <label>
           <span>Rol</span>
           <select
-            name="app_role"
-            value={filters.app_role}
+            name="app_role_id"
+            value={filters.app_role_id}
             onChange={handleFilterChange}
           >
             <option value="all">Todos</option>
-            <option value="employee">Empleado</option>
-            <option value="rrhh">RRHH</option>
-            <option value="admin">Admin</option>
+            {roles.map((role) => (
+              <option key={role.id} value={role.id}>
+                {role.name}
+              </option>
+            ))}
           </select>
         </label>
       </Filters>

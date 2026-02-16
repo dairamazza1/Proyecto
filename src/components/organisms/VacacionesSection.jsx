@@ -10,6 +10,7 @@ import {
   Spinner1,
 } from "../../index";
 import { usePermissions } from "../../hooks/usePermissions";
+import { FEATURES } from "../../utils/features";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { v } from "../../styles/variables";
 import { calcVacationSummary } from "../../utils/vacaciones";
@@ -26,7 +27,7 @@ export function VacacionesSection({
   const queryClient = useQueryClient();
 
   // Hook de permisos
-  const { canCreate, canUpdate, profile } = usePermissions();
+  const { canCreate, canValidate, canDelete, profile } = usePermissions();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["vacaciones", empleadoId],
@@ -98,6 +99,7 @@ export function VacacionesSection({
   });
 
   const handleEliminar = (vacacion) => {
+    if (!canDelete(FEATURES.VACACIONES)) return;
     Swal.fire({
       title: "Estas seguro(a)?",
       text: "Una vez eliminado, no podras recuperar este registro.",
@@ -114,7 +116,7 @@ export function VacacionesSection({
   };
 
   const handleActualizarEstado = (vacacion, status) => {
-    if (!canUpdate("vacaciones")) return;
+    if (!canValidate(FEATURES.VACACIONES)) return;
     const actionLabel = status === "approved" ? "Aprobar" : "Rechazar";
     Swal.fire({
       title: `${actionLabel} solicitud`,
@@ -143,7 +145,7 @@ export function VacacionesSection({
     <Section $embedded={embedded}>
       <div className="sectionHeader">
         <h3>{title}</h3>
-        {canCreate("vacaciones") && (
+        {canCreate(FEATURES.VACACIONES) && (
           <Btn1
             icono={<v.iconoagregar />}
             titulo="nuevo"

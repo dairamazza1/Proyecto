@@ -4,6 +4,7 @@ import { v } from "../../../styles/variables";
 import { Device, DeviceMax } from "../../../styles/breakpoints";
 import { useRef, useState } from "react";
 import { usePermissions } from "../../../hooks/usePermissions";
+import { FEATURES } from "../../../utils/features";
 import Swal from "sweetalert2";
 import { saveAs } from "file-saver";
 import Docxtemplater from "docxtemplater";
@@ -184,7 +185,7 @@ export function TablaCambios({
     canEditSolicitud,
     canExport,
   } = usePermissions();
-  const canExportDocs = canExport("cambios");
+  const canExportDocs = canExport(FEATURES.CAMBIOS_TURNO);
   const getVerifiedByLabel = (row) =>
     buildPerfilDateLabel(row?.verificador, row?.verified_by, row?.verified_at);
   const getRequestedByLabel = (row) =>
@@ -395,9 +396,12 @@ export function TablaCambios({
         const status = String(row?.status ?? "").toLowerCase();
         const isApproved = status === "approved";
         const isRejected = status === "rejected";
-        const canApproveReject = canApproveRejectSolicitud(row);
-        const canEdit = canEditSolicitud(row);
-        const canDelete = canDeleteSolicitud(row);
+        const canApproveReject = canApproveRejectSolicitud(
+          row,
+          FEATURES.CAMBIOS_TURNO
+        );
+        const canEdit = canEditSolicitud(row, FEATURES.CAMBIOS_TURNO);
+        const canDelete = canDeleteSolicitud(row, FEATURES.CAMBIOS_TURNO);
         return (
           <div data-title="Acciones" className="ContentCell">
             {canApproveReject && onApprove && !isApproved && (
@@ -502,7 +506,7 @@ export function TablaCambios({
                 ))}
               </div>
               <div className="cardActions">
-                {canApproveRejectSolicitud(cambio) &&
+                {canApproveRejectSolicitud(cambio, FEATURES.CAMBIOS_TURNO) &&
                   onApprove &&
                   String(cambio?.status ?? "").toLowerCase() !==
                     "approved" && (
@@ -510,7 +514,7 @@ export function TablaCambios({
                       Aceptar
                     </button>
                   )}
-                {canApproveRejectSolicitud(cambio) &&
+                {canApproveRejectSolicitud(cambio, FEATURES.CAMBIOS_TURNO) &&
                   onReject &&
                   String(cambio?.status ?? "").toLowerCase() !==
                     "rejected" && (
@@ -518,7 +522,7 @@ export function TablaCambios({
                       Rechazar
                     </button>
                   )}
-                {canEditSolicitud(cambio) && (
+                {canEditSolicitud(cambio, FEATURES.CAMBIOS_TURNO) && (
                   <button type="button" onClick={() => onEdit?.(cambio)}>
                     Editar
                   </button>
@@ -531,7 +535,7 @@ export function TablaCambios({
                     Vista previa
                   </button>
                 )}
-                {canDeleteSolicitud(cambio) && (
+                {canDeleteSolicitud(cambio, FEATURES.CAMBIOS_TURNO) && (
                   <button type="button" onClick={() => onDelete?.(cambio)}>
                     Eliminar
                   </button>

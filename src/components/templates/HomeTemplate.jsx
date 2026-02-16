@@ -3,45 +3,42 @@ import { HomeCards, Title, usePermissions, v } from "../../index";
 import { useMemo } from "react";
 
 export function HomeTemplate({ displayName = "Usuario" }) {
-  const { userRole, isAdmin, isNurseEmployee, empleado, defaultTabFromShift } =
+  const { canRead, isNurseEmployee, empleado, defaultTabFromShift } =
     usePermissions();
-  const isEmployee = userRole === "employee";
   const isNurse = isNurseEmployee();
-  const canSeeEnfermeria = isAdmin() || isNurse;
+  const canSeeEnfermeria = canRead("enfermeria");
+  const canSeeEmpleados = canRead("empleados");
+  const canSeeReportes = canRead("reportes");
 
   const cards = useMemo(() => {
-    const baseCards = isEmployee
-      ? [
-          {
-            title: "Mi perfil",
-            description:
-              "Revisa tus datos y solicitudes de vacaciones y licencias.",
-            to: "/perfil",
-            icon: v.iconoUser,
-          },
-        ]
-      : [
-          {
-            title: "Empleados",
-            description: "Gestiona los perfiles de los empleados.",
-            to: "/empleados",
-            icon: v.iconoempresa,
-          },
-          {
-            title: "Reportes",
-            description:
-              "Consulta las vacaciones y licencias programadas de los empleados.",
-            to: "/reportes",
-            icon: v.iconoreportes,
-          },
-          {
-            title: "Mi perfil",
-            description:
-              "Revisa tus datos y solicitudes de vacaciones y licencias.",
-            to: "/perfil",
-            icon: v.iconoUser,
-          },
-        ];
+    const baseCards = [];
+
+    if (canSeeEmpleados) {
+      baseCards.push({
+        title: "Empleados",
+        description: "Gestiona los perfiles de los empleados.",
+        to: "/empleados",
+        icon: v.iconoempresa,
+      });
+    }
+
+    if (canSeeReportes) {
+      baseCards.push({
+        title: "Reportes",
+        description:
+          "Consulta las vacaciones y licencias programadas de los empleados.",
+        to: "/reportes",
+        icon: v.iconoreportes,
+      });
+    }
+
+    baseCards.push({
+      title: "Mi perfil",
+      description:
+        "Revisa tus datos y solicitudes de vacaciones y licencias.",
+      to: "/perfil",
+      icon: v.iconoUser,
+    });
 
     if (!canSeeEnfermeria) return baseCards;
 
@@ -55,13 +52,14 @@ export function HomeTemplate({ displayName = "Usuario" }) {
       icon: v.iconoProfesional,
     };
 
-    if (isEmployee) {
+    if (!canSeeEmpleados && !canSeeReportes) {
       return [enfermeriaCard, ...baseCards];
     }
 
     return [baseCards[0], enfermeriaCard, ...baseCards.slice(1)];
   }, [
-    isEmployee,
+    canSeeEmpleados,
+    canSeeReportes,
     canSeeEnfermeria,
     isNurse,
     defaultTabFromShift,

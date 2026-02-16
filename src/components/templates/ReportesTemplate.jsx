@@ -109,23 +109,24 @@ export function ReportesTemplate() {
     empleadoId: "",
   });
 
-  const { userRole } = usePermissions();
-  const canSeeRestricted = useMemo(
-    () => ["rrhh", "admin", "superadmin"].includes(String(userRole ?? "")),
-    [userRole]
-  );
+  const { canRead } = usePermissions();
+  const canSeeCambios = useMemo(() => canRead("cambios_turno"), [canRead]);
+  const canSeeSanciones = useMemo(() => canRead("sanciones"), [canRead]);
 
   const visibleTabs = useMemo(() => {
-    if (canSeeRestricted) return TABS;
-    return TABS.filter((tab) => !["cambios", "sanciones"].includes(tab.id));
-  }, [canSeeRestricted]);
+    return TABS.filter((tab) => {
+      if (tab.id === "cambios") return canSeeCambios;
+      if (tab.id === "sanciones") return canSeeSanciones;
+      return true;
+    });
+  }, [canSeeCambios, canSeeSanciones]);
 
   useEffect(() => {
-    if (canSeeRestricted) return;
-    if (activeTab === "cambios" || activeTab === "sanciones") {
+    if ((activeTab === "cambios" && !canSeeCambios) ||
+        (activeTab === "sanciones" && !canSeeSanciones)) {
       setActiveTab("vacaciones");
     }
-  }, [activeTab, canSeeRestricted]);
+  }, [activeTab, canSeeCambios, canSeeSanciones]);
 
   const { dataCompany, showCompany } = useCompanyStore();
   const { user } = UserAuth();
@@ -164,10 +165,10 @@ export function ReportesTemplate() {
       case "faltas":
         return getReportFaltas(normalizedFilters);
       case "cambios":
-        if (!canSeeRestricted) return getReportVacaciones(normalizedFilters);
+        if (!canSeeCambios) return getReportVacaciones(normalizedFilters);
         return getReportCambios(normalizedFilters);
       case "sanciones":
-        if (!canSeeRestricted) return getReportVacaciones(normalizedFilters);
+        if (!canSeeSanciones) return getReportVacaciones(normalizedFilters);
         return getReportSanciones(normalizedFilters);
       default:
         return getReportVacaciones(normalizedFilters);

@@ -280,7 +280,7 @@ export function EnfermeriaTemplate() {
       <Header>
         <div className="titleGroup">
           <Title>Enfermeria</Title>
-          <p>Registros diarios por turno.</p>
+          <p>Selecciona tu turno asignado y agrega un registro diario, o accede a los detalles del turno que selecciones.</p>
         </div>
       </Header>
 

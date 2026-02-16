@@ -10,6 +10,7 @@ import {
   Spinner1,
 } from "../../index";
 import { usePermissions } from "../../hooks/usePermissions";
+import { FEATURES } from "../../utils/features";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { v } from "../../styles/variables";
 import Swal from "sweetalert2";
@@ -24,7 +25,7 @@ export function FaltasSection({
   const queryClient = useQueryClient();
 
   // Hook de permisos
-  const { canCreate, canUpdate, profile } = usePermissions();
+  const { canCreate, canValidate, canDelete, profile } = usePermissions();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["faltas", empleadoId],
@@ -91,6 +92,7 @@ export function FaltasSection({
   });
 
   const handleEliminar = (falta) => {
+    if (!canDelete(FEATURES.FALTAS)) return;
     Swal.fire({
       title: "Estas seguro(a)?",
       text: "Una vez eliminado, no podras recuperar este registro.",
@@ -107,7 +109,7 @@ export function FaltasSection({
   };
 
   const handleActualizarEstado = (falta, status) => {
-    if (!canUpdate("faltas")) return;
+    if (!canValidate(FEATURES.FALTAS)) return;
     const actionLabel = status === "approved" ? "Aprobar" : "Rechazar";
     Swal.fire({
       title: `${actionLabel} falta`,
@@ -136,7 +138,7 @@ export function FaltasSection({
     <Section $embedded={embedded}>
       <div className="sectionHeader">
         <h3>{title}</h3>
-        {canCreate("faltas") && (
+        {canCreate(FEATURES.FALTAS) && (
           <Btn1
             icono={<v.iconoagregar />}
             titulo="nuevo"

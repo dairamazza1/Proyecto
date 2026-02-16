@@ -1,7 +1,6 @@
 import { Routes, Route } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
-  // Categories,
   Configurations,
   Empleado,
   Empleados,
@@ -15,11 +14,12 @@ import {
   SetPassword,
   Notificaciones,
   ProtectedRoute,
-  RoleRoute,
+  ProtectedByPermission,
   RegistrarEmpleados,
   Spinner1,
   useUsersStore,
 } from "../index";
+import { FEATURES } from "../utils/features";
 
 export function MyRoutes() {
   const { showUsers } = useUsersStore();
@@ -40,29 +40,141 @@ export function MyRoutes() {
     <Routes>
       {/* Rutas protegidas */}
       <Route element={<ProtectedRoute redirectTo="/login" />}>
-      <Route path="/" element={<Home />} />
-      <Route path="/perfil" element={<Perfil />} />
-      <Route path="/enfermeria" element={<Enfermeria />} />
-      <Route path="/configuracion" element={<Configurations />} />
-        <Route path="/Configuración" element={<Configurations />} />
+        <Route path="/" element={<Home />} />
         <Route
-          element={<RoleRoute roles={["admin", "rrhh"]} redirectTo="/perfil" />}
-        >
-          <Route path="/empleados" element={<Empleados />} />
-          <Route path="/empleados/nuevo" element={<RegistrarEmpleados />} />
-          <Route path="/empleados/:id" element={<Empleado />} />
-          <Route path="/empleado/:id" element={<Empleado />} />
-          <Route path="/reportes" element={<Reportes />} />
-          <Route path="/notificaciones" element={<Notificaciones />} />
-          <Route
-            path="/configuracion/invitaciones"
-            element={<InvitacionesConfig />}
-          />
-          <Route
-            path="/Configuración/invitaciones"
-            element={<InvitacionesConfig />}
-          />
-        </Route>
+          path="/perfil"
+          element={
+            <ProtectedByPermission
+              resource={FEATURES.PERFIL}
+              action="view"
+              redirectTo="/"
+            >
+              <Perfil />
+            </ProtectedByPermission>
+          }
+        />
+        <Route
+          path="/enfermeria"
+          element={
+            <ProtectedByPermission
+              resource={FEATURES.ENFERMERIA}
+              action="view"
+              redirectTo="/"
+            >
+              <Enfermeria />
+            </ProtectedByPermission>
+          }
+        />
+        <Route
+          path="/configuracion"
+          element={
+            <ProtectedByPermission
+              resource={FEATURES.PERFIL}
+              action="view"
+              redirectTo="/"
+            >
+              <Configurations />
+            </ProtectedByPermission>
+          }
+        />
+        <Route path="/ConfiguraciÃ³n" element={<Configurations />} />
+
+        <Route
+          path="/empleados"
+          element={
+            <ProtectedByPermission
+              resource={FEATURES.EMPLEADOS}
+              action="view"
+              redirectTo="/perfil"
+            >
+              <Empleados />
+            </ProtectedByPermission>
+          }
+        />
+        <Route
+          path="/empleados/nuevo"
+          element={
+            <ProtectedByPermission
+              resource={FEATURES.EMPLEADOS}
+              action="create"
+              redirectTo="/perfil"
+            >
+              <RegistrarEmpleados />
+            </ProtectedByPermission>
+          }
+        />
+        <Route
+          path="/empleados/:id"
+          element={
+            <ProtectedByPermission
+              resource={FEATURES.EMPLEADOS}
+              action="view"
+              redirectTo="/perfil"
+            >
+              <Empleado />
+            </ProtectedByPermission>
+          }
+        />
+        <Route
+          path="/empleado/:id"
+          element={
+            <ProtectedByPermission
+              resource={FEATURES.EMPLEADOS}
+              action="view"
+              redirectTo="/perfil"
+            >
+              <Empleado />
+            </ProtectedByPermission>
+          }
+        />
+        <Route
+          path="/reportes"
+          element={
+            <ProtectedByPermission
+              resource={FEATURES.REPORTES}
+              action="view"
+              redirectTo="/perfil"
+            >
+              <Reportes />
+            </ProtectedByPermission>
+          }
+        />
+        <Route
+          path="/notificaciones"
+          element={
+            <ProtectedByPermission
+              resource={FEATURES.NOTIFICACIONES}
+              action="view"
+              redirectTo="/perfil"
+            >
+              <Notificaciones />
+            </ProtectedByPermission>
+          }
+        />
+        <Route
+          path="/configuracion/invitaciones"
+          element={
+            <ProtectedByPermission
+              resource={FEATURES.EMPLEADOS}
+              action="create"
+              redirectTo="/perfil"
+            >
+              <InvitacionesConfig />
+            </ProtectedByPermission>
+          }
+        />
+        <Route
+          path="/ConfiguraciÃ³n/invitaciones"
+          element={
+            <ProtectedByPermission
+              resource={FEATURES.EMPLEADOS}
+              action="create"
+              redirectTo="/perfil"
+            >
+              <InvitacionesConfig />
+            </ProtectedByPermission>
+          }
+        />
       </Route>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />

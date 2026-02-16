@@ -12,21 +12,21 @@ import { usePermissions } from "../../hooks/usePermissions";
 import { Device, DeviceMax } from "../../styles/breakpoints";
 
 export function PerfilTemplate({ perfil, empleado, displayName, userEmail }) {
-  const { userRole } = usePermissions();
+  const { canRead, canUpdate } = usePermissions();
   const [activeTab, setActiveTab] = useState("vacaciones");
 
-  const canSeeRestricted = ["admin", "rrhh", "superadmin"].includes(
-    String(userRole ?? "")
-  );
+  const canSeeCambios = canRead("cambios_turno");
+  const canSeeSanciones = canRead("sanciones");
+  const isReadOnly = !canUpdate("empleados");
 
   useEffect(() => {
     if (
-      !canSeeRestricted &&
+      !canSeeCambios &&
       (activeTab === "sanciones" || activeTab === "cambios")
     ) {
       setActiveTab("vacaciones");
     }
-  }, [canSeeRestricted, activeTab]);
+  }, [canSeeCambios, activeTab]);
 
   const email = perfil?.email || userEmail || "";
   const emailLabel = email || "-";
@@ -65,27 +65,13 @@ export function PerfilTemplate({ perfil, empleado, displayName, userEmail }) {
         )} */}
       </Header>
 
-      {!empleado && userRole == "rrhh" && (
-        <EmptyState>
-          Tu perfil de recursos humanos aun no esta asociado a un empleado.
-        </EmptyState>
-      )}
-
-      {!empleado && userRole == "admin" && (
-        <EmptyState>
-          Perfil de administrador
-        </EmptyState>
-      )}
-
-      {!empleado && userRole == "employee" && (
-        <EmptyState>
-          Tu perfil aun no esta asociado a un empleado. Contacta a recursos humanos.
-        </EmptyState>
+      {!empleado && (
+        <EmptyState>Tu perfil aun no esta asociado a un empleado.</EmptyState>
       )}
 
       {empleado && (
         <>
-          {userRole === "employee" && (
+          {isReadOnly && (
             <InfoBanner>Contacta a RRHH para modificaciones.</InfoBanner>
           )}
 
@@ -165,20 +151,21 @@ export function PerfilTemplate({ perfil, empleado, displayName, userEmail }) {
               Vacaciones
             </button>
             <button
-              className={`tab ${activeTab === "licencias" ? "active" : ""}`}
-              type="button"
-              onClick={() => setActiveTab("licencias")}
-            >
-              Licencias
-            </button>
-            <button
               className={`tab ${activeTab === "faltas" ? "active" : ""}`}
               type="button"
               onClick={() => setActiveTab("faltas")}
             >
               Faltas
             </button>
-            {canSeeRestricted && (
+            <button
+              className={`tab ${activeTab === "licencias" ? "active" : ""}`}
+              type="button"
+              onClick={() => setActiveTab("licencias")}
+            >
+              Licencias (extendidas)
+            </button>
+
+            {canSeeCambios && (
               <button
                 className={`tab ${activeTab === "cambios" ? "active" : ""}`}
                 type="button"
@@ -187,7 +174,7 @@ export function PerfilTemplate({ perfil, empleado, displayName, userEmail }) {
                 Cambios de turnos (legajo)
               </button>
             )}
-            {canSeeRestricted && (
+            {canSeeSanciones && (
               <button
                 className={`tab ${activeTab === "sanciones" ? "active" : ""}`}
                 type="button"
@@ -221,14 +208,14 @@ export function PerfilTemplate({ perfil, empleado, displayName, userEmail }) {
                 title="Mis faltas"
               />
             )}
-            {activeTab === "cambios" && canSeeRestricted && (
+            {activeTab === "cambios" && canSeeCambios && (
               <CambiosSection
                 empleadoId={empleado.id}
                 embedded
                 title="Mis cambios de turnos"
               />
             )}
-            {activeTab === "sanciones" && canSeeRestricted && (
+            {activeTab === "sanciones" && canSeeSanciones && (
               <SancionesSection empleadoId={empleado.id} embedded />
             )}
           </ResultsCard>

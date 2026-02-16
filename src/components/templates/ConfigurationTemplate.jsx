@@ -15,13 +15,13 @@ import { supabase } from "../../supabase/supabase.config.jsx";
 
 export function ConfigurationTemplate() {
   const navigate = useNavigate();
-  const { userRole } = usePermissions();
+  const { canCreate } = usePermissions();
   const { cerrarSesion } = useAuthStore();
   const user = useAuthStore((state) => state.user);
   const email = user?.email || "";
   const [isPasswordModalOpen, setPasswordModalOpen] = useState(false);
 
-  const canInvite = ["rrhh", "admin"].includes(userRole);
+  const canInvite = canCreate("empleados");
   const cards = [
     ...(canInvite
       ? [

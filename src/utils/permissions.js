@@ -10,11 +10,18 @@
 // ============================================
 // ROLES DISPONIBLES
 // ============================================
-export const ROLES = {
-  SUPERADMIN: 'superadmin',
-  ADMIN: 'admin',
-  RRHH: 'rrhh',
-  EMPLOYEE: 'employee'
+export const ROLE_IDS = {
+  ADMIN: 1,
+  RRHH: 2,
+  EMPLOYEE: 3,
+  AUDITOR: 4,
+};
+
+export const ROLE_LABELS = {
+  [ROLE_IDS.ADMIN]: "Administrador",
+  [ROLE_IDS.RRHH]: "RRHH",
+  [ROLE_IDS.EMPLOYEE]: "Empleado",
+  [ROLE_IDS.AUDITOR]: "Auditor",
 };
 
 // ============================================
@@ -46,7 +53,7 @@ export const ACTIONS = {
 // MAPA DE PERMISOS POR ROL
 // ============================================
 export const PERMISSIONS = {
-  [ROLES.SUPERADMIN]: {
+  [ROLE_IDS.ADMIN]: {
     [RESOURCES.EMPLEADOS]: { 
       [ACTIONS.CREATE]: true, 
       [ACTIONS.READ]: true, 
@@ -102,64 +109,7 @@ export const PERMISSIONS = {
       [ACTIONS.DELETE]: true 
     }
   },
-  [ROLES.ADMIN]: {
-    [RESOURCES.EMPLEADOS]: { 
-      [ACTIONS.CREATE]: true, 
-      [ACTIONS.READ]: true, 
-      [ACTIONS.UPDATE]: true, 
-      [ACTIONS.DELETE]: true 
-    },
-    [RESOURCES.VACACIONES]: { 
-      [ACTIONS.CREATE]: true, 
-      [ACTIONS.READ]: true, 
-      [ACTIONS.UPDATE]: true, 
-      [ACTIONS.DELETE]: true 
-    },
-    [RESOURCES.LICENCIAS]: { 
-      [ACTIONS.CREATE]: true, 
-      [ACTIONS.READ]: true, 
-      [ACTIONS.UPDATE]: true, 
-      [ACTIONS.DELETE]: true 
-    },
-    [RESOURCES.FALTAS]: { 
-      [ACTIONS.CREATE]: true, 
-      [ACTIONS.READ]: true, 
-      [ACTIONS.UPDATE]: true, 
-      [ACTIONS.DELETE]: true 
-    },
-    [RESOURCES.CAMBIOS]: { 
-      [ACTIONS.CREATE]: true, 
-      [ACTIONS.READ]: true, 
-      [ACTIONS.UPDATE]: true, 
-      [ACTIONS.DELETE]: true 
-    },
-    [RESOURCES.SANCIONES]: { 
-      [ACTIONS.CREATE]: true, 
-      [ACTIONS.READ]: true, 
-      [ACTIONS.UPDATE]: true, 
-      [ACTIONS.DELETE]: true 
-    },
-    [RESOURCES.CATEGORIAS]: { 
-      [ACTIONS.CREATE]: true, 
-      [ACTIONS.READ]: true, 
-      [ACTIONS.UPDATE]: true, 
-      [ACTIONS.DELETE]: true 
-    },
-    [RESOURCES.SUCURSALES]: { 
-      [ACTIONS.CREATE]: true, 
-      [ACTIONS.READ]: true, 
-      [ACTIONS.UPDATE]: true, 
-      [ACTIONS.DELETE]: true 
-    },
-    [RESOURCES.CONFIGURACION]: { 
-      [ACTIONS.CREATE]: true, 
-      [ACTIONS.READ]: true, 
-      [ACTIONS.UPDATE]: true, 
-      [ACTIONS.DELETE]: true 
-    }
-  },
-
-  [ROLES.RRHH]: {
+  [ROLE_IDS.RRHH]: {
     [RESOURCES.EMPLEADOS]: { 
       [ACTIONS.CREATE]: true, 
       [ACTIONS.READ]: true, 
@@ -215,8 +165,7 @@ export const PERMISSIONS = {
       [ACTIONS.DELETE]: false 
     }
   },
-
-  [ROLES.EMPLOYEE]: {
+  [ROLE_IDS.EMPLOYEE]: {
     [RESOURCES.EMPLEADOS]: { 
       [ACTIONS.CREATE]: false, 
       [ACTIONS.READ]: true, 
@@ -237,6 +186,62 @@ export const PERMISSIONS = {
     },
     [RESOURCES.FALTAS]: { 
       [ACTIONS.CREATE]: true, 
+      [ACTIONS.READ]: true, 
+      [ACTIONS.UPDATE]: false, 
+      [ACTIONS.DELETE]: false 
+    },
+    [RESOURCES.CAMBIOS]: { 
+      [ACTIONS.CREATE]: false, 
+      [ACTIONS.READ]: false, 
+      [ACTIONS.UPDATE]: false, 
+      [ACTIONS.DELETE]: false 
+    },
+    [RESOURCES.SANCIONES]: { 
+      [ACTIONS.CREATE]: false, 
+      [ACTIONS.READ]: false, 
+      [ACTIONS.UPDATE]: false, 
+      [ACTIONS.DELETE]: false 
+    },
+    [RESOURCES.CATEGORIAS]: { 
+      [ACTIONS.CREATE]: false, 
+      [ACTIONS.READ]: true, 
+      [ACTIONS.UPDATE]: false, 
+      [ACTIONS.DELETE]: false 
+    },
+    [RESOURCES.SUCURSALES]: { 
+      [ACTIONS.CREATE]: false, 
+      [ACTIONS.READ]: true, 
+      [ACTIONS.UPDATE]: false, 
+      [ACTIONS.DELETE]: false 
+    },
+    [RESOURCES.CONFIGURACION]: { 
+      [ACTIONS.CREATE]: false, 
+      [ACTIONS.READ]: true, 
+      [ACTIONS.UPDATE]: false, 
+      [ACTIONS.DELETE]: false 
+    }
+  },
+  [ROLE_IDS.AUDITOR]: {
+    [RESOURCES.EMPLEADOS]: { 
+      [ACTIONS.CREATE]: false, 
+      [ACTIONS.READ]: true, 
+      [ACTIONS.UPDATE]: false, 
+      [ACTIONS.DELETE]: false 
+    },
+    [RESOURCES.VACACIONES]: { 
+      [ACTIONS.CREATE]: false, 
+      [ACTIONS.READ]: true, 
+      [ACTIONS.UPDATE]: false, 
+      [ACTIONS.DELETE]: false 
+    },
+    [RESOURCES.LICENCIAS]: { 
+      [ACTIONS.CREATE]: false, 
+      [ACTIONS.READ]: true, 
+      [ACTIONS.UPDATE]: false, 
+      [ACTIONS.DELETE]: false 
+    },
+    [RESOURCES.FALTAS]: { 
+      [ACTIONS.CREATE]: false, 
       [ACTIONS.READ]: true, 
       [ACTIONS.UPDATE]: false, 
       [ACTIONS.DELETE]: false 
@@ -280,7 +285,7 @@ export const PERMISSIONS = {
 
 /**
  * Verifica si un rol tiene permiso para una acción en un recurso
- * @param {string} role - Rol del usuario (ROLES.RRHH, ROLES.EMPLOYEE, etc)
+ * @param {number} role - Rol del usuario (ROLE_IDS.RRHH, ROLE_IDS.EMPLOYEE, etc)
  * @param {string} resource - Recurso (RESOURCES.EMPLEADOS, etc)
  * @param {string} action - Acción (ACTIONS.CREATE, ACTIONS.READ, etc)
  * @returns {boolean}
@@ -299,7 +304,7 @@ export function hasPermission(role, resource, action) {
 
 /**
  * Verifica si un rol puede hacer cualquier operación de escritura (CUD)
- * @param {string} role - Rol del usuario
+ * @param {number} role - Rol del usuario
  * @param {string} resource - Recurso
  * @returns {boolean}
  */
@@ -313,7 +318,7 @@ export function canWrite(role, resource) {
 
 /**
  * Obtiene todos los permisos de un rol para un recurso
- * @param {string} role - Rol del usuario
+ * @param {number} role - Rol del usuario
  * @param {string} resource - Recurso
  * @returns {Object} { create: boolean, read: boolean, update: boolean, delete: boolean }
  */

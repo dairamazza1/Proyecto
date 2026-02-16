@@ -19,8 +19,8 @@ function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { themeStyle } = useThemeStore();
   const { pathname } = useLocation();
-  const { userRole } = usePermissions();
-  const canSeeNotifications = ["admin", "rrhh"].includes(userRole);
+  const { canRead } = usePermissions();
+  const canSeeNotifications = canRead("notificaciones");
   const { data: unreadCount = 0 } = useNotificationsUnreadCount(
     { limit: 500 },
     canSeeNotifications

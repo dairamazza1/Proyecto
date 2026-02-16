@@ -7,6 +7,7 @@ import {
   getEmpleadoByPerfil,
   getPerfilActual,
 } from "../index";
+import { ROLE_IDS } from "../utils/permissions";
 
 export function Home() {
   const { user } = UserAuth();
@@ -39,10 +40,10 @@ export function Home() {
     }`.trim();
     if (fullName) return fullName;
 
-    if(perfil?.app_role == "admin"){
+    if (perfil?.app_role_id === ROLE_IDS.ADMIN) {
       return "usuario Administrador"
     }
-    if((perfil?.app_role == "rrhh" && !fullName )){
+    if (perfil?.app_role_id === ROLE_IDS.RRHH && !fullName) {
       return "usuario de Recursos Humanos"
     }
 
