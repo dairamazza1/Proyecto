@@ -255,6 +255,7 @@ export const useAuthStore = create((set, get) => ({
     if (raw === "manana") return "manana";
     if (raw === "tarde") return "tarde";
     if (raw === "noche") return "noche";
+    if (raw === "rotativo") return "manana";
     return "manana";
   },
 

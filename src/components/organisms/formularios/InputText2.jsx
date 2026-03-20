@@ -31,7 +31,7 @@ const Container = styled.div`
     border-radius: 15px;
     font-family: inherit;
     outline: 0;
-    font-size: 17px;
+    font-size: 16px;
     color: ${(props) => props.theme.text};
     padding: 12px;
     background: inherit;
@@ -56,7 +56,7 @@ const Container = styled.div`
     color: ${({ theme }) => theme.text};
   }
   .form__field:placeholder-shown ~ .form__label {
-    font-size: 17px;
+    font-size: 16px;
     cursor: text;
   }
 

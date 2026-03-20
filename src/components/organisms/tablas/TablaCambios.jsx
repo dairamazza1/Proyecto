@@ -27,6 +27,7 @@ const shiftValues = {
   manana: "Mañana",
   tarde: "Tarde",
   noche: "Noche",
+  rotativo: "Rotativo",
 };
 
 const formatStatus = (value) =>

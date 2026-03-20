@@ -69,7 +69,7 @@ export function NotificacionesSection() {
 
       const tab = typeTabs[item.type] || "vacaciones";      
       if (item.empleado_id) {
-        navigate(`/empleado/${item.empleado_id}?tab=${tab}`);
+        navigate(`/empleados/${item.empleado_id}?tab=${tab}`);
       }
     },
     [markReadMutation, navigate, profile?.id]

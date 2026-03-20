@@ -132,6 +132,10 @@ export function EnfermeriaTemplate() {
       return Array.from(new Set(normalized));
     }
 
+    if (normalizeShiftValue(empleado?.shift) === "rotativo") {
+      return ALL_SHIFTS;
+    }
+
     const fallback = defaultTabFromShift(empleado?.shift);
     return fallback ? [fallback] : [];
   }, [

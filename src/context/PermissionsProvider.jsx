@@ -1,9 +1,11 @@
-import { createContext, useContext, useMemo } from "react";
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "../supabase/supabase.config.jsx";
 import { useAuthStore } from "./AuthStoreWithPermissions.jsx";
-
-const PermissionsContext = createContext(null);
+import {
+  computeEffectivePermission,
+  fetchPermissions,
+} from "../supabase/crudPermisos.jsx";
+import { PermissionsContext } from "./permissionsContext.jsx";
 
 const emptyPermission = {
   can_view: false,
@@ -11,6 +13,9 @@ const emptyPermission = {
   can_update: false,
   can_delete: false,
   can_validate: false,
+  source: "none",
+  inherited: false,
+  row: null,
 };
 
 const normalizeAction = (action) => {
@@ -20,25 +25,28 @@ const normalizeAction = (action) => {
   return normalized;
 };
 
-const buildPermissionsMap = (rows, puestoId) => {
+const buildPermissionsMap = (rows, roleId, puestoId) => {
   const map = new Map();
+  const featureIds = [
+    ...new Set(
+      (rows ?? [])
+        .map((row) => Number(row?.feature_id))
+        .filter((value) => Number.isFinite(value))
+    ),
+  ];
 
-  (rows ?? []).forEach((row) => {
-    const featureName = row?.feature?.name;
+  featureIds.forEach((featureId) => {
+    const featureRow = (rows ?? []).find(
+      (row) => Number(row?.feature_id) === featureId
+    );
+    const featureName = featureRow?.feature?.name;
     if (!featureName) return;
 
-    const existing = map.get(featureName);
-    const isSpecific = row.puesto_id !== null && row.puesto_id !== undefined;
-    const isMatchPuesto = isSpecific && row.puesto_id === puestoId;
-
-    if (!existing) {
-      map.set(featureName, row);
-      return;
-    }
-
-    if (isMatchPuesto) {
-      map.set(featureName, row);
-    }
+    const effective = computeEffectivePermission(roleId, featureId, puestoId, rows);
+    map.set(featureName, {
+      feature_id: featureId,
+      ...effective,
+    });
   });
 
   return map;
@@ -53,46 +61,28 @@ export function PermissionsProvider({ children }) {
   const puestoId =
     typeof empleado?.puesto_id === "number" ? empleado.puesto_id : null;
 
-  const { data, isLoading, error } = useQuery({
+  const {
+    data,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: ["permissions", roleId, puestoId],
     enabled: Boolean(roleId),
-    queryFn: async () => {
-      let query = supabase
-        .from("funcionalidades_roles")
-        .select(
-          `
-          id,
-          app_role_id,
-          puesto_id,
-          can_view,
-          can_create,
-          can_update,
-          can_delete,
-          can_validate,
-          feature:funcionalidades(name)
-        `
-        )
-        .eq("app_role_id", roleId);
-
-      if (puestoId === null) {
-        query = query.is("puesto_id", null);
-      } else {
-        query = query.or(`puesto_id.is.null,puesto_id.eq.${puestoId}`);
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-      return data ?? [];
-    },
+    queryFn: async () =>
+      fetchPermissions({
+        roleId,
+        puestoId,
+        includeGeneralFallback: puestoId !== null,
+      }),
     staleTime: 1000 * 60 * 5,
     cacheTime: 1000 * 60 * 10,
     refetchOnWindowFocus: false,
   });
 
   const permissionsMap = useMemo(
-    () => buildPermissionsMap(data, puestoId),
-    [data, puestoId]
+    () => buildPermissionsMap(data, roleId, puestoId),
+    [data, roleId, puestoId]
   );
 
   const can = (feature, action = "view") => {
@@ -102,15 +92,15 @@ export function PermissionsProvider({ children }) {
     if (!entry) return false;
     if (normalizedAction === "view") return Boolean(entry.can_view);
     if (normalizedAction === "create") return Boolean(entry.can_create);
-  if (normalizedAction === "update") return Boolean(entry.can_update);
-  if (normalizedAction === "delete") return Boolean(entry.can_delete);
+    if (normalizedAction === "update") return Boolean(entry.can_update);
+    if (normalizedAction === "delete") return Boolean(entry.can_delete);
     if (normalizedAction === "validate") return Boolean(entry.can_validate);
     return false;
   };
 
   const getPermissions = (feature) => {
     if (!feature) return emptyPermission;
-      return permissionsMap.get(feature) ?? emptyPermission;
+    return permissionsMap.get(feature) ?? emptyPermission;
   };
 
   const value = {
@@ -121,6 +111,8 @@ export function PermissionsProvider({ children }) {
     error,
     can,
     getPermissions,
+    refreshPermissions: refetch,
+    rawPermissionsRows: data ?? [],
   };
 
   return (
@@ -128,8 +120,4 @@ export function PermissionsProvider({ children }) {
       {children}
     </PermissionsContext.Provider>
   );
-}
-
-export function usePermissionsContext() {
-  return useContext(PermissionsContext);
 }

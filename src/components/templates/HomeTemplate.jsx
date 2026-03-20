@@ -8,6 +8,7 @@ export function HomeTemplate({ displayName = "Usuario" }) {
   const isNurse = isNurseEmployee();
   const canSeeEnfermeria = canRead("enfermeria");
   const canSeeEmpleados = canRead("empleados");
+  const canSeePacientes = canRead("pacientes");
   const canSeeReportes = canRead("reportes");
 
   const cards = useMemo(() => {
@@ -19,6 +20,15 @@ export function HomeTemplate({ displayName = "Usuario" }) {
         description: "Gestiona los perfiles de los empleados.",
         to: "/empleados",
         icon: v.iconoempresa,
+      });
+    }
+
+    if (canSeePacientes) {
+      baseCards.push({
+        title: "Pacientes",
+        description: "Gestiona ingresos y seguimiento de pacientes.",
+        to: "/pacientes",
+        icon: v.iconoUser,
       });
     }
 
@@ -52,13 +62,14 @@ export function HomeTemplate({ displayName = "Usuario" }) {
       icon: v.iconoProfesional,
     };
 
-    if (!canSeeEmpleados && !canSeeReportes) {
+    if (!canSeeEmpleados && !canSeePacientes && !canSeeReportes) {
       return [enfermeriaCard, ...baseCards];
     }
 
     return [baseCards[0], enfermeriaCard, ...baseCards.slice(1)];
   }, [
     canSeeEmpleados,
+    canSeePacientes,
     canSeeReportes,
     canSeeEnfermeria,
     isNurse,

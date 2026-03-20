@@ -15,13 +15,14 @@ import { supabase } from "../../supabase/supabase.config.jsx";
 
 export function ConfigurationTemplate() {
   const navigate = useNavigate();
-  const { canCreate } = usePermissions();
+  const { canCreate, canRead } = usePermissions();
   const { cerrarSesion } = useAuthStore();
   const user = useAuthStore((state) => state.user);
   const email = user?.email || "";
   const [isPasswordModalOpen, setPasswordModalOpen] = useState(false);
 
   const canInvite = canCreate("empleados");
+  const canSeePermisos = canRead("permisos");
   const cards = [
     ...(canInvite
       ? [
@@ -30,6 +31,16 @@ export function ConfigurationTemplate() {
             description: "Invita empleados por email y revisa su estado.",
             to: "/configuracion/invitaciones",
             icon: v.iconoagregar,
+          },
+        ]
+      : []),
+    ...(canSeePermisos
+      ? [
+          {
+            title: "Permisos",
+            description: "Actualiza los permisos de las funcionalidades",
+            to: "/permisos",
+            icon: v.iconoSettings,
           },
         ]
       : []),

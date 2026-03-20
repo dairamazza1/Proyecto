@@ -478,9 +478,10 @@ function formatAge(value) {
 function formatShift(value) {
   if (!value) return '-';
   const raw = String(value).trim().toLowerCase();
-  if (raw === 'manana') return 'Manaña';
+  if (raw === 'manana') return 'Mañana';
   if (raw === 'tarde') return 'Tarde';
   if (raw === 'noche') return 'Noche';
+  if (raw === 'rotativo') return 'Rotativo';
   return value;
 }
 

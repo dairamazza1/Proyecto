@@ -8,11 +8,14 @@ import {
   Enfermeria,
   InvitacionesConfig,
   Login,
+  Paciente,
+  Pacientes,
   Perfil,
   Reportes,
   Register,
   SetPassword,
   Notificaciones,
+  Permisos,
   ProtectedRoute,
   ProtectedByPermission,
   RegistrarEmpleados,
@@ -77,6 +80,18 @@ export function MyRoutes() {
             </ProtectedByPermission>
           }
         />
+        <Route
+          path="/permisos"
+          element={
+            <ProtectedByPermission
+              resource={FEATURES.PERMISOS}
+              action="view"
+              redirectTo="/configuracion"
+            >
+              <Permisos />
+            </ProtectedByPermission>
+          }
+        />
         <Route path="/ConfiguraciÃ³n" element={<Configurations />} />
 
         <Route
@@ -116,14 +131,26 @@ export function MyRoutes() {
           }
         />
         <Route
-          path="/empleado/:id"
+          path="/pacientes"
           element={
             <ProtectedByPermission
-              resource={FEATURES.EMPLEADOS}
+              resource={FEATURES.PACIENTES}
               action="view"
               redirectTo="/perfil"
             >
-              <Empleado />
+              <Pacientes />
+            </ProtectedByPermission>
+          }
+        />
+        <Route
+          path="/paciente/:id"
+          element={
+            <ProtectedByPermission
+              resource={FEATURES.PACIENTES}
+              action="view"
+              redirectTo="/perfil"
+            >
+              <Paciente />
             </ProtectedByPermission>
           }
         />

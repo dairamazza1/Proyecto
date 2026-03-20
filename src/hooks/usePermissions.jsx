@@ -1,5 +1,6 @@
+import { useContext } from "react";
 import { useAuthStore } from "../context/AuthStoreWithPermissions";
-import { usePermissionsContext } from "../context/PermissionsProvider";
+import { PermissionsContext } from "../context/permissionsContext.jsx";
 import { FEATURE_ALIASES } from "../utils/features";
 import { ROLE_IDS } from "../utils/permissions";
 
@@ -30,7 +31,7 @@ export function usePermissions() {
   // Suscribirse a profile para que se actualice cuando cambie el usuario
   const profile = useAuthStore((state) => state.profile);
   const empleado = useAuthStore((state) => state.empleado);
-  const permissionsContext = usePermissionsContext();
+  const permissionsContext = useContext(PermissionsContext);
 
   // Calcular el rol directamente desde profile para asegurar reactividad
   const userRoleId =
@@ -169,6 +170,9 @@ export function usePermissions() {
         can_update: false,
         can_delete: false,
         can_validate: false,
+        source: "none",
+        inherited: false,
+        row: null,
       },
 
     /**
@@ -220,5 +224,7 @@ export function usePermissions() {
 
     permissionsLoading: permissionsContext?.isLoading ?? false,
     permissionsError: permissionsContext?.error ?? null,
+    refreshPermissions:
+      permissionsContext?.refreshPermissions ?? (async () => null),
   };
 }

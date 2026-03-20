@@ -203,6 +203,7 @@ const Container = styled.div`
         transition: 0.3s ease-in-out;
         opacity: 1;
         display: initial;
+        text-transform: none;
       }
       .label_oculto {
         opacity: 0;

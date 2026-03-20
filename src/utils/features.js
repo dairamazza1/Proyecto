@@ -11,6 +11,9 @@ export const FEATURES = {
   REPORTES: "reportes",
   PACIENTES: "pacientes",
   FARMACOS: "farmacos",
+  INDICACIONES: "indicaciones",
+  EVOLUCION: "evolucion",
+  PERMISOS: "permisos",
 };
 
 export const FEATURE_ALIASES = {

@@ -42,17 +42,12 @@ export const LinksArray = [
     to: "/",
     feature: FEATURES.PERFIL,
   },
+  
   {
-    label: "Empleados",
-    icon: "streamline-flex:office-building-1",
-    to: "/empleados",
-    feature: FEATURES.EMPLEADOS,
-  },
-  {
-    label: "Reportes",
-    icon: "streamline-flex:new-sticky-note",
-    to: "/reportes",
-    feature: FEATURES.REPORTES,
+    label: "Pacientes",
+    icon: "fontisto:bed-patient",
+    to: "/pacientes",
+    feature: FEATURES.PACIENTES,
   },
   {
     label: "Enfermeria",
@@ -60,6 +55,19 @@ export const LinksArray = [
     to: "/enfermeria",
     feature: FEATURES.ENFERMERIA,
   },
+  {
+    label: "Empleados",
+    icon: "streamline-plump:office-worker",
+    to: "/empleados",
+    feature: FEATURES.EMPLEADOS,
+  },
+  {
+    label: "Reportes",
+    icon: "carbon:report",
+    to: "/reportes",
+    feature: FEATURES.REPORTES,
+  },
+  
 ];
 export const SecondarylinksArray = [
   {

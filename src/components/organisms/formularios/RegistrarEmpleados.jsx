@@ -5,6 +5,7 @@ import { Device, DeviceMax } from "../../../styles/breakpoints";
 import {
   InputText,
   Btn1,
+  EmergencyContactsSection,
   Spinner1,
   useCompanyStore,
   useEmpleadosStore,
@@ -17,10 +18,17 @@ import {
   checkEmpleadoDuplicate,
   upsertSucursalEmpleado,
 } from "../../../index";
-import { useForm } from "react-hook-form";
+import { useFieldArray, useForm } from "react-hook-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Swal from "sweetalert2";
 import { useNavigate } from "react-router-dom";
+import {
+  getEmpleadoContactosEmergenciaByEmpleadoId,
+  syncEmpleadoContactosEmergencia,
+} from "../../../supabase/crudContactosEmergencia";
+import { createEmptyEmergencyContact } from "../../../utils/contactosEmergencia";
+
+const EMPTY_ARRAY = [];
 
 export function RegistrarEmpleados({
   mode = "create",
@@ -110,7 +118,20 @@ export function RegistrarEmpleados({
   });
 
   const {
+    data: dataContactosEmergencia,
+    isLoading: loadingContactosEmergencia,
+  } = useQuery({
+    queryKey: ["empleadoContactosEmergencia", empleadoId],
+    queryFn: () => getEmpleadoContactosEmergenciaByEmpleadoId(empleadoId),
+    enabled: Boolean(isEdit && empleadoId),
+    refetchOnWindowFocus: false,
+  });
+
+  const dataContactosEmergenciaRows = dataContactosEmergencia ?? EMPTY_ARRAY;
+
+  const {
     register,
+    control,
     formState: { errors },
     handleSubmit,
     reset,
@@ -124,7 +145,18 @@ export function RegistrarEmpleados({
       birthday: "",
       genre: "",
       shift: "",
+      emergency_contacts: [createEmptyEmergencyContact("empleado")],
     },
+  });
+
+  const {
+    fields: emergencyContacts,
+    append: appendEmergencyContact,
+    remove: removeEmergencyContact,
+    replace: replaceEmergencyContacts,
+  } = useFieldArray({
+    control,
+    name: "emergency_contacts",
   });
 
   const areaId = watch("area_id");
@@ -209,8 +241,28 @@ export function RegistrarEmpleados({
       hire_date: empleado.hire_date ?? "",
       is_active: empleado.is_active ? "true" : "false",
       termination_date: empleado.termination_date ?? "",
+      emergency_contacts: [createEmptyEmergencyContact("empleado")],
     });
   }, [empleado, isEdit, reset, sucursalEmpleado]);
+
+  useEffect(() => {
+    if (!isEdit || !empleadoId) {
+      replaceEmergencyContacts([createEmptyEmergencyContact("empleado")]);
+      return;
+    }
+
+    const mapped = dataContactosEmergenciaRows.map((row) => ({
+      id: row?.id ?? undefined,
+      name: row?.name ?? "",
+      telephone: row?.telephone ?? "",
+      vinculo: row?.vinculo ?? "",
+      relative: row?.relative ?? "",
+    }));
+
+    replaceEmergencyContacts(
+      mapped.length ? mapped : [createEmptyEmergencyContact("empleado")]
+    );
+  }, [isEdit, empleadoId, dataContactosEmergenciaRows, replaceEmergencyContacts]);
 
   useEffect(() => {
     if (!isEdit || areaId || !puestoInfo?.id_area) return;
@@ -240,8 +292,13 @@ export function RegistrarEmpleados({
     onSuccess: handleMutationSuccess(
       "Empleado registrado",
       "Se registro el empleado correctamente.",
-      () => {
+      (data) => {
         queryClient.invalidateQueries({ queryKey: ["empleados"] });
+        if (data?.id) {
+          queryClient.invalidateQueries({
+            queryKey: ["empleadoContactosEmergencia", data.id],
+          });
+        }
         reset();
         if (onClose) {
           onClose();
@@ -262,6 +319,9 @@ export function RegistrarEmpleados({
       (data) => {
         queryClient.invalidateQueries({ queryKey: ["empleado", empleadoId] });
         queryClient.invalidateQueries({ queryKey: ["empleados"] });
+        queryClient.invalidateQueries({
+          queryKey: ["empleadoContactosEmergencia", empleadoId],
+        });
         queryClient.invalidateQueries({
           queryKey: ["sucursalEmpleado", empleadoId],
         });
@@ -326,6 +386,13 @@ export function RegistrarEmpleados({
       });
     }
 
+    if (empleadoCreado?.id) {
+      await syncEmpleadoContactosEmergencia({
+        empleadoId: empleadoCreado.id,
+        contacts: data.emergency_contacts ?? [],
+      });
+    }
+
     return empleadoCreado;
   }
 
@@ -376,6 +443,13 @@ export function RegistrarEmpleados({
       await upsertSucursalEmpleado({
         empleado_id: empleadoActualizado.id,
         sucursal_id: parseInt(data.sucursal_id, 10),
+      });
+    }
+
+    if (empleadoActualizado?.id) {
+      await syncEmpleadoContactosEmergencia({
+        empleadoId: empleadoActualizado.id,
+        contacts: data.emergency_contacts ?? [],
       });
     }
 
@@ -680,6 +754,7 @@ export function RegistrarEmpleados({
                   <option value="manana">Mañana</option>
                   <option value="tarde">Tarde</option>
                   <option value="noche">Noche</option>
+                  <option value="rotativo">Rotativo</option>
                 </select>
                 <label className="form__label">Turno</label>
                 {errors.shift?.message && <p>{errors.shift.message}</p>}
@@ -756,6 +831,24 @@ export function RegistrarEmpleados({
                 <label className="form__label">Fecha ingreso</label>
               </InputText>
             </article>
+
+            <div className="fullRow">
+              <EmergencyContactsSection
+                control={control}
+                register={register}
+                errors={errors}
+                fields={emergencyContacts}
+                append={appendEmergencyContact}
+                remove={removeEmergencyContact}
+                name="emergency_contacts"
+                variant="empleado"
+                helperText={
+                  loadingContactosEmergencia && isEdit
+                    ? "Cargando contactos de emergencia..."
+                    : "Contactos de emergencia (puede agregar mas de uno)"
+                }
+              />
+            </div>
 
             <div className="acciones">
               <Btn1
@@ -894,6 +987,11 @@ const Container = styled.div`
 
         @media ${Device.tablet} {
           gap: 20px 24px;
+        }
+
+        .fullRow {
+          grid-column: 1 / -1;
+          min-width: 0;
         }
       }
     }

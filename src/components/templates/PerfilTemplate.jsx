@@ -392,5 +392,6 @@ function formatShift(value) {
   if (raw === "manana") return "Mañana";
   if (raw === "tarde") return "Tarde";
   if (raw === "noche") return "Noche";
+  if (raw === "rotativo") return "Rotativo";
   return value;
 }

@@ -70,6 +70,7 @@ const createTheme = (mode) => {
 
     // Semánticos de estado (por ahora mantenemos los existentes, pero centralizados)
     "--color-danger": "#F54E41",
+    "--color-danger-action": "#D95C52",
     "--color-success": "#53B257",
     "--color-warning": "#FFC107",
 

@@ -15,7 +15,7 @@ const Container = styled.div`
   align-items: center;
   gap: 10px;
   p {
-    color: #5396AC;
+    color: #5396ac;
   }
   .form__group {
     position: relative;
@@ -27,9 +27,8 @@ const Container = styled.div`
   input:-webkit-autofill:focus,
   input:-webkit-autofill:active {
     -webkit-background-clip: text;
-    -webkit-text-fill-color: ${(props)=>props.theme.text};
+    -webkit-text-fill-color: ${(props) => props.theme.text};
     transition: background-color 5000s ease-in-out 0s;
-    
   }
   .form__field {
     font-family: inherit;
@@ -37,18 +36,17 @@ const Container = styled.div`
     border: none;
     border-bottom: 2px solid #9b9b9b;
     outline: 0;
-    font-size: 17px;
-    color: ${(props)=>props.theme.text};
+    font-size: 16px;
+    color: ${(props) => props.theme.text};
     padding: 7px 0;
     background: transparent;
     transition: border-color 0.2s;
-    &.disabled{
+    &.disabled {
       color: #696969;
       background: #2d2d2d;
-      border-radius:8px;
-      margin-top:8px;
+      border-radius: 8px;
+      margin-top: 8px;
       border-bottom: 1px dashed #656565;
-
     }
   }
 
@@ -67,7 +65,7 @@ const Container = styled.div`
   }
 
   .form__field:placeholder-shown ~ .form__label {
-    font-size: 17px;
+    font-size: 16px;
     cursor: text;
     top: 20px;
   }
@@ -77,7 +75,7 @@ const Container = styled.div`
     top: 0;
     display: block;
     transition: 0.2s;
-    font-size: 17px;
+    font-size: 16px;
     color: #9b9b9b;
     pointer-events: none;
   }
@@ -93,7 +91,7 @@ const Container = styled.div`
 
   .form__label .label-link {
     pointer-events: auto;
-    font-size: 0.70em;
+    font-size: 0.7em;
     color: ${({ theme }) => theme.color1};
     text-decoration: underline;
     text-underline-offset: 2px;
@@ -103,7 +101,7 @@ const Container = styled.div`
     padding-bottom: 6px;
     font-weight: 700;
     border-width: 1px;
-    border-image: linear-gradient(to right, #5396AC, #377b92);
+    border-image: linear-gradient(to right, #5396ac, #377b92);
     border-image-slice: 1;
   }
 
@@ -112,15 +110,13 @@ const Container = styled.div`
     top: 0;
     display: block;
     transition: 0.2s;
-    font-size: 17px;
-    color: #5396AC;
+    font-size: 16px;
+    color: #5396ac;
     font-weight: 700;
   }
 
-  
   .form__field:required,
   .form__field:invalid {
     box-shadow: none;
   }
- 
-`; 
+`;

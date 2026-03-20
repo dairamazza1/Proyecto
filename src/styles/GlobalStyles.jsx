@@ -47,6 +47,7 @@ export const GlobalStyles = createGlobalStyle`
         --color-accent-soft: ${({ theme }) => theme.vars?.["--color-accent-soft"]};
 
         --color-danger: ${({ theme }) => theme.vars?.["--color-danger"]};
+        --color-danger-action: ${({ theme }) => theme.vars?.["--color-danger-action"]};
         --color-success: ${({ theme }) => theme.vars?.["--color-success"]};
         --color-warning: ${({ theme }) => theme.vars?.["--color-warning"]};
 
@@ -72,7 +73,11 @@ export const GlobalStyles = createGlobalStyle`
         padding: 0;
         background: ${({theme})=>theme.bgtotal};
         color: ${({theme})=>theme.text};
-        font-family: "Poppins", sans-serif;
+        font-family: "Calibri", "Carlito", sans-serif;
+    }
+
+    button, input, textarea, select{
+        font-family: "Calibri", "Carlito", sans-serif;
     }
 
     .swal2-container{

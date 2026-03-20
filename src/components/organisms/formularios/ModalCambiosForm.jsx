@@ -165,6 +165,7 @@ export function ModalCambiosForm({ empleadoId, cambio, onClose }) {
                     <option value="manana">Mañana</option>
                     <option value="tarde">Tarde</option>
                     <option value="noche">Noche</option>
+                    <option value="rotativo">Rotativo</option>
                   </select>
                   <label className="form__label">Turno anterior</label>
                   {errors.previous_schedule?.message && (
@@ -192,6 +193,7 @@ export function ModalCambiosForm({ empleadoId, cambio, onClose }) {
                     <option value="manana">Mañana</option>
                     <option value="tarde">Tarde</option>
                     <option value="noche">Noche</option>
+                    <option value="rotativo">Rotativo</option>
                   </select>
                   <label className="form__label">Turno nuevo</label>
                   {errors.new_schedule?.message && (
