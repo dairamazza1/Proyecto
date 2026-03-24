@@ -1,5 +1,5 @@
 import styled from "styled-components";
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   CambiosSection,
   FaltasSection,
@@ -19,14 +19,11 @@ export function PerfilTemplate({ perfil, empleado, displayName, userEmail }) {
   const canSeeSanciones = canRead("sanciones");
   const isReadOnly = !canUpdate("empleados");
 
-  useEffect(() => {
-    if (
-      !canSeeCambios &&
-      (activeTab === "sanciones" || activeTab === "cambios")
-    ) {
-      setActiveTab("vacaciones");
-    }
-  }, [canSeeCambios, activeTab]);
+  const currentTab = useMemo(() => {
+    if (activeTab === "cambios" && !canSeeCambios) return "vacaciones";
+    if (activeTab === "sanciones" && !canSeeSanciones) return "vacaciones";
+    return activeTab;
+  }, [activeTab, canSeeCambios, canSeeSanciones]);
 
   const email = perfil?.email || userEmail || "";
   const emailLabel = email || "-";
@@ -46,7 +43,6 @@ export function PerfilTemplate({ perfil, empleado, displayName, userEmail }) {
     : "-";
   const hireDate = formatDate(empleado?.hire_date);
   const terminationDate = formatDate(empleado?.termination_date);
-  const statusLabel = empleado?.is_active ? "Activo" : "Inactivo";
   const shiftLabel = formatShift(empleado?.shift);
 
   return (
@@ -144,21 +140,21 @@ export function PerfilTemplate({ perfil, empleado, displayName, userEmail }) {
 
           <Tabs>
             <button
-              className={`tab ${activeTab === "vacaciones" ? "active" : ""}`}
+              className={`tab ${currentTab === "vacaciones" ? "active" : ""}`}
               type="button"
               onClick={() => setActiveTab("vacaciones")}
             >
               Vacaciones
             </button>
             <button
-              className={`tab ${activeTab === "faltas" ? "active" : ""}`}
+              className={`tab ${currentTab === "faltas" ? "active" : ""}`}
               type="button"
               onClick={() => setActiveTab("faltas")}
             >
               Faltas
             </button>
             <button
-              className={`tab ${activeTab === "licencias" ? "active" : ""}`}
+              className={`tab ${currentTab === "licencias" ? "active" : ""}`}
               type="button"
               onClick={() => setActiveTab("licencias")}
             >
@@ -167,7 +163,7 @@ export function PerfilTemplate({ perfil, empleado, displayName, userEmail }) {
 
             {canSeeCambios && (
               <button
-                className={`tab ${activeTab === "cambios" ? "active" : ""}`}
+                className={`tab ${currentTab === "cambios" ? "active" : ""}`}
                 type="button"
                 onClick={() => setActiveTab("cambios")}
               >
@@ -176,7 +172,7 @@ export function PerfilTemplate({ perfil, empleado, displayName, userEmail }) {
             )}
             {canSeeSanciones && (
               <button
-                className={`tab ${activeTab === "sanciones" ? "active" : ""}`}
+                className={`tab ${currentTab === "sanciones" ? "active" : ""}`}
                 type="button"
                 onClick={() => setActiveTab("sanciones")}
               >
@@ -186,7 +182,7 @@ export function PerfilTemplate({ perfil, empleado, displayName, userEmail }) {
           </Tabs>
 
           <ResultsCard>
-            {activeTab === "vacaciones" && (
+            {currentTab === "vacaciones" && (
               <VacacionesSection
                 empleado={empleado}
                 empleadoId={empleado.id}
@@ -194,28 +190,28 @@ export function PerfilTemplate({ perfil, empleado, displayName, userEmail }) {
                 title="Mis vacaciones"
               />
             )}
-            {activeTab === "licencias" && (
+            {currentTab === "licencias" && (
               <LicenciasSection
                 empleadoId={empleado.id}
                 embedded
                 title="Mis licencias"
               />
             )}
-            {activeTab === "faltas" && (
+            {currentTab === "faltas" && (
               <FaltasSection
                 empleadoId={empleado.id}
                 embedded
                 title="Mis faltas"
               />
             )}
-            {activeTab === "cambios" && canSeeCambios && (
+            {currentTab === "cambios" && canSeeCambios && (
               <CambiosSection
                 empleadoId={empleado.id}
                 embedded
                 title="Mis cambios de turnos"
               />
             )}
-            {activeTab === "sanciones" && canSeeSanciones && (
+            {currentTab === "sanciones" && canSeeSanciones && (
               <SancionesSection empleadoId={empleado.id} embedded />
             )}
           </ResultsCard>
@@ -226,23 +222,33 @@ export function PerfilTemplate({ perfil, empleado, displayName, userEmail }) {
 }
 
 const Container = styled.div`
+  width: 100%;
+  min-width: 0;
   min-height: calc(100dvh - 30px);
-  padding: 20px 22px 28px;
+  padding: 16px 20px 22px;
   display: grid;
-  gap: 16px;
+  gap: 12px;
+  align-content: start;
+  align-items: start;
   background: ${({ theme }) => theme.bgtotal};
+
+  @media ${DeviceMax.mobile} {
+    padding: 20px 22px 28px;
+    gap: 16px;
+  }
 `;
 
 const Header = styled.header`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
   flex-wrap: wrap;
+  align-self: start;
 
   .titleGroup {
     display: grid;
-    gap: 6px;
+    gap: 4px;
   }
 
   .headerActions {
@@ -259,30 +265,21 @@ const Header = styled.header`
   }
 `;
 
-const StatusPill = styled.span`
-  padding: 8px 16px;
-  border-radius: 999px;
-  font-weight: 600;
-  font-size: 0.9rem;
-  background: var(--bg-success-soft);
-  color: var(--color-success);
-
-  &.inactivo {
-    background: var(--bg-danger-soft);
-    color: var(--color-danger);
-  }
-`;
-
 const InfoCard = styled.section`
   background: ${({ theme }) => theme.bg};
   border-radius: 18px;
-  padding: 20px 24px;
+  padding: 14px 16px;
   box-shadow: var(--shadow-elev-1);
+  display: grid;
+  gap: 8px;
+  align-self: start;
+  align-content: start;
+  height: fit-content;
 `;
 
 const InfoGrid = styled.div`
   display: grid;
-  gap: 16px 24px;
+  gap: 14px 22px;
   grid-template-columns: repeat(1, minmax(0, 1fr));
 
   @media ${Device.mobile} {
@@ -317,8 +314,8 @@ const InfoItem = styled.div`
 
 const Tabs = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 6px;
   align-items: center;
 
   @media ${DeviceMax.mobile} {
@@ -337,11 +334,11 @@ const Tabs = styled.div`
     font-weight: 600;
     cursor: pointer;
     width: 100%;
-    height: 52px;
+    height: 42px;
     min-height: 32px;
     line-height: 1;
     box-sizing: border-box;
-    font-size: 0.85rem;
+    font-size: 0.82rem;
     text-align: center;
   }
 
@@ -355,15 +352,19 @@ const Tabs = styled.div`
 const ResultsCard = styled.section`
   background: ${({ theme }) => theme.bg};
   border-radius: 18px;
-  padding: 20px 24px;
+  padding: 14px 16px;
   box-shadow: var(--shadow-elev-1);
+  display: grid;
+  align-self: start;
+  align-content: start;
+  height: fit-content;
 `;
 
 const InfoBanner = styled.div`
   background: var(--bg-warning-soft);
   border: 1px solid var(--border-warning-soft);
-  border-radius: 8px;
-  padding: 12px 16px;
+  border-radius: 10px;
+  padding: 10px 12px;
   color: ${({ theme }) => theme.text};
   font-size: 0.9rem;
   display: flex;
@@ -372,8 +373,8 @@ const InfoBanner = styled.div`
 `;
 
 const EmptyState = styled.div`
-  padding: 18px;
-  border-radius: 16px;
+  padding: 16px 18px;
+  border-radius: 12px;
   border: 1px dashed ${({ theme }) => theme.color2};
   color: ${({ theme }) => theme.textsecundary};
   text-align: center;

@@ -1,4 +1,4 @@
-import { supabase } from "../index";
+import { supabase } from "./supabase.config.jsx";
 
 
 function applyDateRange(query, field, { fromDate, toDate } = {}) {

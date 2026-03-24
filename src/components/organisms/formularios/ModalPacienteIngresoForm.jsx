@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import styled from "styled-components";
 import { useFieldArray, useForm } from "react-hook-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Swal from "sweetalert2";
 import {
   Btn1,
+  ConvertirCapitalize,
   EmergencyContactsSection,
   Icd10TreeSelect,
   InputText,
@@ -12,13 +13,14 @@ import {
   Spinner1,
 } from "../../../index";
 import {
+  createPacienteConIngreso,
+  createReingresoPaciente,
   getCoberturasFinanciadoresByTipo,
   getCoberturasPlanesByFinanciadorId,
-  insertPaciente,
-  insertPacienteIngreso,
   getPacienteCoberturasByPacienteId,
   resolvePacienteCoberturaByDate,
   searchPacientes,
+  syncPacienteEquipoTratanteByIngreso,
   syncPacienteCoberturaByDate,
   updatePacienteIngreso,
   updatePaciente,
@@ -39,8 +41,10 @@ import {
 } from "../../../utils/pacienteAntecedentes";
 import { Device, DeviceMax } from "../../../styles/breakpoints";
 import { v } from "../../../styles/variables";
+import { PacienteEquipoTratanteSection } from "./PacienteEquipoTratanteSection";
 
 const OTHER_DIAGNOSIS_CODE = "OTHER";
+const ADMINISSION_TYPE_OPTIONS = ["Voluntario", "Involuntario"];
 
 const defaultEmergencyContact = () => createEmptyEmergencyContact("paciente");
 const getCurrentDateTimeInput = () => {
@@ -82,6 +86,7 @@ const createDefaultValues = ({ admissionAt } = {}) => ({
   hijos: "",
   emergency_contacts: [defaultEmergencyContact()],
   admission_at: admissionAt || getCurrentDateTimeInput(),
+  adminission_type: "",
   admission_reason_notes: "",
 });
 
@@ -89,6 +94,13 @@ const EMPTY_ARRAY = [];
 
 const safeString = (value) =>
   value === null || value === undefined ? "" : String(value);
+
+const normalizeAdminissionType = (value) => {
+  const normalized = safeString(value).trim().toLowerCase();
+  if (normalized === "voluntario") return "Voluntario";
+  if (normalized === "involuntario") return "Involuntario";
+  return "";
+};
 
 const toDateInput = (value) => {
   if (!value) return "";
@@ -173,20 +185,70 @@ const mapCoverageToFormValues = (coverage) => ({
 const pickPreservedValues = (values) => ({
   admission_at:
     toDateTimeLocalInput(values?.admission_at) || getCurrentDateTimeInput(),
+  adminission_type: normalizeAdminissionType(values?.adminission_type),
   admission_reason_notes: safeString(values?.admission_reason_notes),
   emergency_contacts: [defaultEmergencyContact()],
 });
+const normalizePersonName = (value) => {
+  const trimmed = safeString(value).trim();
+  return trimmed ? ConvertirCapitalize(trimmed) : "";
+};
+
+const normalizeNullableNumber = (value) => {
+  const normalized = safeString(value).trim();
+  if (!normalized) return null;
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const normalizeDateOnly = (value) => {
+  const normalized = safeString(value).trim();
+  if (!normalized) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(normalized)) return normalized;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.valueOf())) return null;
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${parsed.getFullYear()}-${pad(parsed.getMonth() + 1)}-${pad(parsed.getDate())}`;
+};
+
+const buildComparablePacientePayload = ({ paciente, empresaId }) => ({
+  empresa_id: empresaId ?? paciente?.empresa_id ?? null,
+  first_name: normalizePersonName(paciente?.first_name),
+  last_name: normalizePersonName(paciente?.last_name),
+  document_type: safeString(paciente?.document_type).trim() || null,
+  document_number: safeString(paciente?.document_number).trim() || null,
+  birthday: normalizeDateOnly(paciente?.birthday),
+  genre: safeString(paciente?.genre).trim() || null,
+  telephone: safeString(paciente?.telephone).trim() || null,
+  email: safeString(paciente?.email).trim() || null,
+  address: safeString(paciente?.address).trim() || null,
+  localidad: safeString(paciente?.localidad).trim() || null,
+  condition_type: safeString(paciente?.condition_type).trim() || "agudo",
+  estado_civil: safeString(paciente?.estado_civil).trim() || null,
+  convivencia: safeString(paciente?.convivencia).trim() || null,
+  educacion: safeString(paciente?.educacion).trim() || null,
+  alfabetizado:
+    paciente?.alfabetizado === "" || paciente?.alfabetizado === undefined
+      ? null
+      : paciente?.alfabetizado === true || paciente?.alfabetizado === "true",
+  ocupacion: safeString(paciente?.ocupacion).trim() || null,
+  religion: safeString(paciente?.religion).trim() || null,
+  lugar_nacimiento: safeString(paciente?.lugar_nacimiento).trim() || null,
+  hijos: normalizeNullableNumber(paciente?.hijos),
+});
+
+const arePacientePayloadsEqual = (left, right) =>
+  JSON.stringify(left) === JSON.stringify(right);
 
 const buildPacientePayload = ({ data, empresaId }) => {
   const n = (value) => {
     const trimmed = safeString(value).trim();
     return trimmed ? trimmed : null;
   };
-  const hijosRaw = safeString(data.hijos).trim();
   return {
     empresa_id: empresaId,
-    first_name: safeString(data.first_name).trim(),
-    last_name: safeString(data.last_name).trim(),
+    first_name: normalizePersonName(data.first_name),
+    last_name: normalizePersonName(data.last_name),
     document_type: n(data.document_type),
     document_number: n(data.document_number),
     birthday: data.birthday || null,
@@ -206,7 +268,7 @@ const buildPacientePayload = ({ data, empresaId }) => {
     ocupacion: n(data.ocupacion),
     religion: n(data.religion),
     lugar_nacimiento: n(data.lugar_nacimiento),
-    hijos: hijosRaw === "" ? null : Number(hijosRaw),
+    hijos: normalizeNullableNumber(data.hijos),
   };
 };
 
@@ -335,6 +397,7 @@ function AccordionPanel({ title, isOpen, onToggle, subtitle, children }) {
 
 export function ModalPacienteIngresoForm({
   empresaId,
+  sucursalId = null,
   onClose,
   pacientePreselected = null,
   mode = "admission",
@@ -359,11 +422,13 @@ export function ModalPacienteIngresoForm({
   const [otherDiagnosis, setOtherDiagnosis] = useState("");
   const [diagnosisError, setDiagnosisError] = useState("");
   const [coveragePrefillTarget, setCoveragePrefillTarget] = useState(null);
+  const [selectedTeamMembers, setSelectedTeamMembers] = useState([]);
   const [expandedPanels, setExpandedPanels] = useState({
     coverage: true,
     patientData: true,
     emergencyContact: true,
     admissionReason: true,
+    treatmentTeam: true,
     patientHistory: true,
   });
 
@@ -402,16 +467,26 @@ export function ModalPacienteIngresoForm({
   const currentAdmissionDateTimeInput = getCurrentDateTimeInput();
   const currentDateInput = toDateInput(new Date());
 
-  const applyPatientToForm = (patientOrNull) => {
+  const applyPatientToForm = (patientOrNull, antecedentesOrNull = null) => {
     const preserved = pickPreservedValues(getValues());
     reset({
       ...createDefaultValues({
         admissionAt: preserved.admission_at || referenceAdmissionAt,
       }),
       ...preserved,
+      ...mapPacienteAntecedentesToFormValues(antecedentesOrNull),
       ...(patientOrNull ? mapPatientToFormValues(patientOrNull) : {}),
     });
   };
+
+  const applyAntecedentesToForm = useCallback((antecedentesOrNull) => {
+    const nextAntecedentesValues =
+      mapPacienteAntecedentesToFormValues(antecedentesOrNull);
+
+    Object.entries(nextAntecedentesValues).forEach(([fieldName, fieldValue]) => {
+      setValue(fieldName, fieldValue);
+    });
+  }, [setValue]);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchTerm.trim()), 250);
@@ -427,9 +502,19 @@ export function ModalPacienteIngresoForm({
   }, [pacientePreselected?.id]);
 
   useEffect(() => {
+    if (isEditMode) {
+      setSelectedTeamMembers([]);
+    }
+  }, [isEditMode]);
+
+  useEffect(() => {
     if (!isEditMode) return;
 
     setValue("admission_at", referenceAdmissionAt);
+    setValue(
+      "adminission_type",
+      normalizeAdminissionType(ingresoPreselected?.adminission_type),
+    );
     setValue(
       "admission_reason_notes",
       getAdmissionReasonNotes({
@@ -446,6 +531,7 @@ export function ModalPacienteIngresoForm({
     setDiagnosisError("");
   }, [
     ingresoPreselected?.admission_at,
+    ingresoPreselected?.adminission_type,
     ingresoPreselected?.admission_diagnosis,
     ingresoPreselected?.admission_reason,
     isEditMode,
@@ -454,10 +540,19 @@ export function ModalPacienteIngresoForm({
   ]);
 
   const { data: searchResults = [], isLoading: loadingSearch } = useQuery({
-    queryKey: ["pacientesSearchIngreso", empresaId, debouncedSearch],
+    queryKey: ["pacientesSearchIngreso", empresaId, sucursalId, debouncedSearch],
     queryFn: () =>
-      searchPacientes({ empresaId, term: debouncedSearch, limit: 12 }),
-    enabled: !isEditMode && Boolean(empresaId) && debouncedSearch.length >= 2,
+      searchPacientes({
+        empresaId,
+        sucursalId,
+        term: debouncedSearch,
+        limit: 12,
+      }),
+    enabled:
+      !isEditMode &&
+      Boolean(empresaId) &&
+      Boolean(sucursalId) &&
+      debouncedSearch.length >= 2,
     refetchOnWindowFocus: false,
   });
 
@@ -617,16 +712,20 @@ export function ModalPacienteIngresoForm({
   ]);
 
   useEffect(() => {
-    const nextAntecedentesValues = selectedPatient?.id
-      ? selectedPatientAntecedentesValues
-      : createDefaultPacienteAntecedentesFormValues();
+    if (!selectedPatient?.id) {
+      applyAntecedentesToForm(null);
+      return;
+    }
 
-    Object.entries(nextAntecedentesValues).forEach(
-      ([fieldName, fieldValue]) => {
-        setValue(fieldName, fieldValue);
-      },
-    );
-  }, [selectedPatient?.id, selectedPatientAntecedentesValues, setValue]);
+    if (loadingPatientAntecedentes) return;
+
+    applyAntecedentesToForm(selectedPatientAntecedentesValues);
+  }, [
+    applyAntecedentesToForm,
+    loadingPatientAntecedentes,
+    selectedPatient?.id,
+    selectedPatientAntecedentesValues,
+  ]);
 
   useEffect(() => {
     if (!selectedPatient?.id) {
@@ -829,10 +928,21 @@ export function ModalPacienteIngresoForm({
   const togglePanel = (key) =>
     setExpandedPanels((prev) => ({ ...prev, [key]: !prev[key] }));
 
-  const handlePickPatient = (patient) => {
+  const handlePickPatient = async (patient) => {
     setSelectedPatient(patient);
     setSearchTerm(formatPatientSearchLabel(patient));
     applyPatientToForm(patient);
+
+    try {
+      const antecedentes = await queryClient.fetchQuery({
+        queryKey: ["pacienteAntecedentes", patient?.id],
+        queryFn: () => getPacienteAntecedentesByPacienteId(patient?.id),
+      });
+
+      applyAntecedentesToForm(antecedentes);
+    } catch {
+      applyAntecedentesToForm(null);
+    }
   };
 
   const handleClearSelectedPatient = () => {
@@ -845,18 +955,43 @@ export function ModalPacienteIngresoForm({
   const mutation = useMutation({
     mutationFn: async (data) => {
       if (!empresaId) throw new Error("No se encontro la empresa.");
+      if (!isEditMode && !sucursalId) {
+        throw new Error("Debe seleccionar una sucursal para registrar el ingreso.");
+      }
 
       const pacientePayload = buildPacientePayload({ data, empresaId });
-      let paciente;
-      if (selectedPatient?.id)
-        paciente = await updatePaciente(selectedPatient.id, pacientePayload);
-      else paciente = await insertPaciente(pacientePayload);
+      const diagnosisLabel = getDiagnosisDisplay(
+        selectedDiagnosis,
+        otherDiagnosis,
+      );
+      const admissionAtIso = toIsoDateTime(data.admission_at);
+      const adminissionType = normalizeAdminissionType(data.adminission_type);
+      if (!diagnosisLabel) {
+        throw new Error("Debe seleccionar un diagnostico de ingreso.");
+      }
+      if (!admissionAtIso) {
+        throw new Error("Debe indicar fecha y hora de ingreso valida.");
+      }
+      if (!adminissionType) {
+        throw new Error("Debe seleccionar un tipo de internacion.");
+      }
+      if (!safeString(data.admission_reason_notes).trim()) {
+        throw new Error("Debe indicar el motivo de internacion.");
+      }
 
-      if (!paciente?.id) throw new Error("No se pudo guardar el paciente.");
-
+      const admissionReason = buildAdmissionReasonValue({
+        diagnosisLabel,
+        additionalNotes: data.admission_reason_notes,
+      });
       const shouldSyncCoverage = safeString(data.coverage_type).trim();
 
       if (isEditMode) {
+        let paciente = selectedPatient?.id
+          ? await updatePaciente(selectedPatient.id, pacientePayload)
+          : pacientePreselected;
+
+        if (!paciente?.id) throw new Error("No se pudo guardar el paciente.");
+
         const tasks = [
           syncPacienteContactosEmergenciaByIngreso({
             pacienteId: paciente.id,
@@ -884,22 +1019,10 @@ export function ModalPacienteIngresoForm({
         ];
 
         if (ingresoPreselected?.id) {
-          const diagnosisLabel = getDiagnosisDisplay(
-            selectedDiagnosis,
-            otherDiagnosis,
-          );
-          if (!diagnosisLabel) {
-            throw new Error("Debe seleccionar un diagnostico de ingreso.");
-          }
-
-          const admissionAtIso = toIsoDateTime(data.admission_at);
-          if (!admissionAtIso) {
-            throw new Error("Debe indicar fecha y hora de ingreso valida.");
-          }
-
           tasks.push(
             updatePacienteIngreso(ingresoPreselected.id, {
               admission_at: admissionAtIso,
+              adminission_type: adminissionType,
               admission_diagnosis: diagnosisLabel,
               admission_reason:
                 buildAdmissionReasonValue({
@@ -915,29 +1038,68 @@ export function ModalPacienteIngresoForm({
         return { paciente, ingreso: null };
       }
 
-      const diagnosisLabel = getDiagnosisDisplay(
-        selectedDiagnosis,
-        otherDiagnosis,
-      );
-      if (!diagnosisLabel)
-        throw new Error("Debe seleccionar un diagnostico de ingreso.");
-      const admissionAtIso = toIsoDateTime(data.admission_at);
-      if (!admissionAtIso)
-        throw new Error("Debe indicar fecha y hora de ingreso valida.");
-      const admissionReason = buildAdmissionReasonValue({
-        diagnosisLabel,
-        additionalNotes: data.admission_reason_notes,
-      });
-
       const ingresoPayload = {
         empresa_id: empresaId,
-        paciente_id: paciente.id,
+        sucursal_id: sucursalId,
         admission_at: admissionAtIso,
+        adminission_type: adminissionType,
         admission_diagnosis: diagnosisLabel,
         admission_reason: admissionReason || null,
         status: "admitted",
       };
-      const [, , , ingreso] = await Promise.all([
+      let paciente = null;
+      let ingreso = null;
+
+      if (selectedPatient?.id) {
+        const currentPacienteComparable = buildComparablePacientePayload({
+          paciente: selectedPatient,
+          empresaId,
+        });
+        const nextPacienteComparable = buildComparablePacientePayload({
+          paciente: pacientePayload,
+          empresaId,
+        });
+
+        paciente = arePacientePayloadsEqual(
+          currentPacienteComparable,
+          nextPacienteComparable,
+        )
+          ? selectedPatient
+          : await updatePaciente(selectedPatient.id, pacientePayload);
+        const createdIngresoId = await createReingresoPaciente({
+          pacienteId: paciente.id,
+          ingreso: ingresoPayload,
+        });
+        ingreso = {
+          id: createdIngresoId,
+          paciente_id: paciente.id,
+          admission_at: admissionAtIso,
+          adminission_type: adminissionType,
+          discharge_at: null,
+          sucursal_id: sucursalId,
+        };
+      } else {
+        const created = await createPacienteConIngreso({
+          paciente: pacientePayload,
+          ingreso: ingresoPayload,
+        });
+        if (!created?.paciente_id || !created?.ingreso_id) {
+          throw new Error("No se pudo registrar el paciente y su ingreso.");
+        }
+        paciente = { id: created.paciente_id };
+        ingreso = {
+          id: created.ingreso_id,
+          paciente_id: created.paciente_id,
+          admission_at: admissionAtIso,
+          adminission_type: adminissionType,
+          discharge_at: null,
+          sucursal_id: sucursalId,
+        };
+      }
+
+      if (!paciente?.id) throw new Error("No se pudo guardar el paciente.");
+
+      await Promise.all([
         syncPacienteContactosEmergenciaByIngreso({
           pacienteId: paciente.id,
           contacts: data.emergency_contacts ?? [],
@@ -947,23 +1109,33 @@ export function ModalPacienteIngresoForm({
             discharge_at: null,
           },
         }),
-        syncPacienteCoberturaByDate({
-          pacienteId: paciente.id,
-          effectiveDate: data.admission_at,
-          coverage: {
-            coverage_type: data.coverage_type,
-            financiador_id: data.coverage_financiador_id,
-            plan_id: data.coverage_plan_id,
-            affiliate_number: data.coverage_member_number,
-            coverage_notes: data.coverage_notes,
-          },
-        }),
+        shouldSyncCoverage
+          ? syncPacienteCoberturaByDate({
+              pacienteId: paciente.id,
+              effectiveDate: data.admission_at,
+              coverage: {
+                coverage_type: data.coverage_type,
+                financiador_id: data.coverage_financiador_id,
+                plan_id: data.coverage_plan_id,
+                affiliate_number: data.coverage_member_number,
+                coverage_notes: data.coverage_notes,
+              },
+            })
+          : Promise.resolve(null),
         syncPacienteAntecedentes({
           pacienteId: paciente.id,
           antecedentes: data,
         }),
-        insertPacienteIngreso(ingresoPayload),
       ]);
+
+      if (ingreso?.id && selectedTeamMembers.length) {
+        await syncPacienteEquipoTratanteByIngreso({
+          pacienteId: paciente.id,
+          ingresoId: ingreso.id,
+          assignments: selectedTeamMembers,
+        });
+      }
+
       return { paciente, ingreso };
     },
     onSuccess: ({ paciente }) => {
@@ -974,6 +1146,7 @@ export function ModalPacienteIngresoForm({
         ["pacienteCoberturas", pacienteQueryId],
         ["pacienteContactosEmergencia", pacienteQueryId],
         ["pacienteAntecedentes", pacienteQueryId],
+        ["pacienteEquipo", pacienteQueryId],
       ];
 
       queryClient.invalidateQueries({ queryKey: ["pacientesActivos"] });
@@ -1598,17 +1771,49 @@ export function ModalPacienteIngresoForm({
                     )}
                   </InputText>
                 </article>
+                <article>
+                  <InputText icono={<v.iconoImportante />}>
+                    <select
+                      className="form__field"
+                      {...register("adminission_type", {
+                        validate: (value) =>
+                          normalizeAdminissionType(value)
+                            ? true
+                            : "Seleccione un tipo de internacion",
+                      })}
+                    >
+                      <option value="">Seleccionar</option>
+                      {ADMINISSION_TYPE_OPTIONS.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                    <label className="form__label">Tipo de internacion</label>
+                    {errors.adminission_type?.message && (
+                      <p>{errors.adminission_type.message}</p>
+                    )}
+                  </InputText>
+                </article>
                 <article className="full">
                   <InputText icono={<v.iconoImportante />}>
                     <textarea
                       className="form__field"
                       rows={3}
-                      placeholder="Motivos de internacion"
-                      {...register("admission_reason_notes")}
+                      placeholder="Motivo de internacion"
+                      {...register("admission_reason_notes", {
+                        validate: (value) =>
+                          safeString(value).trim()
+                            ? true
+                            : "Campo requerido",
+                      })}
                     />
                     <label className="form__label">
-                      Motivos de internacion
+                      Motivo de internacion
                     </label>
+                    {errors.admission_reason_notes?.message && (
+                      <p>{errors.admission_reason_notes.message}</p>
+                    )}
                   </InputText>
                 </article>
                 <article>
@@ -1656,6 +1861,22 @@ export function ModalPacienteIngresoForm({
                   </article>
                 )}
               </div>
+            </AccordionPanel>
+          )}
+
+          {!isEditMode && (
+            <AccordionPanel
+              title="Equipo tratante"
+              subtitle="La asignacion del equipo define los permisos clinicos por internacion."
+              isOpen={expandedPanels.treatmentTeam}
+              onToggle={() => togglePanel("treatmentTeam")}
+            >
+              <PacienteEquipoTratanteSection
+                empresaId={empresaId}
+                value={selectedTeamMembers}
+                onChange={setSelectedTeamMembers}
+                disabled={mutation.isPending}
+              />
             </AccordionPanel>
           )}
 

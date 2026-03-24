@@ -12,6 +12,7 @@ export const FEATURES = {
   PACIENTES: "pacientes",
   FARMACOS: "farmacos",
   INDICACIONES: "indicaciones",
+  ESTUDIOS: "estudios",
   EVOLUCION: "evolucion",
   PERMISOS: "permisos",
 };

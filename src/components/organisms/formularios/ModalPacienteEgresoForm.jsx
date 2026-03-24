@@ -1,12 +1,29 @@
 import { useEffect, useMemo, useState } from "react";
 import styled from "styled-components";
 import { useForm } from "react-hook-form";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Swal from "sweetalert2";
-import { Btn1, InputText, Spinner1 } from "../../../index";
-import { egresarPacienteIngreso } from "../../../supabase/crudPacientes";
+import {
+  Btn1,
+  InputText,
+  Spinner1,
+} from "../../../index";
+import {
+  egresarPacienteIngreso,
+  getPacienteEgresoByIngresoId,
+  upsertPacienteEgreso,
+} from "../../../supabase/crudPacientes";
 import { Device, DeviceMax } from "../../../styles/breakpoints";
 import { v } from "../../../styles/variables";
+import {
+  PACIENTE_EGRESO_EPICRISIS_ARRAY_FIELD_NAMES as EPICRISIS_ARRAY_FIELD_NAMES,
+  PACIENTE_EGRESO_EPICRISIS_BOOLEAN_FIELD_NAMES as EPICRISIS_BOOLEAN_FIELD_NAMES,
+  PACIENTE_EGRESO_EPICRISIS_TEXT_FIELD_NAMES as EPICRISIS_TEXT_FIELD_NAMES,
+  normalizeEpicrisisSelectValue,
+} from "../../../utils/pacienteEpicrisis";
+import {
+  PacienteEgresoEpicrisisSection,
+} from "./PacienteEgresoEpicrisisSection";
 
 const ChevronIcon = v.iconoFlechabajo;
 const CloseIcon = v.iconocerrar;
@@ -16,6 +33,14 @@ const SaveIcon = v.iconoguardar;
 
 const safeString = (value) =>
   value === null || value === undefined ? "" : String(value);
+
+const createDefaultEpicrisisValues = () => ({
+  ...Object.fromEntries(EPICRISIS_ARRAY_FIELD_NAMES.map((field) => [field, ""])),
+  ...Object.fromEntries(
+    EPICRISIS_BOOLEAN_FIELD_NAMES.map((field) => [field, false]),
+  ),
+  ...Object.fromEntries(EPICRISIS_TEXT_FIELD_NAMES.map((field) => [field, ""])),
+});
 
 const getCurrentDateTimeInput = () => {
   const now = new Date();
@@ -55,9 +80,65 @@ const formatDateTime = (value) => {
 };
 
 const createDefaultValues = () => ({
+  ...createDefaultEpicrisisValues(),
   discharge_at: getCurrentDateTimeInput(),
   discharge_summary: "",
 });
+
+const arrayFieldToFormValue = (fieldName, value) => {
+  if (!Array.isArray(value) || !value.length) return "";
+  return normalizeEpicrisisSelectValue(fieldName, safeString(value[0]).trim());
+};
+
+const toSingleSelectionArray = (fieldName, value) => {
+  const normalized = normalizeEpicrisisSelectValue(fieldName, safeString(value).trim());
+  return normalized ? [normalized] : null;
+};
+
+const toNullableText = (value) => {
+  const normalized = safeString(value).trim();
+  return normalized || null;
+};
+
+const buildFormValues = ({ epicrisis } = {}) => {
+  const defaults = createDefaultValues();
+
+  if (!epicrisis) return defaults;
+
+  const nextValues = { ...defaults };
+
+  EPICRISIS_ARRAY_FIELD_NAMES.forEach((field) => {
+    nextValues[field] = arrayFieldToFormValue(field, epicrisis?.[field]);
+  });
+
+  EPICRISIS_BOOLEAN_FIELD_NAMES.forEach((field) => {
+    nextValues[field] = Boolean(epicrisis?.[field]);
+  });
+
+  EPICRISIS_TEXT_FIELD_NAMES.forEach((field) => {
+    nextValues[field] = safeString(epicrisis?.[field]);
+  });
+
+  return nextValues;
+};
+
+const buildEpicrisisPayload = (data) => {
+  const payload = {};
+
+  EPICRISIS_ARRAY_FIELD_NAMES.forEach((field) => {
+    payload[field] = toSingleSelectionArray(field, data?.[field]);
+  });
+
+  EPICRISIS_BOOLEAN_FIELD_NAMES.forEach((field) => {
+    payload[field] = Boolean(data?.[field]);
+  });
+
+  EPICRISIS_TEXT_FIELD_NAMES.forEach((field) => {
+    payload[field] = toNullableText(data?.[field]);
+  });
+
+  return payload;
+};
 
 function FormSection({ title, subtitle, isOpen, onToggle, children }) {
   return (
@@ -85,16 +166,29 @@ export function ModalPacienteEgresoForm({
   const queryClient = useQueryClient();
   const [expandedSections, setExpandedSections] = useState({
     dischargeData: true,
+    epicrisis: true,
     teamSummary: true,
   });
 
   const {
+    control,
     register,
     handleSubmit,
     reset,
     formState: { errors },
   } = useForm({
     defaultValues: createDefaultValues(),
+  });
+
+  const {
+    data: epicrisisPreloaded,
+    isLoading: loadingEpicrisis,
+    error: errorEpicrisis,
+  } = useQuery({
+    queryKey: ["pacienteEgreso", ingreso?.id],
+    queryFn: () => getPacienteEgresoByIngresoId(ingreso?.id),
+    enabled: Boolean(ingreso?.id),
+    refetchOnWindowFocus: false,
   });
 
   const currentDateTimeInput = getCurrentDateTimeInput();
@@ -111,8 +205,9 @@ export function ModalPacienteEgresoForm({
     reset({
       discharge_at: getCurrentDateTimeInput(),
       discharge_summary: "",
+      ...buildFormValues({ epicrisis: epicrisisPreloaded }),
     });
-  }, [ingreso?.id, reset]);
+  }, [epicrisisPreloaded, ingreso?.id, reset]);
 
   const mutation = useMutation({
     mutationFn: async (data) => {
@@ -124,6 +219,12 @@ export function ModalPacienteEgresoForm({
       if (!dischargeAtIso) {
         throw new Error("Debe indicar fecha y hora de egreso valida.");
       }
+
+      await upsertPacienteEgreso({
+        pacienteId,
+        ingresoId: ingreso.id,
+        payload: buildEpicrisisPayload(data),
+      });
 
       return egresarPacienteIngreso(ingreso.id, {
         status: "discharged",
@@ -148,6 +249,7 @@ export function ModalPacienteEgresoForm({
           });
         }
       );
+      queryClient.invalidateQueries({ queryKey: ["pacienteEgreso", ingreso?.id] });
       queryClient.invalidateQueries({ queryKey: ["pacientesActivos"] });
       onClose?.();
     },
@@ -162,26 +264,29 @@ export function ModalPacienteEgresoForm({
 
   useEffect(() => {
     const onKeyDown = (event) => {
-      if (event.key === "Escape" && !mutation.isPending) onClose?.();
+      if (event.key === "Escape" && !mutation.isPending && !loadingEpicrisis) {
+        onClose?.();
+      }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [mutation.isPending, onClose]);
+  }, [loadingEpicrisis, mutation.isPending, onClose]);
 
   const toggleSection = (key) =>
     setExpandedSections((prev) => ({ ...prev, [key]: !prev[key] }));
+  const isBusy = mutation.isPending || loadingEpicrisis;
 
   return (
     <Overlay
       onClick={(event) =>
-        event.target === event.currentTarget && !mutation.isPending && onClose?.()
+        event.target === event.currentTarget && !isBusy && onClose?.()
       }
     >
       <Modal onClick={(event) => event.stopPropagation()}>
-        {mutation.isPending ? (
+        {isBusy ? (
           <div className="processingOverlay">
             <Spinner1 />
-            <p>Registrando egreso...</p>
+            <p>{loadingEpicrisis ? "Cargando epicrisis..." : "Registrando egreso..."}</p>
           </div>
         ) : null}
 
@@ -192,10 +297,10 @@ export function ModalPacienteEgresoForm({
           </div>
           <span
             role="button"
-            tabIndex={mutation.isPending ? -1 : 0}
-            onClick={() => !mutation.isPending && onClose?.()}
+            tabIndex={isBusy ? -1 : 0}
+            onClick={() => !isBusy && onClose?.()}
             onKeyDown={(event) => {
-              if ((event.key === "Enter" || event.key === " ") && !mutation.isPending) {
+              if ((event.key === "Enter" || event.key === " ") && !isBusy) {
                 event.preventDefault();
                 onClose?.();
               }
@@ -211,6 +316,12 @@ export function ModalPacienteEgresoForm({
         </div>
 
         <form className="formulario" onSubmit={handleSubmit((data) => mutation.mutate(data))}>
+          {errorEpicrisis ? (
+            <div className="inlineWarning">
+              No se pudo cargar una epicrisis previa. Puede continuar y se guardara una nueva version.
+            </div>
+          ) : null}
+
           <FormSection
             title="Datos del egreso"
             subtitle="Complete la fecha y hora efectiva del cierre"
@@ -246,6 +357,18 @@ export function ModalPacienteEgresoForm({
                 </InputText>
               </article>
             </div>
+          </FormSection>
+
+          <FormSection
+            title="Epicrisis de alta sanatorial"
+            subtitle="Informe interdisciplinario y consideraciones profesionales"
+            isOpen={expandedSections.epicrisis}
+            onToggle={() => toggleSection("epicrisis")}
+          >
+            <PacienteEgresoEpicrisisSection
+              control={control}
+              register={register}
+            />
           </FormSection>
 
           <FormSection
@@ -452,6 +575,15 @@ const Modal = styled.div`
   .sectionBody {
     border-top: 1px solid ${({ theme }) => theme.color2};
     padding: 12px 14px 14px;
+  }
+
+  .inlineWarning {
+    border: 1px dashed ${({ theme }) => theme.color2};
+    border-radius: 12px;
+    padding: 10px 12px;
+    background: ${({ theme }) => theme.bg};
+    color: ${({ theme }) => theme.textsecundary};
+    font-size: 0.9rem;
   }
 
   .fieldsGrid {

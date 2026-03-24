@@ -1,31 +1,56 @@
 import styled from "styled-components";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import Swal from "sweetalert2";
 import { useQuery } from "@tanstack/react-query";
 import {
   Btn1,
+  downloadPacienteIndicacionPdf,
+  ModalPacienteIndicacionForm,
+  ModalPacienteEvolucionForm,
+  ModalPacienteEvolucionesPrintForm,
   ModalPacienteEgresoForm,
   ModalPacienteIngresoForm,
+  ModalPacienteEstudioForm,
+  exportPacienteEvolucionesDocx,
+  PacienteEquipoTratanteTab,
+  resolvePerfilDisplayName,
   Spinner1,
+  TablaPacienteIndicaciones,
+  TablaPacienteEstudios,
+  TablaPacienteEvoluciones,
   Title,
+  usePacienteClinicalPermissions,
+  usePersistedDisclosureState,
   usePermissions,
 } from "../../index";
+import { PacienteEpicrisisView } from "../organisms/PacienteEpicrisisView";
 import {
   getPacienteContactosEmergenciaByPacienteId,
   resolvePacienteContactosEmergenciaByIngreso,
 } from "../../supabase/crudContactosEmergencia";
 import { getPacienteAntecedentesByPacienteId } from "../../supabase/crudPacientesAntecedentes";
 import {
+  getPacienteEgresoByIngresoId,
   getPacienteById,
   getPacienteCoberturasByPacienteId,
   getPacienteEquipoTratanteByPacienteId,
+  getPacienteEvolucionesByDate,
+  getPacienteEvolucionesByRange,
+  getPacienteEvolucionesExportContext,
   getPacienteEstudiosByIngresoId,
-  getPacienteEvolucionesByIngresoId,
   getPacienteIndicacionesByIngresoId,
   getPacienteIngresosByPacienteId,
   resolvePacienteCoberturaByDate,
 } from "../../supabase/crudPacientes";
 import { v } from "../../styles/variables";
 import { Device, DeviceMax } from "../../styles/breakpoints";
+import {
+  clampDateRangeToIngreso,
+  getArgentinaDateInputFromValue,
+  getIngresoArgentinaDateBounds,
+  getArgentinaTodayDateInput,
+  shiftArgentinaDateInputByDays,
+} from "../../utils/argentinaDateTime";
 import {
   PACIENTE_ANTECEDENTES_CLINICO_BOOLEAN_FIELDS,
   PACIENTE_ANTECEDENTES_CLINICO_TEXT_FIELDS,
@@ -37,6 +62,7 @@ import {
   hasPacienteAntecedentesContent,
   normalizeAntecedentesTextArray,
 } from "../../utils/pacienteAntecedentes";
+import { downloadPacienteEpicrisisDocx } from "../../utils/pacienteEpicrisisExport";
 
 const formatDateTime = (value) => {
   if (!value) return "-";
@@ -81,6 +107,14 @@ const formatConditionType = (value) => {
   return value;
 };
 
+const formatAdminissionType = (value) => {
+  if (!value) return "-";
+  const raw = String(value).trim().toLowerCase();
+  if (raw === "voluntario") return "Voluntario";
+  if (raw === "involuntario") return "Involuntario";
+  return String(value).trim() || "-";
+};
+
 const formatText = (value) => {
   if (value === null || value === undefined) return "-";
   const text = String(value).trim();
@@ -102,6 +136,10 @@ const formatDocument = (type, number) => {
   if (t === "-") return n;
   if (n === "-") return t;
   return `${t} ${n}`;
+};
+
+const formatIngresoCreatedBy = (ingreso) => {
+  return resolvePerfilDisplayName(ingreso?.creador, ingreso?.created_by);
 };
 
 const parseAdmissionReasonParts = (value) => {
@@ -155,12 +193,26 @@ const getIngresoDurationLabel = (ingreso) => {
   return `${days} dia(s)`;
 };
 
-const tabDefs = [
+const formatDateInputLabel = (value) => {
+  const raw = String(value ?? "").trim();
+  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return "-";
+  const [, year, month, day] = match;
+  return `${day}/${month}/${year}`;
+};
+
+const BASE_TAB_DEFS = [
   { id: "evoluciones", label: "Evoluciones" },
   { id: "indicaciones", label: "Indicaciones" },
   { id: "estudios", label: "Estudios" },
   { id: "equipo", label: "Equipo tratante" },
 ];
+const DEFAULT_EXPANDED_SECTIONS = {
+  patientInfo: false,
+  antecedentes: false,
+  ingresos: false,
+  emergencyContacts: false,
+};
 
 export function PacienteTemplate({ pacienteId }) {
   const { canCreate, canUpdate } = usePermissions();
@@ -171,12 +223,28 @@ export function PacienteTemplate({ pacienteId }) {
   const [openIngresoModal, setOpenIngresoModal] = useState(false);
   const [openEditPacienteModal, setOpenEditPacienteModal] = useState(false);
   const [openEgresoModal, setOpenEgresoModal] = useState(false);
-  const [expandedSections, setExpandedSections] = useState({
-    patientInfo: false,
-    antecedentes: false,
-    ingresos: false,
-    emergencyContacts: false,
-  });
+  const [openIndicacionModal, setOpenIndicacionModal] = useState(false);
+  const [selectedIndicacionToEdit, setSelectedIndicacionToEdit] = useState(null);
+  const [openEstudioModal, setOpenEstudioModal] = useState(false);
+  const [selectedEstudioToEdit, setSelectedEstudioToEdit] = useState(null);
+  const [openEvolucionModal, setOpenEvolucionModal] = useState(false);
+  const [openPrintEvolucionesModal, setOpenPrintEvolucionesModal] =
+    useState(false);
+  const [selectedEvolucionToEdit, setSelectedEvolucionToEdit] = useState(null);
+  const [evolutionViewMode, setEvolutionViewMode] = useState("day");
+  const [selectedEvolutionDate, setSelectedEvolutionDate] = useState(
+    getArgentinaTodayDateInput(),
+  );
+  const disclosureStorageKey = useMemo(
+    () =>
+      pacienteId ? `ui:disclosures:paciente:${pacienteId}` : null,
+    [pacienteId],
+  );
+  const { state: expandedSections, toggle: toggleSection } =
+    usePersistedDisclosureState({
+      storageKey: disclosureStorageKey,
+      defaults: DEFAULT_EXPANDED_SECTIONS,
+    });
 
   const {
     data: paciente,
@@ -253,6 +321,47 @@ export function PacienteTemplate({ pacienteId }) {
     },
   });
 
+  const activeIngreso = useMemo(
+    () => (ingresos ?? []).find((ingreso) => isIngresoActivo(ingreso)) ?? null,
+    [ingresos],
+  );
+
+  useEffect(() => {
+    if (hasManualIngresoSelection) return;
+    setSelectedIngresoId(activeIngreso?.id ?? null);
+  }, [activeIngreso?.id, hasManualIngresoSelection]);
+
+  const selectedIngreso = useMemo(
+    () =>
+      (ingresos ?? []).find(
+        (ingreso) => String(ingreso.id) === String(selectedIngresoId),
+      ) ?? null,
+    [ingresos, selectedIngresoId],
+  );
+  const evolutionIngresoContext = selectedIngreso ?? activeIngreso ?? null;
+  const evolutionIngresoId = evolutionIngresoContext?.id ?? null;
+  const evolutionPeriodBounds = useMemo(
+    () => getIngresoArgentinaDateBounds(evolutionIngresoContext),
+    [evolutionIngresoContext],
+  );
+  const effectiveSelectedEvolutionDate = useMemo(() => {
+    if (!selectedEvolutionDate) return selectedEvolutionDate;
+    if (!evolutionPeriodBounds.fromDate || !evolutionPeriodBounds.toDate) {
+      return selectedEvolutionDate;
+    }
+    if (selectedEvolutionDate < evolutionPeriodBounds.fromDate) {
+      return evolutionPeriodBounds.fromDate;
+    }
+    if (selectedEvolutionDate > evolutionPeriodBounds.toDate) {
+      return evolutionPeriodBounds.toDate;
+    }
+    return selectedEvolutionDate;
+  }, [
+    evolutionPeriodBounds.fromDate,
+    evolutionPeriodBounds.toDate,
+    selectedEvolutionDate,
+  ]);
+
   const {
     data: equipo = [],
     isLoading: loadingEquipo,
@@ -260,7 +369,9 @@ export function PacienteTemplate({ pacienteId }) {
   } = useQuery({
     queryKey: ["pacienteEquipo", pacienteId],
     queryFn: () => getPacienteEquipoTratanteByPacienteId(pacienteId),
-    enabled: Boolean(pacienteId) && activeTab === "equipo",
+    enabled:
+      Boolean(pacienteId) &&
+      ["equipo", "evoluciones", "indicaciones", "estudios"].includes(activeTab),
     refetchOnWindowFocus: false,
   });
 
@@ -269,9 +380,40 @@ export function PacienteTemplate({ pacienteId }) {
     isLoading: loadingEvoluciones,
     error: errorEvoluciones,
   } = useQuery({
-    queryKey: ["pacienteEvoluciones", selectedIngresoId],
-    queryFn: () => getPacienteEvolucionesByIngresoId(selectedIngresoId),
-    enabled: Boolean(selectedIngresoId) && activeTab === "evoluciones",
+    queryKey: [
+      "pacienteEvoluciones",
+      pacienteId,
+      evolutionIngresoId,
+      evolutionViewMode,
+      effectiveSelectedEvolutionDate,
+      evolutionPeriodBounds.fromDate,
+      evolutionPeriodBounds.toDate,
+    ],
+    queryFn: () => {
+      if (evolutionViewMode === "period") {
+        return getPacienteEvolucionesByRange({
+          pacienteId,
+          ingresoId: evolutionIngresoId,
+          fromDate: evolutionPeriodBounds.fromDate,
+          toDate: evolutionPeriodBounds.toDate,
+        });
+      }
+
+      return getPacienteEvolucionesByDate({
+        pacienteId,
+        ingresoId: evolutionIngresoId,
+        date: effectiveSelectedEvolutionDate,
+      });
+    },
+    enabled:
+      Boolean(pacienteId) &&
+      Boolean(evolutionIngresoId) &&
+      Boolean(
+        evolutionViewMode === "period"
+          ? evolutionPeriodBounds.fromDate && evolutionPeriodBounds.toDate
+          : effectiveSelectedEvolutionDate,
+      ) &&
+      activeTab === "evoluciones",
     refetchOnWindowFocus: false,
   });
 
@@ -280,7 +422,7 @@ export function PacienteTemplate({ pacienteId }) {
     isLoading: loadingIndicaciones,
     error: errorIndicaciones,
   } = useQuery({
-    queryKey: ["pacienteIndicaciones", selectedIngresoId],
+    queryKey: ["pacienteIndicaciones", pacienteId, selectedIngresoId],
     queryFn: () => getPacienteIndicacionesByIngresoId(selectedIngresoId),
     enabled: Boolean(selectedIngresoId) && activeTab === "indicaciones",
     refetchOnWindowFocus: false,
@@ -297,22 +439,40 @@ export function PacienteTemplate({ pacienteId }) {
     refetchOnWindowFocus: false,
   });
 
-  const activeIngreso = useMemo(
-    () => (ingresos ?? []).find((ingreso) => isIngresoActivo(ingreso)) ?? null,
-    [ingresos],
-  );
+  const epicrisisIngresoContext = useMemo(() => {
+    if (!selectedIngreso || isIngresoActivo(selectedIngreso)) return null;
+    return selectedIngreso;
+  }, [selectedIngreso]);
 
-  const selectedIngreso = useMemo(
-    () =>
-      (ingresos ?? []).find(
-        (ingreso) => String(ingreso.id) === String(selectedIngresoId),
-      ) ?? null,
-    [ingresos, selectedIngresoId],
-  );
+  const epicrisisIngresoId = epicrisisIngresoContext?.id ?? null;
+  const {
+    data: epicrisis = null,
+    isLoading: loadingEpicrisis,
+    error: errorEpicrisis,
+  } = useQuery({
+    queryKey: ["pacienteEgreso", epicrisisIngresoId],
+    queryFn: () => getPacienteEgresoByIngresoId(epicrisisIngresoId),
+    enabled: Boolean(epicrisisIngresoId) && activeTab === "epicrisis",
+    refetchOnWindowFocus: false,
+  });
 
   const episodeEditable = Boolean(
     selectedIngreso && isIngresoActivo(selectedIngreso),
   );
+  const showEpicrisisTab = !activeIngreso || Boolean(epicrisisIngresoContext);
+  const availableTabs = useMemo(
+    () =>
+      showEpicrisisTab
+        ? [...BASE_TAB_DEFS, { id: "epicrisis", label: "Epicrisis" }]
+        : BASE_TAB_DEFS,
+    [showEpicrisisTab],
+  );
+
+  useEffect(() => {
+    if (availableTabs.some((tab) => tab.id === activeTab)) return;
+    setActiveTab("evoluciones");
+  }, [activeTab, availableTabs]);
+
   const canCloseActiveIngreso =
     Boolean(activeIngreso) && canUpdate("pacientes");
   const canOpenIngreso = canCreate("pacientes");
@@ -323,6 +483,40 @@ export function PacienteTemplate({ pacienteId }) {
     Boolean(activeIngreso) &&
     paciente?.is_active !== false &&
     selectedIngresoAllowsEdit;
+  const todayEvolutionDate = getArgentinaTodayDateInput();
+  const evolutionMaxDate =
+    evolutionPeriodBounds.toDate && evolutionPeriodBounds.toDate < todayEvolutionDate
+      ? evolutionPeriodBounds.toDate
+      : todayEvolutionDate;
+  const isEvolutionPrevDisabled =
+    Boolean(evolutionPeriodBounds.fromDate) &&
+    effectiveSelectedEvolutionDate <= evolutionPeriodBounds.fromDate;
+  const isEvolutionNextDisabled =
+    Boolean(evolutionMaxDate) &&
+    effectiveSelectedEvolutionDate >= evolutionMaxDate;
+  const {
+    canManageTeam,
+    canCreateEvolution,
+    canEditEvolution,
+    canCreateIndicacion,
+    canEditIndicacion,
+    canCreateEstudio,
+    canEditEstudio,
+  } = usePacienteClinicalPermissions({
+    equipo,
+    selectedIngreso,
+    evolutionIngreso: evolutionIngresoContext,
+  });
+  const indicacionesQueryKey = ["pacienteIndicaciones", pacienteId, selectedIngresoId];
+  const selectedIndicacionRecord = indicaciones?.[0] ?? null;
+  const canCreateIndicacionAction =
+    canCreateIndicacion && !loadingIndicaciones && !indicaciones.length;
+  const canPrintIndicacion =
+    Boolean(selectedIngresoId) && Boolean(selectedIndicacionRecord);
+  const estudiosQueryKey = ["pacienteEstudios", selectedIngresoId];
+  const canPrintEvolutions = Boolean(evolutionIngresoId);
+  const canDownloadEpicrisis =
+    Boolean(epicrisisIngresoId) && Boolean(epicrisis);
   const showIngresoSummaryInPatientInfo =
     Boolean(activeIngreso) ||
     (hasManualIngresoSelection && Boolean(selectedIngreso));
@@ -355,6 +549,15 @@ export function PacienteTemplate({ pacienteId }) {
     activeIngreso?.admission_at ??
     coberturas?.[0]?.start_date ??
     null;
+  const epicrisisCoverageReferenceDate =
+    epicrisisIngresoContext?.discharge_at ??
+    epicrisisIngresoContext?.admission_at ??
+    coverageReferenceDate;
+  const ingresoModalSucursalId =
+    selectedIngreso?.sucursal_id ??
+    activeIngreso?.sucursal_id ??
+    ingresos?.[0]?.sucursal_id ??
+    null;
   const emergencyContactsByIngreso = useMemo(
     () =>
       resolvePacienteContactosEmergenciaByIngreso(
@@ -376,9 +579,15 @@ export function PacienteTemplate({ pacienteId }) {
       null
     );
   }, [coberturas, coverageReferenceDate]);
-
-  const toggleSection = (key) =>
-    setExpandedSections((prev) => ({ ...prev, [key]: !prev[key] }));
+  const epicrisisCobertura = useMemo(() => {
+    if (!coberturas?.length) return null;
+    if (!epicrisisCoverageReferenceDate) return coberturas[0] ?? null;
+    return (
+      resolvePacienteCoberturaByDate(coberturas, epicrisisCoverageReferenceDate) ??
+      coberturas[0] ??
+      null
+    );
+  }, [coberturas, epicrisisCoverageReferenceDate]);
 
   const loading = loadingPaciente || loadingIngresos;
   const error = errorPaciente || errorIngresos;
@@ -387,13 +596,15 @@ export function PacienteTemplate({ pacienteId }) {
     (activeTab === "evoluciones" && loadingEvoluciones) ||
     (activeTab === "indicaciones" && loadingIndicaciones) ||
     (activeTab === "estudios" && loadingEstudios) ||
-    (activeTab === "equipo" && loadingEquipo);
+    (activeTab === "equipo" && loadingEquipo) ||
+    (activeTab === "epicrisis" && loadingEpicrisis);
 
   const tabError =
     (activeTab === "evoluciones" && errorEvoluciones) ||
     (activeTab === "indicaciones" && errorIndicaciones) ||
     (activeTab === "estudios" && errorEstudios) ||
     (activeTab === "equipo" && errorEquipo) ||
+    (activeTab === "epicrisis" && errorEpicrisis) ||
     null;
 
   if (loading) return <Spinner1 />;
@@ -409,6 +620,125 @@ export function PacienteTemplate({ pacienteId }) {
   const patientAge = computeAge(paciente.birthday);
   const patientCondition = formatConditionType(paciente.condition_type);
   const patientStatus = activeIngreso ? "Internado" : "Egresado";
+  const evolutionModePeriodLabel =
+    evolutionPeriodBounds.fromDate && evolutionPeriodBounds.toDate
+      ? `${formatDateInputLabel(evolutionPeriodBounds.fromDate)} - ${formatDateInputLabel(
+          evolutionPeriodBounds.toDate,
+        )}`
+      : "-";
+  const evolutionEmptyStateLabel =
+    evolutionViewMode === "period"
+      ? "Sin evoluciones para el periodo de internacion seleccionado."
+      : "Sin evoluciones para la fecha seleccionada.";
+  const evolutionDateRestriction = selectedEvolucionToEdit?.evolution_at
+    ? getArgentinaDateInputFromValue(selectedEvolucionToEdit.evolution_at)
+    : evolutionViewMode === "period"
+      ? todayEvolutionDate
+      : effectiveSelectedEvolutionDate;
+  const evolutionQueryKey = [
+    "pacienteEvoluciones",
+    pacienteId,
+    evolutionIngresoId,
+    evolutionViewMode,
+    effectiveSelectedEvolutionDate,
+    evolutionPeriodBounds.fromDate,
+    evolutionPeriodBounds.toDate,
+  ];
+
+  const handlePrintEvoluciones = async ({ fromDate, toDate }) => {
+    const clampedRange = clampDateRangeToIngreso({
+      fromDate,
+      toDate,
+      ingreso: evolutionIngresoContext,
+    });
+
+    if (
+      clampedRange.wasClamped ||
+      clampedRange.fromDate !== fromDate ||
+      clampedRange.toDate !== toDate
+    ) {
+      throw new Error(
+        "El rango debe estar dentro del periodo de internacion seleccionado.",
+      );
+    }
+
+    const exportContext = await getPacienteEvolucionesExportContext({
+      pacienteId,
+      ingresoId: evolutionIngresoId,
+      fromDate,
+      toDate,
+    });
+
+    await exportPacienteEvolucionesDocx(exportContext);
+
+    Swal.fire({
+      icon: "success",
+      title: "Documento generado",
+      text: "Las evoluciones fueron exportadas correctamente.",
+    });
+  };
+
+  const handleDownloadIndicacionPdf = () => {
+    if (!selectedIndicacionRecord) {
+      Swal.fire({
+        icon: "info",
+        title: "Sin indicaciones",
+        text: "No hay una hoja de indicaciones disponible para descargar.",
+      });
+      return;
+    }
+
+    try {
+      downloadPacienteIndicacionPdf({
+        paciente,
+        ingreso: selectedIngreso ?? activeIngreso ?? null,
+        indicacion: selectedIndicacionRecord,
+      });
+    } catch (error) {
+      Swal.fire({
+        icon: "error",
+        title: "Oops...",
+        text:
+          error?.message ||
+          "No se pudo descargar el PDF de la hoja de indicaciones.",
+      });
+    }
+  };
+
+  const handleDownloadEpicrisisWord = async () => {
+    if (!epicrisisIngresoContext?.id) {
+      Swal.fire({
+        icon: "info",
+        title: "Sin internacion",
+        text: "Seleccione una internacion cerrada para descargar la epicrisis.",
+      });
+      return;
+    }
+
+    if (!epicrisis) {
+      Swal.fire({
+        icon: "info",
+        title: "Sin epicrisis",
+        text: "No hay una epicrisis registrada para esta internacion.",
+      });
+      return;
+    }
+
+    try {
+      await downloadPacienteEpicrisisDocx({
+        paciente,
+        ingreso: epicrisisIngresoContext,
+        epicrisis,
+        cobertura: epicrisisCobertura,
+      });
+    } catch (error) {
+      Swal.fire({
+        icon: "error",
+        title: "Oops...",
+        text: error?.message || "No se pudo descargar el documento de epicrisis.",
+      });
+    }
+  };
 
   return (
     <Container>
@@ -483,6 +813,9 @@ export function PacienteTemplate({ pacienteId }) {
               <div className="timelineHead" aria-hidden="true">
                 <span>Fecha de ingreso</span>
                 <span>Fecha de egreso</span>
+                <span>Tipo de internacion</span>
+                <span>Sucursal</span>
+                <span>Ingresado por</span>
                 <span>Diagnostico</span>
                 <span>Cantidad de dias</span>
                 <span>Estado</span>
@@ -507,13 +840,25 @@ export function PacienteTemplate({ pacienteId }) {
                   <span data-label="Fecha de egreso">
                     {formatDateTime(ingreso.discharge_at)}
                   </span>
-                  <span data-label="Diagnostico">
+                  <span data-label="Tipo de internacion">
+                    {formatAdminissionType(ingreso.adminission_type)}
+                  </span>
+                  <span data-label="Sucursal">
+                    {ingreso?.sucursal?.name ?? "-"}
+                  </span>
+                  <span data-label="Ingresado por">
+                    {formatIngresoCreatedBy(ingreso)}
+                  </span>
+                  <span className="diagnosis" data-label="Diagnostico">
                     {ingreso.admission_diagnosis ?? "-"}
                   </span>
                   <span data-label="Cantidad de dias">
                     {getIngresoDurationLabel(ingreso)}
                   </span>
-                  <span className="status" data-label="Estado">
+                  <span
+                    className={`status ${isIngresoActivo(ingreso) ? "active" : "closed"}`}
+                    data-label="Estado"
+                  >
                     {isIngresoActivo(ingreso) ? "Activo" : "Cerrado"}
                   </span>
                 </button>
@@ -583,6 +928,14 @@ export function PacienteTemplate({ pacienteId }) {
                 <span className="label">Fecha de egreso</span>
                 <span className="value">
                   {formatDateTime(ingresoContext?.discharge_at)}
+                </span>
+              </InfoItem>
+            ) : null}
+            {showIngresoSummaryInPatientInfo ? (
+              <InfoItem>
+                <span className="label">Tipo de internacion</span>
+                <span className="value">
+                  {formatAdminissionType(ingresoContext?.adminission_type)}
                 </span>
               </InfoItem>
             ) : null}
@@ -954,7 +1307,7 @@ export function PacienteTemplate({ pacienteId }) {
       ) : null}
 
       <Tabs>
-        {tabDefs.map((tab) => (
+        {availableTabs.map((tab) => (
           <button
             key={tab.id}
             className={`tab ${activeTab === tab.id ? "active" : ""}`}
@@ -966,9 +1319,174 @@ export function PacienteTemplate({ pacienteId }) {
         ))}
       </Tabs>
 
+      {activeTab === "evoluciones" ? (
+        <TabControls>
+          <div className="filtersGroup evolutionFilters">
+            <div className="modeSwitch" role="tablist" aria-label="Vista de evoluciones">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={evolutionViewMode === "day"}
+                className={evolutionViewMode === "day" ? "active" : ""}
+                onClick={() => setEvolutionViewMode("day")}
+              >
+                Dia
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={evolutionViewMode === "period"}
+                className={evolutionViewMode === "period" ? "active" : ""}
+                onClick={() => setEvolutionViewMode("period")}
+                disabled={!evolutionIngresoId}
+              >
+                Periodo
+              </button>
+            </div>
+
+            {evolutionViewMode === "day" ? (
+              <div className="dateFilter">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setSelectedEvolutionDate((prev) =>
+                      shiftArgentinaDateInputByDays(
+                        effectiveSelectedEvolutionDate || prev,
+                        -1,
+                      ),
+                    )
+                  }
+                  aria-label="Dia anterior"
+                  disabled={isEvolutionPrevDisabled}
+                >
+                  <v.iconoflechaizquierda />
+                </button>
+                <input
+                  type="date"
+                  value={effectiveSelectedEvolutionDate}
+                  min={evolutionPeriodBounds.fromDate ?? undefined}
+                  max={evolutionMaxDate}
+                  onChange={(event) =>
+                    event.target.value &&
+                    setSelectedEvolutionDate(event.target.value)
+                  }
+                />
+                <button
+                  type="button"
+                  onClick={() =>
+                    setSelectedEvolutionDate((prev) =>
+                      shiftArgentinaDateInputByDays(
+                        effectiveSelectedEvolutionDate || prev,
+                        1,
+                      ),
+                    )
+                  }
+                  aria-label="Dia siguiente"
+                  disabled={isEvolutionNextDisabled}
+                >
+                  <v.iconoflechaderecha />
+                </button>
+              </div>
+            ) : (
+              <div className="periodSummary">
+                <span className="periodLabel">Periodo de internacion</span>
+                <strong>{evolutionModePeriodLabel}</strong>
+              </div>
+            )}
+          </div>
+
+          <div className="actionsGroup">
+            {canPrintEvolutions ? (
+              <Btn1
+                icono={<v.iconoWord />}
+                titulo="Imprimir evoluciones"
+                bgcolor="var(--bg-accent-soft-strong)"
+                funcion={() => setOpenPrintEvolucionesModal(true)}
+              />
+            ) : null}
+            {canCreateEvolution ? (
+              <Btn1
+                icono={<v.iconoagregar />}
+                titulo="Agregar evolucion"
+                bgcolor={v.colorPrincipal}
+                funcion={() => {
+                  setSelectedEvolucionToEdit(null);
+                  setOpenEvolucionModal(true);
+                }}
+              />
+            ) : null}
+          </div>
+        </TabControls>
+      ) : null}
+
+      {activeTab === "indicaciones" && (canPrintIndicacion || canCreateIndicacionAction) ? (
+        <TabControls>
+          <div className="filtersGroup" />
+
+          <div className="actionsGroup">
+            {canPrintIndicacion ? (
+              <Btn1
+                icono={<v.iconopdf />}
+                titulo="Descargar PDF"
+                bgcolor="var(--bg-accent-soft-strong)"
+                funcion={handleDownloadIndicacionPdf}
+              />
+            ) : null}
+            {canCreateIndicacionAction ? (
+              <Btn1
+                icono={<v.iconoagregar />}
+                titulo="Agregar indicaciones"
+                bgcolor={v.colorPrincipal}
+                funcion={() => {
+                  setSelectedIndicacionToEdit(null);
+                  setOpenIndicacionModal(true);
+                }}
+              />
+            ) : null}
+          </div>
+        </TabControls>
+      ) : null}
+
+      {activeTab === "estudios" && canCreateEstudio ? (
+        <TabControls>
+          <div className="filtersGroup" />
+
+          <div className="actionsGroup">
+            <Btn1
+              icono={<v.iconoagregar />}
+              titulo="Agregar estudio"
+              bgcolor={v.colorPrincipal}
+              funcion={() => {
+                setSelectedEstudioToEdit(null);
+                setOpenEstudioModal(true);
+              }}
+            />
+          </div>
+        </TabControls>
+      ) : null}
+
+      {activeTab === "epicrisis" ? (
+        <TabControls>
+          <div className="filtersGroup" />
+
+          <div className="actionsGroup">
+            {canDownloadEpicrisis ? (
+              <Btn1
+                icono={<v.iconoWord />}
+                titulo="Descargar Word"
+                bgcolor="var(--bg-accent-soft-strong)"
+                funcion={handleDownloadEpicrisisWord}
+              />
+            ) : null}
+          </div>
+        </TabControls>
+      ) : null}
+
       {!episodeEditable && selectedIngreso ? (
         <ReadonlyBanner>
-          Episodio cerrado: contenido en modo solo lectura.
+          {activeTab === "evoluciones"
+            ? "Episodio cerrado: el contenido esta en modo solo lectura. Las evoluciones del dia actual pueden editarse hasta finalizar la jornada."
+            : "Episodio cerrado: contenido en modo solo lectura."}
         </ReadonlyBanner>
       ) : null}
 
@@ -978,26 +1496,146 @@ export function PacienteTemplate({ pacienteId }) {
           <span>ha ocurrido un error: {tabError.message}</span>
         ) : null}
         {!tabLoading && !tabError && activeTab === "evoluciones" && (
-          <SimpleList data={evoluciones} />
+          evolutionIngresoId ? (
+            evoluciones.length ? (
+              <TablaPacienteEvoluciones
+                data={evoluciones}
+                canEditRow={canEditEvolution}
+                onEdit={(item) => {
+                  setSelectedEvolucionToEdit(item);
+                  setOpenEvolucionModal(true);
+                }}
+              />
+            ) : (
+              <EmptyState>{evolutionEmptyStateLabel}</EmptyState>
+            )
+          ) : (
+            <EmptyState>Seleccione un ingreso para ver las evoluciones.</EmptyState>
+          )
         )}
         {!tabLoading && !tabError && activeTab === "indicaciones" && (
-          <SimpleList data={indicaciones} />
+          selectedIngresoId ? (
+            indicaciones.length ? (
+              <TablaPacienteIndicaciones
+                data={indicaciones}
+                canEditRow={canEditIndicacion}
+                onEdit={(item) => {
+                  setSelectedIndicacionToEdit(item);
+                  setOpenIndicacionModal(true);
+                }}
+              />
+            ) : (
+              <EmptyState>Sin indicaciones registradas para esta internacion.</EmptyState>
+            )
+          ) : (
+            <EmptyState>Seleccione un ingreso para ver las indicaciones.</EmptyState>
+          )
         )}
         {!tabLoading && !tabError && activeTab === "estudios" && (
-          <SimpleList data={estudios} />
+          selectedIngresoId ? (
+            estudios.length ? (
+              <TablaPacienteEstudios
+                data={estudios}
+                canEditRow={canEditEstudio}
+                onEdit={(item) => {
+                  setSelectedEstudioToEdit(item);
+                  setOpenEstudioModal(true);
+                }}
+              />
+            ) : (
+              <EmptyState>Sin estudios registrados para esta internacion.</EmptyState>
+            )
+          ) : (
+            <EmptyState>Seleccione un ingreso para ver los estudios.</EmptyState>
+          )
         )}
         {!tabLoading && !tabError && activeTab === "equipo" && (
-          <SimpleList data={equipo} />
+          <PacienteEquipoTratanteTab
+            pacienteId={pacienteId}
+            ingreso={selectedIngreso ?? activeIngreso}
+            empresaId={paciente?.empresa_id ?? null}
+            data={equipo}
+            canManageTeam={canManageTeam}
+          />
+        )}
+        {!tabLoading && !tabError && activeTab === "epicrisis" && (
+          !epicrisisIngresoContext ? (
+            <EmptyState>Seleccione una internacion cerrada para ver la epicrisis.</EmptyState>
+          ) : epicrisis ? (
+            <PacienteEpicrisisView
+              paciente={paciente}
+              ingreso={epicrisisIngresoContext}
+              epicrisis={epicrisis}
+              cobertura={epicrisisCobertura}
+            />
+          ) : (
+            <EmptyState>Sin epicrisis registrada para esta internacion.</EmptyState>
+          )
         )}
       </TabContent>
 
       {openIngresoModal && (
         <ModalPacienteIngresoForm
           empresaId={paciente.empresa_id ?? null}
+          sucursalId={ingresoModalSucursalId}
           pacientePreselected={paciente}
           onClose={() => setOpenIngresoModal(false)}
         />
       )}
+      {openIndicacionModal && selectedIngresoId ? (
+        <ModalPacienteIndicacionForm
+          pacienteId={pacienteId}
+          ingresoId={selectedIngresoId}
+          indicacionPreselected={selectedIndicacionToEdit}
+          queryKey={indicacionesQueryKey}
+          onClose={() => {
+            setOpenIndicacionModal(false);
+            setSelectedIndicacionToEdit(null);
+          }}
+        />
+      ) : null}
+      {openEstudioModal && selectedIngresoId ? (
+        <ModalPacienteEstudioForm
+          pacienteId={pacienteId}
+          ingresoId={selectedIngresoId}
+          estudioPreselected={selectedEstudioToEdit}
+          queryKey={estudiosQueryKey}
+          onClose={() => {
+            setOpenEstudioModal(false);
+            setSelectedEstudioToEdit(null);
+          }}
+        />
+      ) : null}
+      {openEvolucionModal && evolutionIngresoId ? (
+        <ModalPacienteEvolucionForm
+          pacienteId={pacienteId}
+          ingresoId={evolutionIngresoId}
+          selectedDate={evolutionDateRestriction}
+          evolucionPreselected={selectedEvolucionToEdit}
+          queryKey={evolutionQueryKey}
+          onClose={() => {
+            setOpenEvolucionModal(false);
+            setSelectedEvolucionToEdit(null);
+          }}
+        />
+      ) : null}
+      {openPrintEvolucionesModal ? (
+        <ModalPacienteEvolucionesPrintForm
+          ingreso={evolutionIngresoContext}
+          defaultFromDate={
+            evolutionViewMode === "period"
+              ? evolutionPeriodBounds.fromDate
+              : effectiveSelectedEvolutionDate
+          }
+          defaultToDate={
+            evolutionViewMode === "period"
+              ? evolutionPeriodBounds.toDate
+              : effectiveSelectedEvolutionDate
+          }
+          onClose={() => setOpenPrintEvolucionesModal(false)}
+          onPrint={handlePrintEvoluciones}
+        />
+      ) : null}
       {openEditPacienteModal && (
         <ModalPacienteIngresoForm
           mode="editPatient"
@@ -1017,23 +1655,6 @@ export function PacienteTemplate({ pacienteId }) {
         />
       )}
     </Container>
-  );
-}
-
-function SimpleList({ data = [] }) {
-  if (!data.length)
-    return <EmptyState>Sin registros en esta seccion.</EmptyState>;
-  return (
-    <List>
-      {data.map((item) => (
-        <li key={item.id}>
-          <span>
-            {item.title ?? item.name ?? item.description ?? "Registro"}
-          </span>
-          <small>{formatDateTime(item.created_at)}</small>
-        </li>
-      ))}
-    </List>
   );
 }
 
@@ -1365,13 +1986,13 @@ const TimelineCard = styled.section`
     text-align: left;
     padding: 10px;
     display: grid;
-    grid-template-columns: 1.15fr 1.15fr 2.6fr 0.9fr 0.9fr;
+    grid-template-columns: 1fr 1fr 1fr 1.1fr 1.4fr 2.1fr 0.9fr 0.9fr;
     gap: 8px;
     font-size: 0.9rem;
     align-items: center;
   }
 
-  .timelineItem span:nth-child(3) {
+  .timelineItem span.diagnosis {
     min-width: 0;
     overflow-wrap: anywhere;
   }
@@ -1385,10 +2006,18 @@ const TimelineCard = styled.section`
     font-weight: 600;
   }
 
+  .status.active {
+    color: var(--color-success);
+  }
+
+  .status.closed {
+    color: var(--color-danger);
+  }
+
   @media ${Device.tablet} {
     .timelineHead {
       display: grid;
-      grid-template-columns: 1.15fr 1.15fr 2.6fr 0.9fr 0.9fr;
+      grid-template-columns: 1fr 1fr 1fr 1.1fr 1.4fr 2.1fr 0.9fr 0.9fr;
       gap: 8px;
       padding: 0 10px 2px;
       color: ${({ theme }) => theme.textsecundary};
@@ -1416,7 +2045,7 @@ const TimelineCard = styled.section`
       font-weight: 600;
     }
 
-    .timelineItem span:nth-child(3) {
+    .timelineItem span.diagnosis {
       overflow-wrap: anywhere;
     }
   }
@@ -1564,6 +2193,151 @@ const Tabs = styled.div`
   }
 `;
 
+const TabControls = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+
+  .filtersGroup {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .filtersGroup.evolutionFilters {
+    align-items: center;
+    gap: 10px;
+    flex: 1 1 520px;
+  }
+
+  .actionsGroup {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .modeSwitch {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: ${({ theme }) => theme.bg};
+    border: 1px solid ${({ theme }) => theme.color2};
+    border-radius: 999px;
+    padding: 4px;
+  }
+
+  .modeSwitch button {
+    border: none;
+    background: transparent;
+    color: ${({ theme }) => theme.text};
+    border-radius: 999px;
+    padding: 8px 14px;
+    font-weight: 700;
+    cursor: pointer;
+    min-width: 88px;
+    transition:
+      background 0.2s ease,
+      color 0.2s ease,
+      opacity 0.2s ease;
+  }
+
+  .modeSwitch button.active {
+    background: var(--bg-accent-soft);
+    color: ${({ theme }) => theme.color1};
+  }
+
+  .modeSwitch button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .dateFilter {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: ${({ theme }) => theme.bg};
+    border: 1px solid ${({ theme }) => theme.color2};
+    border-radius: 999px;
+    padding: 6px 12px;
+  }
+
+  .dateFilter button {
+    border: none;
+    background: transparent;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: ${({ theme }) => theme.text};
+    cursor: pointer;
+    font-size: 18px;
+  }
+
+  .dateFilter button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .dateFilter input {
+    border: none;
+    background: transparent;
+    color: ${({ theme }) => theme.text};
+    font-weight: 600;
+    font-size: 0.95rem;
+    outline: none;
+  }
+
+  .periodSummary {
+    display: grid;
+    gap: 2px;
+    background: ${({ theme }) => theme.bg};
+    border: 1px solid ${({ theme }) => theme.color2};
+    border-radius: 16px;
+    padding: 8px 12px;
+  }
+
+  .periodSummary strong {
+    font-size: 0.98rem;
+    color: ${({ theme }) => theme.text};
+  }
+
+  .periodLabel {
+    color: ${({ theme }) => theme.textsecundary};
+    font-size: 0.82rem;
+  }
+
+  @media ${DeviceMax.mobile} {
+    align-items: stretch;
+
+    .filtersGroup,
+    .actionsGroup {
+      width: 100%;
+    }
+
+    .actionsGroup {
+      justify-content: stretch;
+    }
+
+    .actionsGroup button {
+      width: 100%;
+    }
+
+    .modeSwitch,
+    .periodSummary,
+    .dateFilter {
+      width: 100%;
+    }
+
+    .dateFilter {
+      justify-content: space-between;
+    }
+  }
+`;
+
 const ReadonlyBanner = styled.div`
   border: 1px dashed ${({ theme }) => theme.color2};
   border-radius: 10px;
@@ -1579,28 +2353,6 @@ const TabContent = styled.section`
   align-self: start;
   align-content: start;
   height: fit-content;
-`;
-
-const List = styled.ul`
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  gap: 8px;
-
-  li {
-    border: 1px solid ${({ theme }) => theme.color2};
-    border-radius: 10px;
-    padding: 10px 12px;
-    display: flex;
-    justify-content: space-between;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-
-  small {
-    color: ${({ theme }) => theme.textsecundary};
-  }
 `;
 
 const EmptyState = styled.div`

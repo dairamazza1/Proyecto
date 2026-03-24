@@ -8,7 +8,8 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "generate:cambio-template": "node scripts/generate-cambio-template.mjs"
+    "generate:cambio-template": "node scripts/generate-cambio-template.mjs",
+    "generate:evoluciones-template": "node scripts/generate-evoluciones-template.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.86.2",

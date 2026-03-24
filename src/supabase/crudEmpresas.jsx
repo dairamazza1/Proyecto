@@ -1,4 +1,4 @@
-import { supabase } from "../index";
+import { supabase } from "./supabase.config.jsx";
 
 // export async function insertCompany(p) {
 //   //devuelve un único objeto con maybeSingle en vez de un array

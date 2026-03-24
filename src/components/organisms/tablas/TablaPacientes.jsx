@@ -19,6 +19,14 @@ const formatDate = (value) => {
   return `${pad(parsed.getDate())}/${pad(parsed.getMonth() + 1)}/${parsed.getFullYear()}`;
 };
 
+const formatConditionType = (value) => {
+  if (!value) return "-";
+  const raw = String(value).trim().toLowerCase();
+  if (raw === "agudo") return "Agudo";
+  if (raw === "cronico") return "Crónico";
+  return value;
+};
+
 export function TablaPacientes({ data }) {
   const safeData = Array.isArray(data) ? data : [];
   const [sorting, setSorting] = useState([{ id: "last_name", desc: false }]);
@@ -87,6 +95,20 @@ export function TablaPacientes({ data }) {
       cell: (info) => (
         <div data-title="Dia de ingreso" className="ContentCell">
           <span>{formatDate(info.getValue())}</span>
+        </div>
+      ),
+      enableSorting: true,
+    },
+    {
+      accessorKey: "condition_type",
+      header: "Condicion",
+      meta: {
+        cardLabel: "Condicion",
+        cardValue: (row) => formatConditionType(row.condition_type),
+      },
+      cell: (info) => (
+        <div data-title="Condicion" className="ContentCell">
+          <span>{formatConditionType(info.getValue())}</span>
         </div>
       ),
       enableSorting: true,

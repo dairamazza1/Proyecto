@@ -183,6 +183,21 @@ export function computeEffectivePermission(
   };
 }
 
+async function fetchGeneralPermissionRow(appRoleId, featureId) {
+  const { data, error } = await supabase
+    .from(tablePermissions)
+    .select("id, app_role_id, feature_id, puesto_id")
+    .eq("app_role_id", appRoleId)
+    .eq("feature_id", featureId)
+    .is("puesto_id", null)
+    .order("id", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data ?? null;
+}
+
 export async function upsertPermission(permission) {
   const payload = {
     app_role_id: Number(permission?.app_role_id),
@@ -200,27 +215,44 @@ export async function upsertPermission(permission) {
   }
 
   if (payload.puesto_id === null) {
-    const { data: existingGeneral, error: findError } = await supabase
-      .from(tablePermissions)
-      .select("id")
-      .eq("app_role_id", payload.app_role_id)
-      .eq("feature_id", payload.feature_id)
-      .is("puesto_id", null)
-      .order("id", { ascending: true })
-      .limit(1)
-      .maybeSingle();
-
-    if (findError) throw findError;
+    const existingGeneral = await fetchGeneralPermissionRow(
+      payload.app_role_id,
+      payload.feature_id,
+    );
 
     if (existingGeneral?.id) {
       const { data, error } = await supabase
         .from(tablePermissions)
         .update(payload)
         .eq("id", existingGeneral.id)
+        .select("*");
+
+      if (error) throw error;
+
+      const updatedRow = Array.isArray(data) ? data[0] ?? null : data ?? null;
+      if (updatedRow) {
+        return updatedRow;
+      }
+
+      const refreshedGeneral = await fetchGeneralPermissionRow(
+        payload.app_role_id,
+        payload.feature_id,
+      );
+
+      if (refreshedGeneral?.id) {
+        throw new Error(
+          "No se pudo actualizar el permiso. Verifica la policy UPDATE de funcionalidades_roles."
+        );
+      }
+
+      const { data: insertedData, error: insertError } = await supabase
+        .from(tablePermissions)
+        .insert(payload)
         .select("*")
         .maybeSingle();
-      if (error) throw error;
-      return data;
+
+      if (insertError) throw insertError;
+      return insertedData;
     }
   }
 
@@ -229,11 +261,17 @@ export async function upsertPermission(permission) {
     .upsert(payload, {
       onConflict: "app_role_id,feature_id,puesto_id",
     })
-    .select("*")
-    .maybeSingle();
+    .select("*");
 
   if (error) throw error;
-  return data;
+
+  const upsertedRow = Array.isArray(data) ? data[0] ?? null : data ?? null;
+  if (!upsertedRow) {
+    throw new Error(
+      "No se pudo guardar el permiso. Verifica las policies de funcionalidades_roles."
+    );
+  }
+  return upsertedRow;
 }
 
 export async function deletePermissionOverride({

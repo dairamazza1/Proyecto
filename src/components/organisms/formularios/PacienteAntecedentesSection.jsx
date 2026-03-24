@@ -221,10 +221,10 @@ export function PacienteAntecedentesSection({
                 <textarea
                   className="form__field textarea"
                   rows={3}
-                  placeholder="Observaciones"
+                  placeholder="Observaciones de antecedentes de tratamientos"
                   {...register("personal_antecedentes_tratamientos_obs")}
                 />
-                <label className="form__label">Observaciones</label>
+                <label className="form__label">Observaciones de antecedentes de tratamientos</label>
               </InputText>
             </article>
           ) : null}
@@ -235,10 +235,10 @@ export function PacienteAntecedentesSection({
                 <textarea
                   className="form__field textarea"
                   rows={3}
-                  placeholder="Observaciones"
+                  placeholder="Observaciones de antecedentes familiares psiquiatricos"
                   {...register("personal_antecedentes_familia_psiquiatricos_obs")}
                 />
-                <label className="form__label">Observaciones</label>
+                <label className="form__label">Observaciones de antecedentes familiares psiquiatricos</label>
               </InputText>
             </article>
           ) : null}

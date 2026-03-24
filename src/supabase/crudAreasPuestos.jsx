@@ -1,4 +1,4 @@
-import { supabase } from "../index";
+import { supabase } from "./supabase.config.jsx";
 
 
 export async function getAreasLaborales() {

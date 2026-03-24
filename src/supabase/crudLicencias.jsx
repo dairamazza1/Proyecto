@@ -1,4 +1,4 @@
-import { supabase } from "../index";
+import { supabase } from "./supabase.config.jsx";
 
 const table = "empleados_licencias";
 const tableCategorias = "licencias_categorias";

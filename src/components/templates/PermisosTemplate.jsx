@@ -323,6 +323,15 @@ export function PermisosTemplate() {
         </div>
       </Header>
 
+      <InfoCallout>
+        <strong>Pacientes y permisos clinicos</strong>
+        <p>
+          La matriz de esta pantalla define permisos globales por rol o puesto.
+          Los permisos clinicos sobre un paciente puntual se habilitan desde la
+          asignacion activa al equipo tratante de la internacion.
+        </p>
+      </InfoCallout>
+
       <ControlsCard>
         <div className="scopeControl">
           <label htmlFor="scopeSelect">Asignacion</label>
@@ -488,6 +497,30 @@ const Header = styled.header`
     margin: 0;
     color: ${({ theme }) => theme.textsecundary};
     font-weight: 500;
+  }
+`;
+
+const InfoCallout = styled.section`
+  background: ${({ theme }) => theme.bg};
+  border: 1px solid ${({ theme }) => theme.color2};
+  border-radius: 16px;
+  padding: 14px 16px;
+  display: grid;
+  gap: 6px;
+  box-shadow: var(--shadow-elev-1);
+
+  strong,
+  p {
+    margin: 0;
+  }
+
+  strong {
+    color: ${({ theme }) => theme.text};
+  }
+
+  p {
+    color: ${({ theme }) => theme.textsecundary};
+    line-height: 1.45;
   }
 `;
 
