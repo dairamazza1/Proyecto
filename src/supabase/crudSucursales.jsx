@@ -1,12 +1,61 @@
 import { supabase } from "./supabase.config.jsx";
 
+const bucketDocuments = "documents";
+
+const inferBannerImageType = (filePath = "") => {
+  const normalized = String(filePath ?? "").trim().toLowerCase();
+  if (normalized.endsWith(".png")) return "png";
+  if (normalized.endsWith(".jpg") || normalized.endsWith(".jpeg")) return "jpg";
+  if (normalized.endsWith(".gif")) return "gif";
+  if (normalized.endsWith(".bmp")) return "bmp";
+  return "png";
+};
+
+const isAbsoluteUrl = (value = "") => /^https?:\/\//i.test(String(value).trim());
+
+const normalizeBannerStoragePath = (value = "") => {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "";
+
+  if (isAbsoluteUrl(raw)) {
+    try {
+      const url = new URL(raw);
+      const decodedPath = decodeURIComponent(url.pathname);
+      const signMatch = decodedPath.match(/\/object\/sign\/[^/]+\/(.+)$/i);
+      if (signMatch?.[1]) return signMatch[1].replace(/^\/+/, "");
+
+      const publicMatch = decodedPath.match(/\/object\/public\/[^/]+\/(.+)$/i);
+      if (publicMatch?.[1]) return publicMatch[1].replace(/^\/+/, "");
+    } catch {
+      return raw;
+    }
+  }
+
+  return raw
+    .replace(/^\/+/, "")
+    .replace(/^documents\/+/i, "");
+};
+
+const fetchBannerBinary = async ({ url, filePath }) => {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error("No se pudo descargar el banner configurado para la sucursal.");
+  }
+
+  return {
+    filePath,
+    type: inferBannerImageType(filePath || url),
+    data: await response.arrayBuffer(),
+  };
+};
+
 
 // Obtener todas las sucursales de una empresa
 export async function getSucursales({ empresa_id } = {}) {
   let query = supabase
     
     .from("sucursales")
-    .select("id, name, address, zone, province, tel")
+    .select("id, name, address, zone, province, tel, banner_template")
     .order("name", { ascending: true });
 
   if (empresa_id) {
@@ -16,6 +65,56 @@ export async function getSucursales({ empresa_id } = {}) {
   const { data, error } = await query;
   if (error) throw error;
   return data ?? [];
+}
+
+export async function getSucursalById(id) {
+  if (!id) return null;
+
+  const { data, error } = await supabase
+    .from("sucursales")
+    .select("id, name, address, zone, province, tel, banner_template")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data ?? null;
+}
+
+export async function downloadSucursalBannerTemplate(filePath) {
+  const rawPath = String(filePath ?? "").trim();
+  const normalizedPath = normalizeBannerStoragePath(rawPath);
+  if (!normalizedPath) return null;
+
+  if (isAbsoluteUrl(rawPath)) {
+    return fetchBannerBinary({
+      url: rawPath,
+      filePath: normalizedPath,
+    });
+  }
+
+  const { data, error } = await supabase.storage
+    .from(bucketDocuments)
+    .createSignedUrl(normalizedPath, 60 * 10);
+
+  if (error || !data?.signedUrl) {
+    const { data: publicData } = supabase.storage
+      .from(bucketDocuments)
+      .getPublicUrl(normalizedPath);
+
+    if (!publicData?.publicUrl) {
+      throw error ?? new Error("No se pudo resolver el banner configurado para la sucursal.");
+    }
+
+    return fetchBannerBinary({
+      url: publicData.publicUrl,
+      filePath: normalizedPath,
+    });
+  }
+
+  return fetchBannerBinary({
+    url: data.signedUrl,
+    filePath: normalizedPath,
+  });
 }
 
 // Relacionar empleado con sucursal en la tabla sucursales_empleados

@@ -8,6 +8,7 @@ import {
   TextRun,
 } from "docx";
 import { getArgentinaDateInputFromValue } from "./argentinaDateTime";
+import { buildPacientePrintHeader } from "./pacientePrintBanner";
 import {
   PACIENTE_EGRESO_EPICRISIS_INTERDISCIPLINARY_BOOLEAN_FIELDS,
   PACIENTE_EGRESO_EPICRISIS_INTERDISCIPLINARY_SELECT_FIELDS,
@@ -97,6 +98,7 @@ export const downloadPacienteEpicrisisDocx = async ({
   ingreso,
   epicrisis,
   cobertura,
+  banner = null,
 } = {}) => {
   if (!ingreso?.id) {
     throw new Error("Seleccione una internacion cerrada para descargar la epicrisis.");
@@ -110,17 +112,13 @@ export const downloadPacienteEpicrisisDocx = async ({
     ingreso?.discharge_at ?? epicrisis?.updated_at ?? epicrisis?.created_at ?? null;
 
   const children = [
-    new Paragraph({
-      text: CLINICA_NOMBRE,
-      alignment: AlignmentType.CENTER,
-      heading: HeadingLevel.HEADING_3,
-      spacing: { after: 160 },
-    }),
-    new Paragraph({
-      text: EPICRISIS_TITULO,
-      alignment: AlignmentType.CENTER,
-      heading: HeadingLevel.HEADING_2,
-      spacing: { after: 220 },
+    ...buildPacientePrintHeader({
+      banner,
+      clinicName: CLINICA_NOMBRE,
+      title: EPICRISIS_TITULO,
+      subtitle: ingreso?.sucursal?.name
+        ? `Sucursal: ${safeText(ingreso.sucursal.name)}`
+        : "",
     }),
     new Paragraph({
       alignment: AlignmentType.RIGHT,

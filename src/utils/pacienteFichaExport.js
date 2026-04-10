@@ -13,6 +13,7 @@ import {
   WidthType,
 } from "docx";
 import { getArgentinaDateInputFromValue } from "./argentinaDateTime";
+import { buildPacientePrintHeader } from "./pacientePrintBanner";
 import {
   PACIENTE_ANTECEDENTES_CLINICO_BOOLEAN_FIELDS,
   PACIENTE_ANTECEDENTES_CLINICO_TEXT_FIELDS,
@@ -258,6 +259,7 @@ export const downloadPacienteFichaDocx = async ({
   cobertura,
   antecedentes,
   emergencyContacts = [],
+  banner = null,
 } = {}) => {
   if (!paciente?.id) {
     throw new Error("No se encontró el paciente para generar la ficha.");
@@ -303,17 +305,13 @@ export const downloadPacienteFichaDocx = async ({
     sections: [
       {
         children: [
-          new Paragraph({
-            text: CLINICA_NOMBRE,
-            heading: HeadingLevel.HEADING_3,
-            alignment: AlignmentType.CENTER,
-            spacing: { after: 160 },
-          }),
-          new Paragraph({
-            text: DOCUMENT_TITLE,
-            heading: HeadingLevel.HEADING_2,
-            alignment: AlignmentType.CENTER,
-            spacing: { after: 220 },
+          ...buildPacientePrintHeader({
+            banner,
+            clinicName: CLINICA_NOMBRE,
+            title: DOCUMENT_TITLE,
+            subtitle: ingreso?.sucursal?.name
+              ? `Sucursal: ${safeText(ingreso.sucursal.name)}`
+              : "",
           }),
           new Paragraph({
             alignment: AlignmentType.RIGHT,

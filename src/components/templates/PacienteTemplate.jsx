@@ -28,6 +28,10 @@ import {
   getPacienteContactosEmergenciaByPacienteId,
   resolvePacienteContactosEmergenciaByIngreso,
 } from "../../supabase/crudContactosEmergencia";
+import {
+  downloadSucursalBannerTemplate,
+  getSucursalById,
+} from "../../supabase/crudSucursales";
 import { getPacienteAntecedentesByPacienteId } from "../../supabase/crudPacientesAntecedentes";
 import {
   getPacienteEgresoByIngresoId,
@@ -709,7 +713,28 @@ export function PacienteTemplate({ pacienteId }) {
       toDate,
     });
 
-    await exportPacienteEvolucionesDocx(exportContext);
+    let banner = null;
+    const bannerSucursalId =
+      exportContext?.ingreso?.sucursal?.id ?? evolutionIngresoContext?.sucursal_id ?? null;
+
+    if (bannerSucursalId) {
+      const sucursal = await queryClient.fetchQuery({
+        queryKey: ["sucursalDetalle", bannerSucursalId],
+        queryFn: () => getSucursalById(bannerSucursalId),
+      });
+
+      if (sucursal?.banner_template) {
+        banner = await queryClient.fetchQuery({
+          queryKey: ["sucursalBannerTemplate", sucursal.banner_template],
+          queryFn: () => downloadSucursalBannerTemplate(sucursal.banner_template),
+        });
+      }
+    }
+
+    await exportPacienteEvolucionesDocx({
+      ...exportContext,
+      banner,
+    });
 
     Swal.fire({
       icon: "success",
@@ -765,11 +790,30 @@ export function PacienteTemplate({ pacienteId }) {
     }
 
     try {
+      let banner = null;
+      const bannerSucursalId =
+        epicrisisIngresoContext?.sucursal?.id ?? epicrisisIngresoContext?.sucursal_id ?? null;
+
+      if (bannerSucursalId) {
+        const sucursal = await queryClient.fetchQuery({
+          queryKey: ["sucursalDetalle", bannerSucursalId],
+          queryFn: () => getSucursalById(bannerSucursalId),
+        });
+
+        if (sucursal?.banner_template) {
+          banner = await queryClient.fetchQuery({
+            queryKey: ["sucursalBannerTemplate", sucursal.banner_template],
+            queryFn: () => downloadSucursalBannerTemplate(sucursal.banner_template),
+          });
+        }
+      }
+
       await downloadPacienteEpicrisisDocx({
         paciente,
         ingreso: epicrisisIngresoContext,
         epicrisis,
         cobertura: epicrisisCobertura,
+        banner,
       });
     } catch (error) {
       Swal.fire({
@@ -792,7 +836,7 @@ export function PacienteTemplate({ pacienteId }) {
         },
       });
 
-      const [antecedentesDoc, emergencyContactsDoc] = await Promise.all([
+      const [antecedentesDoc, emergencyContactsDoc, sucursalDoc] = await Promise.all([
         queryClient.fetchQuery({
           queryKey: ["pacienteAntecedentes", pacienteId],
           queryFn: () => getPacienteAntecedentesByPacienteId(pacienteId),
@@ -801,7 +845,21 @@ export function PacienteTemplate({ pacienteId }) {
           queryKey: ["pacienteContactosEmergencia", pacienteId],
           queryFn: () => getPacienteContactosEmergenciaByPacienteId(pacienteId),
         }),
+        ingresoContext?.sucursal_id
+          ? queryClient.fetchQuery({
+              queryKey: ["sucursalDetalle", ingresoContext.sucursal_id],
+              queryFn: () => getSucursalById(ingresoContext.sucursal_id),
+            })
+          : Promise.resolve(null),
       ]);
+
+      const banner = sucursalDoc?.banner_template
+        ? await queryClient.fetchQuery({
+            queryKey: ["sucursalBannerTemplate", sucursalDoc.banner_template],
+            queryFn: () =>
+              downloadSucursalBannerTemplate(sucursalDoc.banner_template),
+          })
+        : null;
 
       const emergencyContactsForIngreso = resolvePacienteContactosEmergenciaByIngreso(
         emergencyContactsDoc,
@@ -814,6 +872,7 @@ export function PacienteTemplate({ pacienteId }) {
         cobertura: coberturaSeleccionada,
         antecedentes: antecedentesDoc,
         emergencyContacts: emergencyContactsForIngreso,
+        banner,
       });
 
       Swal.fire({

@@ -1,16 +1,26 @@
 import { saveAs } from "file-saver";
-import Docxtemplater from "docxtemplater";
-import PizZip from "pizzip";
+import {
+  AlignmentType,
+  Document,
+  HeadingLevel,
+  Packer,
+  Paragraph,
+  Table,
+  TableCell,
+  TableRow,
+  TextRun,
+  WidthType,
+} from "docx";
 import {
   getArgentinaDateInputFromValue,
   getArgentinaTodayDateInput,
   isoToArgentinaDateTimeInput,
 } from "./argentinaDateTime";
 import { resolvePerfilDisplayName } from "./perfilDisplay";
+import { buildPacientePrintHeader } from "./pacientePrintBanner";
 
-const TEMPLATE_URL = "/templates/evoluciones_template.docx";
-
-let templatePromise = null;
+const CLINICA_NOMBRE = "CLINICA DE SALUD MENTAL DR GUTIERREZ WALKER";
+const DOCUMENT_TITLE = "Evoluciones";
 
 const safeText = (value) => {
   if (value === null || value === undefined) return "-";
@@ -72,7 +82,7 @@ const computeAge = (birthDate) => {
     age -= 1;
   }
 
-  return age >= 0 ? `${age} anos` : "-";
+  return age >= 0 ? `${age} años` : "-";
 };
 
 const buildPacienteNombre = (paciente) =>
@@ -100,50 +110,25 @@ const buildFileName = ({ paciente, fromDate, toDate }) => {
   return `evoluciones_${apellido}_${fromSegment}_${toSegment}.docx`;
 };
 
-export const loadEvolucionesTemplate = async () => {
-  if (!templatePromise) {
-    templatePromise = fetch(TEMPLATE_URL).then(async (response) => {
-      if (!response.ok) {
-        throw new Error("No se pudo cargar la plantilla Word.");
-      }
-      return response.arrayBuffer();
-    });
-  }
+const createLabelParagraph = (label, value) =>
+  new Paragraph({
+    spacing: { after: 110 },
+    children: [
+      new TextRun({ text: label, bold: true }),
+      new TextRun({ text: safeText(value) }),
+    ],
+  });
 
-  return templatePromise;
-};
-
-export const buildPacienteEvolucionesTemplateData = ({
-  empresa,
-  paciente,
-  ingreso,
-  evoluciones = [],
-  fromDate,
-  toDate,
-} = {}) => ({
-  empresa_nombre: safeText(empresa?.name ?? empresa?.nombre ?? "Empresa"),
-  paciente_nombre: buildPacienteNombre(paciente),
-  paciente_documento: formatDocument(
-    paciente?.document_type,
-    paciente?.document_number,
-  ),
-  paciente_fecha_nacimiento: formatArgentinaDateLabel(paciente?.birthday),
-  paciente_edad: computeAge(paciente?.birthday),
-  internacion_sucursal: safeText(ingreso?.sucursal?.name),
-  internacion_fecha_ingreso: formatArgentinaDateLabel(ingreso?.admission_at),
-  internacion_fecha_egreso: ingreso?.discharge_at
-    ? formatArgentinaDateLabel(ingreso?.discharge_at)
-    : "-",
-  internacion_motivo: safeText(ingreso?.admission_reason),
-  internacion_diagnostico: safeText(ingreso?.admission_diagnosis),
-  periodo_desde: formatDateInputLabel(fromDate),
-  periodo_hasta: formatDateInputLabel(toDate),
-  evoluciones: (evoluciones ?? []).map((evolucion) => ({
-    fecha_hora: formatArgentinaDateTimeLabel(evolucion?.evolution_at),
-    profesional: buildProfesionalLabel(evolucion),
-    detalle: safeText(evolucion?.notes),
-  })),
-});
+const createTableCell = (text, width, bold = false) =>
+  new TableCell({
+    width: { size: width, type: WidthType.PERCENTAGE },
+    children: [
+      new Paragraph({
+        spacing: { after: 40 },
+        children: [new TextRun({ text: safeText(text), bold })],
+      }),
+    ],
+  });
 
 export const exportPacienteEvolucionesDocx = async ({
   empresa,
@@ -152,35 +137,88 @@ export const exportPacienteEvolucionesDocx = async ({
   evoluciones = [],
   fromDate,
   toDate,
+  banner = null,
 } = {}) => {
   if (!evoluciones?.length) {
     throw new Error("No hay evoluciones para el periodo seleccionado.");
   }
 
-  const template = await loadEvolucionesTemplate();
-  const zip = new PizZip(template);
-  const doc = new Docxtemplater(zip, {
-    paragraphLoop: true,
-    linebreaks: true,
-    delimiters: { start: "{{", end: "}}" },
-  });
-
-  doc.render(
-    buildPacienteEvolucionesTemplateData({
-      empresa,
-      paciente,
-      ingreso,
-      evoluciones,
-      fromDate,
-      toDate,
-    }),
+  const evolucionesRows = evoluciones.map(
+    (evolucion) =>
+      new TableRow({
+        children: [
+          createTableCell(formatArgentinaDateTimeLabel(evolucion?.evolution_at), 22),
+          createTableCell(buildProfesionalLabel(evolucion), 24),
+          createTableCell(evolucion?.notes, 54),
+        ],
+      }),
   );
 
-  const blob = doc.getZip().generate({
-    type: "blob",
-    mimeType:
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  const doc = new Document({
+    sections: [
+      {
+        children: [
+          ...buildPacientePrintHeader({
+            banner,
+            clinicName: safeText(empresa?.name ?? empresa?.nombre ?? CLINICA_NOMBRE),
+            title: DOCUMENT_TITLE,
+            subtitle: ingreso?.sucursal?.name
+              ? `Sucursal: ${safeText(ingreso.sucursal.name)}`
+              : "",
+          }),
+          createLabelParagraph("Paciente: ", buildPacienteNombre(paciente)),
+          createLabelParagraph(
+            "Documento: ",
+            formatDocument(paciente?.document_type, paciente?.document_number),
+          ),
+          createLabelParagraph(
+            "Fecha de nacimiento: ",
+            formatArgentinaDateLabel(paciente?.birthday),
+          ),
+          createLabelParagraph("Edad: ", computeAge(paciente?.birthday)),
+          createLabelParagraph(
+            "Fecha de ingreso: ",
+            formatArgentinaDateLabel(ingreso?.admission_at),
+          ),
+          createLabelParagraph(
+            "Fecha de egreso: ",
+            ingreso?.discharge_at
+              ? formatArgentinaDateLabel(ingreso?.discharge_at)
+              : "-",
+          ),
+          createLabelParagraph("Motivo de internación: ", ingreso?.admission_reason),
+          createLabelParagraph(
+            "Diagnóstico de ingreso: ",
+            ingreso?.admission_diagnosis,
+          ),
+          createLabelParagraph(
+            "Período: ",
+            `${formatDateInputLabel(fromDate)} - ${formatDateInputLabel(toDate)}`,
+          ),
+          new Paragraph({
+            text: "Detalle de evoluciones",
+            heading: HeadingLevel.HEADING_3,
+            spacing: { before: 220, after: 140 },
+          }),
+          new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            rows: [
+              new TableRow({
+                children: [
+                  createTableCell("Fecha y hora", 22, true),
+                  createTableCell("Profesional", 24, true),
+                  createTableCell("Detalle", 54, true),
+                ],
+              }),
+              ...evolucionesRows,
+            ],
+          }),
+        ],
+      },
+    ],
   });
+
+  const blob = await Packer.toBlob(doc);
   const fileName = buildFileName({ paciente, fromDate, toDate });
   saveAs(blob, fileName);
   return fileName;
