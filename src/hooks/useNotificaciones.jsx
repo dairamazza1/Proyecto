@@ -3,14 +3,38 @@ import {
   getNotificationReads,
   getNotifications,
   getUnreadCount,
+  markAllRead,
   markRead,
 } from "../supabase/crudNotifications";
 
-const buildNotificationsWithReads = async (notifications = []) => {
-  if (!notifications?.length) return [];
+const getPayloadData = (payload = {}) => {
+  if (!payload || typeof payload !== "object") {
+    return {
+      perfilId: null,
+      notificationIds: [],
+      notificationId: null,
+    };
+  }
+
+  return {
+    perfilId: payload.perfilId ?? null,
+    notificationIds: Array.isArray(payload.notificationIds)
+      ? payload.notificationIds
+      : [],
+    notificationId: payload.notificationId ?? null,
+  };
+};
+
+const getUniqueIds = (ids = []) =>
+  Array.from(
+    new Set((ids ?? []).filter((id) => id !== null && id !== undefined))
+  );
+
+const buildNotificationsWithReads = async (notifications = [], perfilId = null) => {
+  if (!notifications?.length || !perfilId) return notifications ?? [];
 
   const ids = notifications.map((item) => item.id);
-  const reads = await getNotificationReads(ids);
+  const reads = await getNotificationReads({ notificationIds: ids, perfilId });
   const readMap = new Map(
     (reads ?? []).map((item) => [item.notification_id, item.read_at])
   );
@@ -22,23 +46,29 @@ const buildNotificationsWithReads = async (notifications = []) => {
   }));
 };
 
-export function useNotificationsList({ limit = 100 } = {}, enabled = true) {
+export function useNotificationsList(
+  { limit = 100, perfilId = null } = {},
+  enabled = true
+) {
   return useQuery({
-    queryKey: ["notifications", limit],
+    queryKey: ["notifications", perfilId, limit],
     queryFn: async () => {
       const notifications = await getNotifications({ limit });
-      return buildNotificationsWithReads(notifications);
+      return buildNotificationsWithReads(notifications, perfilId);
     },
-    enabled,
+    enabled: enabled && Boolean(perfilId),
     refetchOnWindowFocus: false,
   });
 }
 
-export function useNotificationsUnreadCount({ limit = 500 } = {}, enabled = true) {
+export function useNotificationsUnreadCount(
+  { limit = 500, perfilId = null } = {},
+  enabled = true
+) {
   return useQuery({
-    queryKey: ["notificationsUnreadCount", limit],
-    queryFn: () => getUnreadCount({ limit }),
-    enabled,
+    queryKey: ["notificationsUnreadCount", perfilId, limit],
+    queryFn: () => getUnreadCount({ limit, perfilId }),
+    enabled: enabled && Boolean(perfilId),
     refetchOnWindowFocus: false,
   });
 }
@@ -49,21 +79,22 @@ export function useMarkReadMutation() {
   return useMutation({
     mutationFn: markRead,
     onMutate: async (payload) => {
-      const notificationId =
-        typeof payload === "object" ? payload.notificationId : payload;
+      const { notificationId, perfilId } = getPayloadData(payload);
 
-      if (!notificationId) {
+      if (!notificationId || !perfilId) {
         return {};
       }
 
-      await queryClient.cancelQueries({ queryKey: ["notifications"] });
-      await queryClient.cancelQueries({ queryKey: ["notificationsUnreadCount"] });
+      await queryClient.cancelQueries({ queryKey: ["notifications", perfilId] });
+      await queryClient.cancelQueries({
+        queryKey: ["notificationsUnreadCount", perfilId],
+      });
 
       const previousLists = queryClient.getQueriesData({
-        queryKey: ["notifications"],
+        queryKey: ["notifications", perfilId],
       });
       const previousCounts = queryClient.getQueriesData({
-        queryKey: ["notificationsUnreadCount"],
+        queryKey: ["notificationsUnreadCount", perfilId],
       });
 
       let wasUnread = false;
@@ -76,18 +107,21 @@ export function useMarkReadMutation() {
       });
 
       const readAt = new Date().toISOString();
-      queryClient.setQueriesData({ queryKey: ["notifications"] }, (old) => {
-        if (!Array.isArray(old)) return old;
-        return old.map((item) =>
-          item?.id === notificationId
-            ? { ...item, is_read: true, read_at: readAt }
-            : item
-        );
-      });
+      queryClient.setQueriesData(
+        { queryKey: ["notifications", perfilId] },
+        (old) => {
+          if (!Array.isArray(old)) return old;
+          return old.map((item) =>
+            item?.id === notificationId
+              ? { ...item, is_read: true, read_at: readAt }
+              : item
+          );
+        }
+      );
 
       if (wasUnread) {
         queryClient.setQueriesData(
-          { queryKey: ["notificationsUnreadCount"] },
+          { queryKey: ["notificationsUnreadCount", perfilId] },
           (old) => Math.max(0, (old ?? 0) - 1)
         );
       }
@@ -102,9 +136,88 @@ export function useMarkReadMutation() {
         queryClient.setQueryData(key, data);
       });
     },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
-      queryClient.invalidateQueries({ queryKey: ["notificationsUnreadCount"] });
+    onSettled: (_data, _error, payload) => {
+      const { perfilId } = getPayloadData(payload);
+      if (!perfilId) return;
+      queryClient.invalidateQueries({ queryKey: ["notifications", perfilId] });
+      queryClient.invalidateQueries({
+        queryKey: ["notificationsUnreadCount", perfilId],
+      });
+    },
+  });
+}
+
+export function useMarkAllReadMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: markAllRead,
+    onMutate: async (payload) => {
+      const { perfilId, notificationIds } = getPayloadData(payload);
+      const uniqueIds = getUniqueIds(notificationIds);
+
+      if (!perfilId || !uniqueIds.length) {
+        return {};
+      }
+
+      await queryClient.cancelQueries({ queryKey: ["notifications", perfilId] });
+      await queryClient.cancelQueries({
+        queryKey: ["notificationsUnreadCount", perfilId],
+      });
+
+      const previousLists = queryClient.getQueriesData({
+        queryKey: ["notifications", perfilId],
+      });
+      const previousCounts = queryClient.getQueriesData({
+        queryKey: ["notificationsUnreadCount", perfilId],
+      });
+
+      const pendingIdSet = new Set(uniqueIds);
+      const readAt = new Date().toISOString();
+      let unreadAffectedCount = 0;
+
+      queryClient.setQueriesData(
+        { queryKey: ["notifications", perfilId] },
+        (old) => {
+          if (!Array.isArray(old)) return old;
+          return old.map((item) => {
+            if (!pendingIdSet.has(item?.id)) {
+              return item;
+            }
+
+            if (!item.is_read) {
+              unreadAffectedCount += 1;
+            }
+
+            return { ...item, is_read: true, read_at: readAt };
+          });
+        }
+      );
+
+      if (unreadAffectedCount > 0) {
+        queryClient.setQueriesData(
+          { queryKey: ["notificationsUnreadCount", perfilId] },
+          (old) => Math.max(0, (old ?? 0) - unreadAffectedCount)
+        );
+      }
+
+      return { previousLists, previousCounts };
+    },
+    onError: (_err, _payload, context) => {
+      context?.previousLists?.forEach(([key, data]) => {
+        queryClient.setQueryData(key, data);
+      });
+      context?.previousCounts?.forEach(([key, data]) => {
+        queryClient.setQueryData(key, data);
+      });
+    },
+    onSettled: (_data, _error, payload) => {
+      const { perfilId } = getPayloadData(payload);
+      if (!perfilId) return;
+      queryClient.invalidateQueries({ queryKey: ["notifications", perfilId] });
+      queryClient.invalidateQueries({
+        queryKey: ["notificationsUnreadCount", perfilId],
+      });
     },
   });
 }

@@ -4,13 +4,28 @@ import {
   resolvePerfilRoleDisplay,
 } from "./perfilDisplay";
 
-const INDICACION_PAYLOAD_VERSION = 1;
+const INDICACION_PAYLOAD_VERSION = 2;
 
 export const INDICACION_SCHEDULE_OPTIONS = [
   { key: "08:00", label: "8 hs" },
   { key: "12:00", label: "12 hs" },
   { key: "16:00", label: "16 hs" },
   { key: "20:00", label: "20 hs" },
+];
+
+export const INDICACION_DOSE_OPTIONS = [
+  "1/4",
+  "1/2",
+  "3/4",
+  "1",
+  "1 1/4",
+  "1 1/2",
+  "1 3/4",
+  "2",
+  "2 1/4",
+  "2 1/2",
+  "2 3/4",
+  "3",
 ];
 
 const SCHEDULE_LABEL_BY_KEY = new Map(
@@ -75,6 +90,46 @@ const normalizePacienteIndicacionSchedules = (value) => {
     .filter((key) => unique.has(key));
 };
 
+export const normalizePacienteIndicacionDoseValue = (value) => {
+  const normalized = normalizeText(value);
+  return INDICACION_DOSE_OPTIONS.includes(normalized) ? normalized : "";
+};
+
+export const normalizePacienteIndicacionScheduleDoses = (value) => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+
+  return INDICACION_SCHEDULE_OPTIONS.reduce((acc, option) => {
+    const normalizedDose = normalizePacienteIndicacionDoseValue(value?.[option.key]);
+    if (normalizedDose) {
+      acc[option.key] = normalizedDose;
+    }
+    return acc;
+  }, {});
+};
+
+export const hasPacienteIndicacionLegacySchedule = (row = {}, scheduleKey) =>
+  normalizePacienteIndicacionSchedules(row?.schedules).includes(scheduleKey);
+
+export const getPacienteIndicacionScheduleDisplay = (row = {}, scheduleKey) => {
+  const normalizedKey = normalizePacienteIndicacionScheduleKey(scheduleKey);
+  if (!normalizedKey) return "-";
+
+  const normalizedDoses = normalizePacienteIndicacionScheduleDoses(
+    row?.schedule_doses,
+  );
+
+  if (normalizedDoses[normalizedKey]) return normalizedDoses[normalizedKey];
+  if (hasPacienteIndicacionLegacySchedule(row, normalizedKey)) return "X";
+  return "-";
+};
+
+export const getPacienteIndicacionScheduleEntries = (row = {}) =>
+  INDICACION_SCHEDULE_OPTIONS.map((option) => ({
+    key: option.key,
+    label: option.label,
+    value: getPacienteIndicacionScheduleDisplay(row, option.key),
+  })).filter((entry) => entry.value !== "-");
+
 export const createPacienteIndicacionFormRow = (overrides = {}) => ({
   local_id: normalizeText(overrides?.local_id ?? overrides?.localId) || nextIndicacionRowId(),
   persisted_id:
@@ -82,6 +137,9 @@ export const createPacienteIndicacionFormRow = (overrides = {}) => ({
       ? null
       : overrides.persisted_id,
   description: normalizeText(overrides?.description),
+  schedule_doses: normalizePacienteIndicacionScheduleDoses(
+    overrides?.schedule_doses ?? overrides?.scheduleDoses,
+  ),
   schedules: normalizePacienteIndicacionSchedules(
     overrides?.schedules ?? overrides?.times,
   ),
@@ -92,9 +150,15 @@ export const normalizePacienteIndicacionRows = (rows = []) =>
 
 export const buildPacienteIndicacionDescription = (rows = []) => {
   const normalizedRows = normalizePacienteIndicacionRows(rows)
-    .filter((row) => row.description)
+    .filter(
+      (row) =>
+        row.description ||
+        Object.keys(row.schedule_doses ?? {}).length ||
+        row.schedules.length,
+    )
     .map((row) => ({
       description: row.description,
+      schedule_doses: row.schedule_doses,
       schedules: row.schedules,
     }));
 
@@ -115,6 +179,7 @@ const parseStructuredIndicacionRows = (description) => {
     return parsed.rows.map((row) =>
       createPacienteIndicacionFormRow({
         description: row?.description,
+        schedule_doses: row?.schedule_doses,
         schedules: row?.schedules,
       }),
     );
@@ -704,20 +769,24 @@ const buildPacienteIndicacionPdfBytes = ({
       });
 
       INDICACION_SCHEDULE_OPTIONS.forEach((option, optionIndex) => {
-        if (!row.schedules.includes(option.key)) return;
-        const mark = "X";
-        const markWidth = measurePdfTextWidth(mark, 11);
+        const displayValue = getPacienteIndicacionScheduleDisplay(row, option.key);
+        if (displayValue === "-") return;
+
+        const fontSize = displayValue === "X" ? 11 : 9;
+        const textWidth = measurePdfTextWidth(displayValue, fontSize);
         const cellX =
           PDF_MARGIN_X +
           descriptionColumnWidth +
           optionIndex * scheduleColumnWidth;
+
         pushCommand(
           createPdfTextCommand({
-            x: cellX + (scheduleColumnWidth - markWidth) / 2,
-            y: cursorY + Math.max(8, (rowHeight - 11) / 2),
-            text: mark,
-            font: PDF_FONT_BOLD,
-            fontSize: 11,
+            x: cellX + (scheduleColumnWidth - textWidth) / 2,
+            y: cursorY + Math.max(8, (rowHeight - fontSize) / 2),
+            text: displayValue,
+            font:
+              displayValue === "X" ? PDF_FONT_BOLD : PDF_FONT_REGULAR,
+            fontSize,
           })
         );
       });
@@ -875,8 +944,15 @@ export const buildPacienteIndicacionPrintHtml = ({
             <tr>
               <td>${escapeHtml(row.description)}</td>
               ${INDICACION_SCHEDULE_OPTIONS.map(
-                (option) =>
-                  `<td>${row.schedules.includes(option.key) ? "X" : ""}</td>`,
+                (option) => {
+                  const displayValue = getPacienteIndicacionScheduleDisplay(
+                    row,
+                    option.key,
+                  );
+                  return `<td>${escapeHtml(
+                    displayValue === "-" ? "" : displayValue,
+                  )}</td>`;
+                },
               ).join("")}
             </tr>
           `,
@@ -1048,7 +1124,10 @@ export const hasPacienteIndicacionMeaningfulContent = ({
   indicationRef = "",
 } = {}) => {
   const normalizedRows = normalizePacienteIndicacionRows(rows).filter(
-    (row) => row.description || row.schedules.length,
+    (row) =>
+      row.description ||
+      Object.keys(row.schedule_doses ?? {}).length ||
+      row.schedules.length,
   );
 
   return Boolean(

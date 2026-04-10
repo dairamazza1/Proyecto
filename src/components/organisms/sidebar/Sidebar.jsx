@@ -1,4 +1,5 @@
 import styled from "styled-components";
+import { isValidElement, cloneElement } from "react";
 import {
   LinksArray,
   SecondarylinksArray,
@@ -10,14 +11,35 @@ import { v } from "../../../styles/variables";
 import { NavLink } from "react-router-dom";
 import { Icon } from "@iconify/react";
 
+function renderSidebarIcon(icon, color) {
+  if (typeof icon === "string") {
+    return <Icon color={color} className="Linkicon" icon={icon} />;
+  }
+
+  if (typeof icon === "function") {
+    const IconComponent = icon;
+    return <IconComponent color={color} className="Linkicon" />;
+  }
+
+  if (isValidElement(icon)) {
+    const nextClassName = [icon.props?.className, "Linkicon"]
+      .filter(Boolean)
+      .join(" ");
+    return cloneElement(icon, { color, className: nextClassName });
+  }
+
+  return null;
+}
+
 export function Sidebar({ state, setState }) {
-  const { canRead } = usePermissions();
+  const { canRead, profile } = usePermissions();
   const canSeeNotifications = canRead("notificaciones");
   const canSeeEnfermeria = canRead("enfermeria");
+  const perfilId = profile?.id ?? null;
 
   const { data: unreadCount = 0 } = useNotificationsUnreadCount(
-    { limit: 500 },
-    canSeeNotifications
+    { limit: 500, perfilId },
+    canSeeNotifications && Boolean(perfilId)
   );
   const unreadLabel = unreadCount > 99 ? "99+" : unreadCount;
   const filterByRole = (links) =>
@@ -48,7 +70,7 @@ export function Sidebar({ state, setState }) {
           >
             <section className={state ? "content open" : "content"}>
               <span className="iconWrapper">
-                <Icon color={color} className="Linkicon" icon={icon} />
+                {renderSidebarIcon(icon, color)}
                 {showBadge && <span className="badge">{unreadLabel}</span>}
               </span>
               <span className={state ? "label_ver" : "label_oculto"}>

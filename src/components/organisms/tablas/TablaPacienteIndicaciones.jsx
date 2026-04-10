@@ -5,7 +5,8 @@ import {
   resolvePerfilRoleDisplay,
 } from "../../../index";
 import {
-  formatPacienteIndicacionScheduleLabel,
+  getPacienteIndicacionScheduleDisplay,
+  getPacienteIndicacionScheduleEntries,
   hydratePacienteIndicacionRecord,
   INDICACION_SCHEDULE_OPTIONS,
 } from "../../../utils/pacienteIndicaciones";
@@ -33,13 +34,6 @@ const getProfessionalLabel = (row) => {
   if (role === "-") return displayName;
   if (displayName === "-") return role;
   return `${displayName} - ${role}`;
-};
-
-const getScheduleLabels = (row) => {
-  const labels = (row?.schedules ?? []).map((schedule) =>
-    formatPacienteIndicacionScheduleLabel(schedule),
-  );
-  return labels.length ? labels : ["Sin horario"];
 };
 
 export function TablaPacienteIndicaciones({
@@ -102,16 +96,17 @@ export function TablaPacienteIndicaciones({
                           {row.description}
                         </td>
                         {INDICACION_SCHEDULE_OPTIONS.map((option) => {
-                          const checked = row.schedules.includes(option.key);
+                          const displayValue = getPacienteIndicacionScheduleDisplay(
+                            row,
+                            option.key,
+                          );
                           return (
                             <td
                               key={`${row.local_id}-${option.key}`}
-                              data-label={formatPacienteIndicacionScheduleLabel(
-                                option.key,
-                              )}
-                              className={`scheduleCell${checked ? " checked" : ""}`}
+                              data-label={option.label}
+                              className={`scheduleCell${displayValue !== "-" ? " checked" : ""}`}
                             >
-                              <span className="mark">{checked ? "Si" : "-"}</span>
+                              <span className="mark">{displayValue}</span>
                             </td>
                           );
                         })}
@@ -145,11 +140,18 @@ export function TablaPacienteIndicaciones({
                     <div className="cardRow">
                       <span className="label">Horarios</span>
                       <div className="schedulePills">
-                        {getScheduleLabels(row).map((label) => (
-                          <span key={`${row.local_id}-${label}`} className="pill">
-                            {label}
-                          </span>
-                        ))}
+                        {getPacienteIndicacionScheduleEntries(row).length ? (
+                          getPacienteIndicacionScheduleEntries(row).map((entry) => (
+                            <span
+                              key={`${row.local_id}-${entry.key}`}
+                              className="pill"
+                            >
+                              {`${entry.label}: ${entry.value}`}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="pill muted">Sin horario</span>
+                        )}
                       </div>
                     </div>
                   </article>
@@ -364,6 +366,11 @@ const Container = styled.div`
       color: ${({ theme }) => theme.color1};
       font-size: 0.82rem;
       font-weight: 700;
+    }
+
+    .pill.muted {
+      background: var(--bg-surface-muted);
+      color: ${({ theme }) => theme.textsecundary};
     }
 
     .emptyMobileCard {

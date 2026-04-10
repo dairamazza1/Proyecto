@@ -25,6 +25,7 @@ import {
   createPacienteIndicacionFormRow,
   hasPacienteIndicacionMeaningfulContent,
   hydratePacienteIndicacionRecord,
+  INDICACION_DOSE_OPTIONS,
   INDICACION_SCHEDULE_OPTIONS,
 } from "../../../utils/pacienteIndicaciones";
 import { DeviceMax } from "../../../styles/breakpoints";
@@ -33,20 +34,38 @@ import { v } from "../../../styles/variables";
 const safeString = (value) =>
   value === null || value === undefined ? "" : String(value);
 
+const isTruthyFieldValue = (value) =>
+  value === true || value === "true" || value === 1 || value === "1";
+
 const SCHEDULE_FIELD_BY_KEY = {
-  "08:00": "slot_08_00",
-  "12:00": "slot_12_00",
-  "16:00": "slot_16_00",
-  "20:00": "slot_20_00",
+  "08:00": "dose_08_00",
+  "12:00": "dose_12_00",
+  "16:00": "dose_16_00",
+  "20:00": "dose_20_00",
+};
+
+const LEGACY_SCHEDULE_FIELD_BY_KEY = {
+  "08:00": "legacy_08_00",
+  "12:00": "legacy_12_00",
+  "16:00": "legacy_16_00",
+  "20:00": "legacy_20_00",
 };
 
 const mapIndicacionRowToFormValues = (row) => ({
   local_id: row?.local_id ?? "",
   description: safeString(row?.description),
-  slot_08_00: (row?.schedules ?? []).includes("08:00"),
-  slot_12_00: (row?.schedules ?? []).includes("12:00"),
-  slot_16_00: (row?.schedules ?? []).includes("16:00"),
-  slot_20_00: (row?.schedules ?? []).includes("20:00"),
+  dose_08_00: safeString(row?.schedule_doses?.["08:00"]),
+  dose_12_00: safeString(row?.schedule_doses?.["12:00"]),
+  dose_16_00: safeString(row?.schedule_doses?.["16:00"]),
+  dose_20_00: safeString(row?.schedule_doses?.["20:00"]),
+  legacy_08_00:
+    !row?.schedule_doses?.["08:00"] && (row?.schedules ?? []).includes("08:00"),
+  legacy_12_00:
+    !row?.schedule_doses?.["12:00"] && (row?.schedules ?? []).includes("12:00"),
+  legacy_16_00:
+    !row?.schedule_doses?.["16:00"] && (row?.schedules ?? []).includes("16:00"),
+  legacy_20_00:
+    !row?.schedule_doses?.["20:00"] && (row?.schedules ?? []).includes("20:00"),
 });
 
 const createEmptyFormRow = () =>
@@ -54,13 +73,28 @@ const createEmptyFormRow = () =>
 
 const mapFormRowsToIndicacionRows = (rows = []) =>
   (rows ?? []).map((row) =>
-    createPacienteIndicacionFormRow({
-      local_id: row?.local_id,
-      description: row?.description,
-      schedules: INDICACION_SCHEDULE_OPTIONS.filter(
-        (option) => row?.[SCHEDULE_FIELD_BY_KEY[option.key]],
-      ).map((option) => option.key),
-    }),
+    {
+      const scheduleDoses = INDICACION_SCHEDULE_OPTIONS.reduce((acc, option) => {
+        const doseValue = safeString(row?.[SCHEDULE_FIELD_BY_KEY[option.key]]).trim();
+        if (doseValue) {
+          acc[option.key] = doseValue;
+        }
+        return acc;
+      }, {});
+
+      const legacySchedules = INDICACION_SCHEDULE_OPTIONS.filter(
+        (option) =>
+          !scheduleDoses[option.key] &&
+          isTruthyFieldValue(row?.[LEGACY_SCHEDULE_FIELD_BY_KEY[option.key]]),
+      ).map((option) => option.key);
+
+      return createPacienteIndicacionFormRow({
+        local_id: row?.local_id,
+        description: row?.description,
+        schedule_doses: scheduleDoses,
+        schedules: legacySchedules,
+      });
+    },
   );
 
 const buildFormValues = (indicacionPreselected) => {
@@ -214,11 +248,12 @@ export function ModalPacienteIndicacionForm({
     const normalizedRows = mapFormRowsToIndicacionRows(data.rows);
     const nextRowErrors = normalizedRows.map((row) => {
       const hasDescription = Boolean(row.description);
-      const hasSchedules = row.schedules.length > 0;
+      const hasDoseSelections = Boolean(
+        Object.keys(row.schedule_doses ?? {}).length || row.schedules.length,
+      );
 
-      if (!hasDescription && !hasSchedules) return "";
+      if (!hasDescription && !hasDoseSelections) return "";
       if (!hasDescription) return "Indique la descripcion.";
-      if (!hasSchedules) return "Seleccione al menos un horario.";
       return "";
     });
 
@@ -305,7 +340,7 @@ export function ModalPacienteIndicacionForm({
             <div className="sectionHeader">
               <div>
                 <h2>Indicaciones</h2>
-                <small>Asocie cada indicacion a uno o mas horarios.</small>
+                <small>Seleccione una dosis opcional para cada horario.</small>
               </div>
               <Btn1
                 tipo="button"
@@ -338,6 +373,15 @@ export function ModalPacienteIndicacionForm({
                           type="hidden"
                           {...register(`rows.${index}.local_id`)}
                         />
+                        {INDICACION_SCHEDULE_OPTIONS.map((option) => (
+                          <input
+                            key={`legacy-${field.id}-${option.key}`}
+                            type="hidden"
+                            {...register(
+                              `rows.${index}.${LEGACY_SCHEDULE_FIELD_BY_KEY[option.key]}`,
+                            )}
+                          />
+                        ))}
                         <textarea
                           className="descriptionInput"
                           rows={2}
@@ -351,16 +395,20 @@ export function ModalPacienteIndicacionForm({
                         ) : null}
                       </td>
                       {INDICACION_SCHEDULE_OPTIONS.map((option) => (
-                        <td key={option.key} className="checkCell">
-                          <label className="checkboxLabel">
-                            <input
-                              type="checkbox"
-                              {...register(
-                                `rows.${index}.${SCHEDULE_FIELD_BY_KEY[option.key]}`,
-                              )}
-                            />
-                            <span />
-                          </label>
+                        <td key={option.key} className="doseCell">
+                          <select
+                            className="doseSelect"
+                            {...register(
+                              `rows.${index}.${SCHEDULE_FIELD_BY_KEY[option.key]}`,
+                            )}
+                          >
+                            <option value="">-</option>
+                            {INDICACION_DOSE_OPTIONS.map((doseOption) => (
+                              <option key={`${option.key}-${doseOption}`} value={doseOption}>
+                                {doseOption}
+                              </option>
+                            ))}
+                          </select>
                         </td>
                       ))}
                       <td className="actionsCell">
@@ -590,42 +638,21 @@ const Modal = styled.div`
     font: inherit;
   }
 
-  .checkCell,
+  .doseCell,
   .actionsCell {
     text-align: center;
     vertical-align: middle;
   }
 
-  .checkboxLabel {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    width: 30px;
-    height: 30px;
-    cursor: pointer;
-
-    input {
-      position: absolute;
-      opacity: 0;
-      inset: 0;
-      cursor: pointer;
-    }
-
-    span {
-      width: 20px;
-      height: 20px;
-      border-radius: 6px;
-      border: 1px solid ${({ theme }) => theme.color2};
-      background: ${({ theme }) => theme.bg};
-      transition: all 0.2s ease;
-    }
-
-    input:checked + span {
-      background: var(--bg-accent-soft-strong);
-      border-color: ${({ theme }) => theme.color1};
-      box-shadow: inset 0 0 0 4px ${({ theme }) => theme.color1};
-    }
+  .doseSelect {
+    width: 100%;
+    min-width: 82px;
+    border: 1px solid ${({ theme }) => theme.color2};
+    border-radius: 10px;
+    padding: 8px 10px;
+    background: ${({ theme }) => theme.bg};
+    color: ${({ theme }) => theme.text};
+    font: inherit;
   }
 
   .removeRowButton {

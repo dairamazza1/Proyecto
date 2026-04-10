@@ -24,10 +24,15 @@ const formatConditionType = (value) => {
   if (!value) return "-";
   const raw = String(value).trim().toLowerCase();
   if (raw === "agudo") return "Agudo";
-  if (raw === "cronico") return "Crónico";
+  if (raw === "cronico") return "Cronico";
   return value;
 };
 
+const getEpisodeStatusLabel = (row) => {
+  const status = String(row?.ingreso_status ?? "").trim().toLowerCase();
+  if (row?.discharge_at || status === "discharged") return "Egresado";
+  return "Internado";
+};
 const formatIngresoDiagnoses = (primary, secondary) => {
   const principal = String(primary ?? "").trim();
   const secundario = String(secondary ?? "").trim();
@@ -38,9 +43,9 @@ const formatIngresoDiagnoses = (primary, secondary) => {
   return `Principal: ${principal} | Secundario: ${secundario}`;
 };
 
-export function TablaPacientes({ data }) {
+export function TablaPacientesHistorial({ data }) {
   const safeData = Array.isArray(data) ? data : [];
-  const [sorting, setSorting] = useState([{ id: "last_name", desc: false }]);
+  const [sorting, setSorting] = useState([{ id: "admission_at", desc: true }]);
 
   const columns = [
     {
@@ -97,14 +102,59 @@ export function TablaPacientes({ data }) {
       enableSorting: true,
     },
     {
-      accessorKey: "admission_at",
-      header: "Dia de ingreso",
+      accessorKey: "ingreso_status",
+      header: "Estado internacion",
       meta: {
-        cardLabel: "Dia de ingreso",
+        cardLabel: "Estado internacion",
+        cardValue: (row) => (
+          <StatusPill className={getEpisodeStatusLabel(row) === "Internado" ? "internado" : "egresado"}>
+            {getEpisodeStatusLabel(row)}
+          </StatusPill>
+        ),
+      },
+      cell: (info) => (
+        <div data-title="Estado internacion" className="ContentCell">
+          <StatusPill
+            className={
+              getEpisodeStatusLabel(info.row.original) === "Internado"
+                ? "internado"
+                : "egresado"
+            }
+          >
+            {getEpisodeStatusLabel(info.row.original)}
+          </StatusPill>
+        </div>
+      ),
+      sortingFn: (rowA, rowB) => {
+        const left = getEpisodeStatusLabel(rowA.original) === "Internado" ? 1 : 0;
+        const right = getEpisodeStatusLabel(rowB.original) === "Internado" ? 1 : 0;
+        return left - right;
+      },
+      enableSorting: true,
+    },
+    {
+      accessorKey: "admission_at",
+      header: "Ultimo ingreso",
+      meta: {
+        cardLabel: "Ultimo ingreso",
         cardValue: (row) => formatDate(row.admission_at),
       },
       cell: (info) => (
-        <div data-title="Dia de ingreso" className="ContentCell">
+        <div data-title="Ultimo ingreso" className="ContentCell">
+          <span>{formatDate(info.getValue())}</span>
+        </div>
+      ),
+      enableSorting: true,
+    },
+    {
+      accessorKey: "discharge_at",
+      header: "Ultimo egreso",
+      meta: {
+        cardLabel: "Ultimo egreso",
+        cardValue: (row) => formatDate(row.discharge_at),
+      },
+      cell: (info) => (
+        <div data-title="Ultimo egreso" className="ContentCell">
           <span>{formatDate(info.getValue())}</span>
         </div>
       ),
@@ -177,7 +227,7 @@ export function TablaPacientes({ data }) {
               (field) =>
                 field.label &&
                 field.key !== "first_name" &&
-                field.key !== "last_name"
+                field.key !== "last_name",
             );
 
           return (
@@ -209,60 +259,60 @@ export function TablaPacientes({ data }) {
       </div>
 
       <div className="tableScroll">
-          <table className="responsive-table">
-            <thead>
-              {table.getHeaderGroups().map((headerGroup) => (
-                <tr key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => {
-                    const canSort = header.column.getCanSort();
-                    const sorted = header.column.getIsSorted();
-                    return (
-                      <th key={header.id}>
-                        <div
-                          className={canSort ? "thInner sortable" : "thInner"}
-                          onClick={
-                            canSort
-                              ? header.column.getToggleSortingHandler()
-                              : undefined
-                          }
-                          role={canSort ? "button" : undefined}
-                          tabIndex={canSort ? 0 : undefined}
-                          onKeyDown={
-                            canSort
-                              ? (event) => {
-                                  if (event.key === "Enter" || event.key === " ") {
-                                    event.preventDefault();
-                                    header.column.getToggleSortingHandler()?.(event);
-                                  }
+        <table className="responsive-table">
+          <thead>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <tr key={headerGroup.id}>
+                {headerGroup.headers.map((header) => {
+                  const canSort = header.column.getCanSort();
+                  const sorted = header.column.getIsSorted();
+                  return (
+                    <th key={header.id}>
+                      <div
+                        className={canSort ? "thInner sortable" : "thInner"}
+                        onClick={
+                          canSort
+                            ? header.column.getToggleSortingHandler()
+                            : undefined
+                        }
+                        role={canSort ? "button" : undefined}
+                        tabIndex={canSort ? 0 : undefined}
+                        onKeyDown={
+                          canSort
+                            ? (event) => {
+                                if (event.key === "Enter" || event.key === " ") {
+                                  event.preventDefault();
+                                  header.column.getToggleSortingHandler()?.(event);
                                 }
-                              : undefined
-                          }
-                        >
-                          <span className="thLabel">{header.column.columnDef.header}</span>
-                          {canSort && (
-                            <span className={`sortIcon ${sorted ? "sorted" : ""}`}>
-                              {sorted === "asc" ? "▲" : sorted === "desc" ? "▼" : ""}
-                            </span>
-                          )}
-                        </div>
-                      </th>
-                    );
-                  })}
-                </tr>
-              ))}
-            </thead>
-            <tbody>
-              {table.getRowModel().rows.map((row) => (
-                <tr key={row.id}>
-                  {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                              }
+                            : undefined
+                        }
+                      >
+                        <span className="thLabel">{header.column.columnDef.header}</span>
+                        {canSort && (
+                          <span className={`sortIcon ${sorted ? "sorted" : ""}`}>
+                            {sorted === "asc" ? "▲" : sorted === "desc" ? "▼" : ""}
+                          </span>
+                        )}
+                      </div>
+                    </th>
+                  );
+                })}
+              </tr>
+            ))}
+          </thead>
+          <tbody>
+            {table.getRowModel().rows.map((row) => (
+              <tr key={row.id}>
+                {row.getVisibleCells().map((cell) => (
+                  <td key={cell.id}>
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
       <Paginacion table={table} />
     </Container>
@@ -332,6 +382,9 @@ const Container = styled.div`
       min-width: 0;
       overflow-wrap: anywhere;
       word-break: break-word;
+      text-align: right;
+      display: inline-flex;
+      justify-content: flex-end;
     }
   }
 
@@ -339,6 +392,7 @@ const Container = styled.div`
     width: 100%;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+
     @media ${Device.tablet} {
       flex: 1;
     }
@@ -420,16 +474,20 @@ const Container = styled.div`
     td {
       padding: 0.5em;
       vertical-align: middle;
+
       @media ${Device.mobile} {
         padding: 0.75em 0.5em;
       }
+
       @media ${Device.tablet} {
         display: table-cell;
         padding: 0.5em;
       }
+
       @media ${Device.laptop} {
         padding: 0.75em 0.5em;
       }
+
       @media ${Device.desktop} {
         padding: 0.75em;
       }
@@ -442,6 +500,7 @@ const Container = styled.div`
 
       tr {
         margin-bottom: 1em;
+
         @media ${Device.tablet} {
           display: table-row;
           border-width: 1px;
@@ -449,7 +508,6 @@ const Container = styled.div`
       }
 
       .ContentCell {
-        //text-align: right;
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -472,6 +530,7 @@ const Container = styled.div`
 
       td {
         text-align: right;
+
         @media ${Device.tablet} {
           text-align: center;
         }
@@ -481,9 +540,11 @@ const Container = styled.div`
         content: attr(data-title);
         float: left;
         font-size: 0.8em;
+
         @media ${Device.mobile} {
           font-size: 0.9em;
         }
+
         @media ${Device.tablet} {
           content: none;
         }
@@ -500,5 +561,29 @@ const DocumentoLink = styled(Link)`
 
   &:hover {
     color: ${({ theme }) => theme.color1};
+  }
+`;
+
+const StatusPill = styled.span`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 88px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  border: 1px solid transparent;
+
+  &.internado {
+    background: rgba(33, 150, 83, 0.12);
+    color: #1f7a46;
+    border-color: rgba(33, 150, 83, 0.22);
+  }
+
+  &.egresado {
+    background: rgba(164, 52, 71, 0.12);
+    color: #a43447;
+    border-color: rgba(164, 52, 71, 0.2);
   }
 `;

@@ -84,7 +84,12 @@ export async function getEmpleadosBySucursal({
         first_name,
         last_name,
         puesto:puestos_laborales(name),
-        empresa_id
+        empresa_id,
+        employee_id_number,
+        professional_number,
+        telephone,
+        birthday,
+        genre
       )
     `
     );
@@ -136,13 +141,15 @@ export async function searchEmpleadosBySucursal({
 
   if (term) {
     empleados = empleados.filter((emp) => {
+      const normalizedTerm = term.toLowerCase();
       const matchName =
-        emp.first_name?.toLowerCase().includes(term.toLowerCase()) ||
-        emp.last_name?.toLowerCase().includes(term.toLowerCase()) ||
-        emp.puesto?.name?.toLowerCase().includes(term.toLowerCase());
+        emp.first_name?.toLowerCase().includes(normalizedTerm) ||
+        emp.last_name?.toLowerCase().includes(normalizedTerm) ||
+        emp.puesto?.name?.toLowerCase().includes(normalizedTerm) ||
+        emp.professional_number?.toLowerCase().includes(normalizedTerm);
 
       const matchNumber = /^\d+$/.test(term)
-        ? emp.document_number === term
+        ? emp.document_number === term || emp.employee_id_number === term
         : false;
 
       return matchName || matchNumber;

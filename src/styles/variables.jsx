@@ -56,12 +56,14 @@ import { MdOutlineCheckCircleOutline } from "react-icons/md";
 import { MdCalendarToday } from "react-icons/md";
 import { FaRegFileWord } from "react-icons/fa";
 import { CgMenu } from "react-icons/cg";
+import { TbNurse } from "react-icons/tb";
+
 
 
 export const v = {
   colorPrincipal: `var(--color-primary)`,
   iconoBuscar: FaSearch,
-
+  iconoEnfermera: TbNurse,
   iconoagregar: GrAdd,
   iconoimagenvacia: FcImageFile,
   iconoemijivacio: BsEmojiDizzy,

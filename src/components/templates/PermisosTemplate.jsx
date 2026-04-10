@@ -2,18 +2,17 @@ import styled from "styled-components";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Swal from "sweetalert2";
-import { Btn1, Spinner1, Title, usePermissions, v } from "../../index";
+import { Spinner1, Title, usePermissions } from "../../index";
 import {
   computeEffectivePermission,
-  createFeature,
-  deleteFeature,
   deletePermissionOverride,
+  fetchClinicalAreas,
   fetchFeatures,
   fetchPermissions,
   fetchPuestosLaborales,
   fetchRoles,
   upsertPermission,
-  updateFeature,
+  updateClinicalAreaPermission,
 } from "../../supabase/crudPermisos";
 import { FEATURES } from "../../utils/features";
 import { DeviceMax } from "../../styles/breakpoints";
@@ -33,6 +32,7 @@ const basePermission = {
   can_delete: false,
   can_validate: false,
 };
+const FEATURE_CATALOG = Object.values(FEATURES);
 
 const normalizePuestoId = (value) => {
   if (value === "general" || value === "" || value === null || value === undefined) {
@@ -61,15 +61,12 @@ const permissionRowMatcher = (rows, roleId, featureId, puestoId) =>
 
 export function PermisosTemplate() {
   const queryClient = useQueryClient();
-  const { canCreate, canUpdate, canDelete } = usePermissions();
+  const { canUpdate } = usePermissions();
   const [scopeValue, setScopeValue] = useState("general");
-  const [newFeatureName, setNewFeatureName] = useState("");
 
   const selectedPuestoId = normalizePuestoId(scopeValue);
-  const canCreatePermisos = canCreate(FEATURES.PERMISOS);
   const canUpdatePermisos = canUpdate(FEATURES.PERMISOS);
-  const canDeletePermisos = canDelete(FEATURES.PERMISOS);
-  const canEditPermissions = canCreatePermisos || canUpdatePermisos;
+  const canEditPermissions = canUpdatePermisos;
 
   const featuresQuery = useQuery({
     queryKey: ["permissionsFeatures"],
@@ -89,6 +86,12 @@ export function PermisosTemplate() {
     refetchOnWindowFocus: false,
   });
 
+  const clinicalAreasQuery = useQuery({
+    queryKey: ["clinicalAreasPermissions"],
+    queryFn: fetchClinicalAreas,
+    refetchOnWindowFocus: false,
+  });
+
   const generalPermissionsQuery = useQuery({
     queryKey: ["permissionsGridGeneral"],
     queryFn: () => fetchPermissions({ puestoId: null }),
@@ -102,9 +105,16 @@ export function PermisosTemplate() {
     refetchOnWindowFocus: false,
   });
 
-  const features = featuresQuery.data ?? [];
+  const features = useMemo(() => {
+    const featuresByName = new Map(
+      (featuresQuery.data ?? []).map((feature) => [feature?.name, feature]),
+    );
+
+    return FEATURE_CATALOG.map((featureName) => featuresByName.get(featureName)).filter(Boolean);
+  }, [featuresQuery.data]);
   const roles = rolesQuery.data ?? [];
   const puestos = puestosQuery.data ?? [];
+  const clinicalAreas = clinicalAreasQuery.data ?? [];
   const generalPermissions = useMemo(
     () => generalPermissionsQuery.data ?? [],
     [generalPermissionsQuery.data]
@@ -127,52 +137,6 @@ export function PermisosTemplate() {
     ]);
   };
 
-  const createFeatureMutation = useMutation({
-    mutationFn: ({ name }) => createFeature({ name }),
-    onSuccess: async () => {
-      setNewFeatureName("");
-      await queryClient.invalidateQueries({ queryKey: ["permissionsFeatures"] });
-    },
-    onError: (error) => {
-      Swal.fire({
-        icon: "error",
-        title: "No se pudo crear la funcionalidad",
-        text: error?.message ?? "Intenta nuevamente.",
-      });
-    },
-  });
-
-  const updateFeatureMutation = useMutation({
-    mutationFn: ({ id, name }) => updateFeature(id, { name }),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["permissionsFeatures"] });
-    },
-    onError: (error) => {
-      Swal.fire({
-        icon: "error",
-        title: "No se pudo actualizar la funcionalidad",
-        text: error?.message ?? "Intenta nuevamente.",
-      });
-    },
-  });
-
-  const deleteFeatureMutation = useMutation({
-    mutationFn: (id) => deleteFeature(id),
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["permissionsFeatures"] }),
-        refreshPermissionsQueries(),
-      ]);
-    },
-    onError: (error) => {
-      Swal.fire({
-        icon: "error",
-        title: "No se pudo eliminar la funcionalidad",
-        text: error?.message ?? "Intenta nuevamente.",
-      });
-    },
-  });
-
   const upsertPermissionMutation = useMutation({
     mutationFn: (payload) => upsertPermission(payload),
     onSuccess: refreshPermissionsQueries,
@@ -180,6 +144,24 @@ export function PermisosTemplate() {
       Swal.fire({
         icon: "error",
         title: "No se pudo guardar el permiso",
+        text: error?.message ?? "Intenta nuevamente.",
+      });
+    },
+  });
+
+  const updateClinicalAreaMutation = useMutation({
+    mutationFn: ({ id, enabled }) => updateClinicalAreaPermission(id, enabled),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["clinicalAreasPermissions"] }),
+        queryClient.invalidateQueries({ queryKey: ["pacienteEquipoProfesionalesSearch"] }),
+        queryClient.invalidateQueries({ queryKey: ["pacienteEquipoTratante"] }),
+      ]);
+    },
+    onError: (error) => {
+      Swal.fire({
+        icon: "error",
+        title: "No se pudo actualizar la elegibilidad clínica",
         text: error?.message ?? "Intenta nuevamente.",
       });
     },
@@ -257,48 +239,19 @@ export function PermisosTemplate() {
     });
   };
 
-  const handleCreateFeature = (event) => {
-    event.preventDefault();
-    const trimmedName = String(newFeatureName ?? "").trim();
-    if (!trimmedName) return;
-    createFeatureMutation.mutate({ name: trimmedName });
-  };
-
-  const handleEditFeature = async (feature) => {
-    if (!feature?.id) return;
-    const result = await Swal.fire({
-      title: "Editar funcionalidad",
-      input: "text",
-      inputValue: feature.name ?? "",
-      showCancelButton: true,
-      confirmButtonText: "Guardar",
-      cancelButtonText: "Cancelar",
-      inputValidator: (value) =>
-        String(value ?? "").trim() ? null : "Ingresa un nombre",
+  const handleClinicalAreaToggle = (area) => {
+    if (!area?.id || !canEditPermissions || updateClinicalAreaMutation.isPending) return;
+    updateClinicalAreaMutation.mutate({
+      id: area.id,
+      enabled: !area?.grants_patient_clinical_permissions,
     });
-    if (!result.isConfirmed) return;
-    updateFeatureMutation.mutate({ id: feature.id, name: result.value });
-  };
-
-  const handleDeleteFeature = async (feature) => {
-    if (!feature?.id) return;
-    const result = await Swal.fire({
-      icon: "warning",
-      title: "Eliminar funcionalidad",
-      text: `Se eliminara "${feature.name}" y sus permisos asociados.`,
-      showCancelButton: true,
-      confirmButtonText: "Eliminar",
-      cancelButtonText: "Cancelar",
-      confirmButtonColor: "#d33",
-    });
-    if (!result.isConfirmed) return;
-    deleteFeatureMutation.mutate(feature.id);
   };
 
   const isLoading =
     featuresQuery.isLoading ||
     rolesQuery.isLoading ||
     puestosQuery.isLoading ||
+    clinicalAreasQuery.isLoading ||
     generalPermissionsQuery.isLoading ||
     (selectedPuestoId !== null && overridePermissionsQuery.isLoading);
 
@@ -306,6 +259,7 @@ export function PermisosTemplate() {
     featuresQuery.error ||
     rolesQuery.error ||
     puestosQuery.error ||
+    clinicalAreasQuery.error ||
     generalPermissionsQuery.error ||
     overridePermissionsQuery.error;
 
@@ -319,60 +273,99 @@ export function PermisosTemplate() {
       <Header>
         <div className="titleGroup">
           <Title>Permisos</Title>
-          <p>Actualiza los permisos de las funcionalidades</p>
+          <p>Configura permisos globales y elegibilidad clinica sin mezclar ambos criterios.</p>
         </div>
       </Header>
 
       <InfoCallout>
-        <strong>Pacientes y permisos clinicos</strong>
+        <strong>Permisos globales y elegibilidad clinica</strong>
         <p>
-          La matriz de esta pantalla define permisos globales por rol o puesto.
-          Los permisos clinicos sobre un paciente puntual se habilitan desde la
-          asignacion activa al equipo tratante de la internacion.
+          La matriz define acceso global por rol o puesto a las funcionalidades del sistema.
+        </p>
+        <p>
+          La elegibilidad clinica se configura por area y solo habilita acciones sobre pacientes
+          cuando ademas existe una asignacion activa al equipo tratante del ingreso.
         </p>
       </InfoCallout>
 
       <ControlsCard>
         <div className="scopeControl">
-          <label htmlFor="scopeSelect">Asignacion</label>
+          <label htmlFor="scopeSelect">Alcance de permisos globales</label>
           <select
             id="scopeSelect"
             value={scopeValue}
             onChange={(event) => setScopeValue(event.target.value)}
           >
-            <option value="general">General (por rol)</option>
+            <option value="general">General por rol</option>
             {puestos.map((puesto) => (
               <option key={puesto.id} value={puesto.id}>
-                Puesto: {puesto.name}
+                Override por puesto: {puesto.name}
               </option>
             ))}
           </select>
         </div>
-
-        {canCreatePermisos && (
-          <form className="featureForm" onSubmit={handleCreateFeature}>
-            <label htmlFor="newFeature">Nueva funcionalidad</label>
-            <div className="row">
-              <input
-                id="newFeature"
-                type="text"
-                value={newFeatureName}
-                onChange={(event) => setNewFeatureName(event.target.value)}
-                placeholder="Ej: historia_clinica"
-              />
-              <Btn1
-                tipo="submit"
-                titulo={createFeatureMutation.isPending ? "Guardando..." : "Agregar"}
-                bgcolor={v.colorPrincipal}
-                icono={<v.iconoagregar />}
-                disabled={createFeatureMutation.isPending}
-              />
-            </div>
-          </form>
-        )}
+        <div className="scopeHint">
+          <strong>Catálogo fijo</strong>
+          <span>
+            Esta matriz usa las funcionalidades definidas por el sistema. Ya no se crean
+            funcionalidades libres desde esta pantalla.
+          </span>
+        </div>
       </ControlsCard>
 
+      <ClinicalAreasCard>
+        <div className="sectionHeader">
+          <div>
+            <h3>Elegibilidad clinica por area</h3>
+            <p>
+              Define que areas otorgan permisos clinicos cuando el profesional queda asignado a
+              una internacion.
+            </p>
+          </div>
+        </div>
+
+        {clinicalAreas.length ? (
+          <div className="areasGrid">
+            {clinicalAreas.map((area) => {
+              const enabled = Boolean(area?.grants_patient_clinical_permissions);
+              const isDisabled = !canEditPermissions || updateClinicalAreaMutation.isPending;
+
+              return (
+                <article key={area.id} className="areaCard">
+                  <div className="areaBody">
+                    <strong>{area?.name || "Area"}</strong>
+                    <span className={`status ${enabled ? "enabled" : "disabled"}`}>
+                      {enabled ? "Otorga permisos clinicos" : "No otorga permisos clinicos"}
+                    </span>
+                  </div>
+
+                  <label className={`toggleRow ${isDisabled ? "isDisabled" : ""}`}>
+                    <input
+                      type="checkbox"
+                      checked={enabled}
+                      disabled={isDisabled}
+                      onChange={() => handleClinicalAreaToggle(area)}
+                    />
+                    <span>Otorga permisos clinicos</span>
+                  </label>
+                </article>
+              );
+            })}
+          </div>
+        ) : (
+          <EmptyBlock>No hay áreas laborales disponibles para configurar.</EmptyBlock>
+        )}
+      </ClinicalAreasCard>
+
       <TableCard>
+        <div className="sectionHeader">
+          <div>
+            <h3>Matriz de permisos globales</h3>
+            <p>
+              Controla acceso a módulos y acciones por rol, con overrides opcionales por puesto.
+            </p>
+          </div>
+        </div>
         <div className="tableWrap">
           <table className="permissionsTable">
             <thead>
@@ -389,27 +382,6 @@ export function PermisosTemplate() {
                   <td>
                     <div className="featureNameCell">
                       <span>{feature.name}</span>
-                      {(canUpdatePermisos || canDeletePermisos) && (
-                        <div className="featureActions">
-                          {canUpdatePermisos && (
-                            <button
-                              type="button"
-                              onClick={() => handleEditFeature(feature)}
-                            >
-                              Editar
-                            </button>
-                          )}
-                          {canDeletePermisos && (
-                            <button
-                              type="button"
-                              className="danger"
-                              onClick={() => handleDeleteFeature(feature)}
-                            >
-                              Eliminar
-                            </button>
-                          )}
-                        </div>
-                      )}
                     </div>
                   </td>
 
@@ -429,7 +401,7 @@ export function PermisosTemplate() {
                             </span>
                             {selectedPuestoId !== null &&
                               overrideRow &&
-                              canDeletePermisos && (
+                              canUpdatePermisos && (
                                 <button
                                   type="button"
                                   className="linkButton"
@@ -534,7 +506,7 @@ const ControlsCard = styled.section`
   grid-template-columns: repeat(2, minmax(0, 1fr));
 
   .scopeControl,
-  .featureForm {
+  .scopeHint {
     display: grid;
     gap: 8px;
   }
@@ -556,18 +528,106 @@ const ControlsCard = styled.section`
     width: 100%;
   }
 
-  .row {
-    display: flex;
-    gap: 8px;
-    align-items: center;
+  .scopeHint {
+    align-content: center;
+    border: 1px dashed ${({ theme }) => theme.color2};
+    border-radius: 12px;
+    padding: 12px;
+    background: ${({ theme }) => theme.bgtotal};
+  }
 
-    > :first-child {
-      flex: 1;
-    }
+  .scopeHint strong,
+  .scopeHint span {
+    margin: 0;
+  }
+
+  .scopeHint span {
+    color: ${({ theme }) => theme.textsecundary};
+    line-height: 1.45;
   }
 
   @media ${DeviceMax.tablet} {
     grid-template-columns: 1fr;
+  }
+`;
+
+const ClinicalAreasCard = styled.section`
+  background: ${({ theme }) => theme.bg};
+  border-radius: 16px;
+  box-shadow: var(--shadow-elev-1);
+  padding: 16px;
+  display: grid;
+  gap: 14px;
+
+  .sectionHeader h3,
+  .sectionHeader p {
+    margin: 0;
+  }
+
+  .sectionHeader {
+    display: grid;
+    gap: 6px;
+  }
+
+  .sectionHeader p {
+    color: ${({ theme }) => theme.textsecundary};
+    line-height: 1.45;
+  }
+
+  .areasGrid {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  }
+
+  .areaCard {
+    border: 1px solid ${({ theme }) => theme.color2};
+    border-radius: 14px;
+    padding: 14px;
+    background: ${({ theme }) => theme.bgtotal};
+    display: grid;
+    gap: 12px;
+  }
+
+  .areaBody {
+    display: grid;
+    gap: 6px;
+  }
+
+  .status {
+    width: fit-content;
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-size: 0.76rem;
+    font-weight: 700;
+  }
+
+  .status.enabled {
+    background: rgba(52, 125, 96, 0.14);
+    color: #2d7a60;
+  }
+
+  .status.disabled {
+    background: rgba(168, 138, 75, 0.14);
+    color: #8b6b2d;
+  }
+
+  .toggleRow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: ${({ theme }) => theme.text};
+    font-weight: 600;
+  }
+
+  .toggleRow.isDisabled {
+    opacity: 0.65;
+  }
+
+  .toggleRow input {
+    width: 16px;
+    height: 16px;
+    margin: 0;
   }
 `;
 
@@ -576,6 +636,22 @@ const TableCard = styled.section`
   border-radius: 16px;
   box-shadow: var(--shadow-elev-1);
   padding: 14px;
+
+  .sectionHeader {
+    display: grid;
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+
+  .sectionHeader h3,
+  .sectionHeader p {
+    margin: 0;
+  }
+
+  .sectionHeader p {
+    color: ${({ theme }) => theme.textsecundary};
+    line-height: 1.45;
+  }
 
   .tableWrap {
     width: 100%;
@@ -609,33 +685,11 @@ const TableCard = styled.section`
 
   .featureNameCell {
     display: grid;
-    gap: 8px;
     min-width: 180px;
   }
 
   .featureNameCell span {
     font-weight: 700;
-  }
-
-  .featureActions {
-    display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
-  }
-
-  .featureActions button {
-    border: 1px solid ${({ theme }) => theme.color2};
-    background: ${({ theme }) => theme.bgtotal};
-    color: ${({ theme }) => theme.text};
-    border-radius: 999px;
-    padding: 4px 10px;
-    cursor: pointer;
-    font-size: 0.78rem;
-  }
-
-  .featureActions button.danger {
-    border-color: var(--color-danger);
-    color: var(--color-danger);
   }
 
   .permissionCell {
@@ -704,4 +758,12 @@ const TableCard = styled.section`
     font-size: 0.78rem;
     padding: 0;
   }
+`;
+
+const EmptyBlock = styled.div`
+  border: 1px dashed ${({ theme }) => theme.color2};
+  border-radius: 14px;
+  padding: 16px;
+  color: ${({ theme }) => theme.textsecundary};
+  background: ${({ theme }) => theme.bgtotal};
 `;

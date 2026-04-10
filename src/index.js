@@ -52,6 +52,7 @@ export * from "./components/organisms/tablas/TablaEnfermeria";
 export * from "./components/organisms/tablas/TablaFaltas";
 export * from "./components/organisms/tablas/TablaLicencias";
 export * from "./components/organisms/tablas/TablaPacientes";
+export * from "./components/organisms/tablas/TablaPacientesHistorial";
 export * from "./components/organisms/tablas/TablaPacienteEvoluciones";
 export * from "./components/organisms/tablas/TablaPacienteIndicaciones";
 export * from "./components/organisms/tablas/TablaPacienteEstudios";

@@ -3,6 +3,7 @@ import {
   getArgentinaDateRangeUtcBounds,
   getArgentinaDayUtcRange,
 } from "../utils/argentinaDateTime";
+import { normalizePacienteConditionType } from "../utils/pacienteCondition";
 import {
   dedupePacienteEquipoProfessionals,
   mapPacienteEquipoRow,
@@ -11,6 +12,8 @@ import {
 
 const tablePacientes = "pacientes";
 const tableIngresos = "pacientes_ingresos";
+const tableIngresosAdminissionTypeHistory =
+  "pacientes_ingresos_tipo_historial";
 const tableEgresos = "pacientes_egresos";
 const tableCoberturas = "pacientes_coberturas";
 const tableEvoluciones = "pacientes_evoluciones";
@@ -19,8 +22,6 @@ const tableEstudios = "pacientes_estudios";
 const tableEstudiosArchivos = "pacientes_estudios_archivos";
 const tableEquipo = "pacientes_equipo_tratante";
 const tableIcd10Mental = "icd10_mental_nodes";
-const tableCoberturasFinanciadores = "coberturas_financiadores";
-const tableCoberturasPlanes = "coberturas_financiadores_planes";
 const bucketDocuments = "documents";
 const estudiosDocumentsFolder = "storage_pacientes_estudios";
 const evolucionSelectFields = `
@@ -178,6 +179,27 @@ const ingresoPacienteSelectFields = `
   admission_at,
   adminission_type,
   admission_diagnosis,
+  admission_diagnosis_alternative,
+  status,
+  discharge_at,
+  condition_type,
+  paciente:pacientes!pacientes_ingresos_paciente_id_fkey(
+    ${pacienteSelectFields}
+  ),
+  sucursal:sucursales!pacientes_ingresos_sucursal_id_fkey(
+    id,
+    name
+  )
+`;
+const legacyIngresoPacienteSelectFields = `
+  id,
+  paciente_id,
+  empresa_id,
+  sucursal_id,
+  admission_at,
+  adminission_type,
+  admission_diagnosis,
+  admission_diagnosis_alternative,
   status,
   discharge_at,
   paciente:pacientes!pacientes_ingresos_paciente_id_fkey(
@@ -206,6 +228,7 @@ const ingresoExportSelectFields = `
   adminission_type,
   admission_reason,
   admission_diagnosis,
+  admission_diagnosis_alternative,
   sucursal:sucursales!pacientes_ingresos_sucursal_id_fkey(
     id,
     name
@@ -215,12 +238,6 @@ const ingresoExportSelectFields = `
     name
   )
 `;
-const VALID_COVERAGE_TYPES = new Set([
-  "obra_social",
-  "prepaga",
-  "particular",
-]);
-
 const normalizeSearchTerm = (term) => String(term ?? "").trim();
 const safeString = (value) =>
   value === null || value === undefined ? "" : String(value);
@@ -234,7 +251,71 @@ const shouldFallbackToManualIngresoPersistence = (error, functionName) => {
     code === "PGRST202" ||
     code === "42883" ||
     (haystack.includes(functionName.toLowerCase()) &&
-      haystack.includes("adminission_type"))
+      (haystack.includes("adminission_type") ||
+        haystack.includes("condition_type")))
+  );
+};
+const shouldFallbackToLegacyIngresoConditionSelect = (error) => {
+  const code = safeString(error?.code).trim().toUpperCase();
+  const haystack = [error?.message, error?.details, error?.hint]
+    .map((value) => safeString(value).trim().toLowerCase())
+    .join(" ");
+
+  return (
+    code === "42703" ||
+    code === "PGRST204" ||
+    haystack.includes("condition_type") ||
+    (haystack.includes(tableIngresos.toLowerCase()) &&
+      haystack.includes("column"))
+  );
+};
+const shouldFallbackToLegacyIngresoConditionWrite = (error, operationName = "") => {
+  const code = safeString(error?.code).trim().toUpperCase();
+  const haystack = [error?.message, error?.details, error?.hint, operationName]
+    .map((value) => safeString(value).trim().toLowerCase())
+    .join(" ");
+
+  return (
+    code === "42703" ||
+    code === "PGRST202" ||
+    code === "PGRST204" ||
+    code === "42883" ||
+    haystack.includes("condition_type")
+  );
+};
+const shouldFallbackToMissingIngresoAlternativeDiagnosis = (
+  error,
+  operationName = "",
+) => {
+  const code = safeString(error?.code).trim().toUpperCase();
+  const haystack = [error?.message, error?.details, error?.hint, operationName]
+    .map((value) => safeString(value).trim().toLowerCase())
+    .join(" ");
+
+  return (
+    code === "42703" ||
+    code === "42883" ||
+    code === "PGRST202" ||
+    code === "PGRST204" ||
+    haystack.includes("admission_diagnosis_alternative")
+  );
+};
+const shouldFallbackToMissingIngresoAdminissionHistory = (
+  error,
+  operationName = "",
+) => {
+  const code = safeString(error?.code).trim().toUpperCase();
+  const haystack = [error?.message, error?.details, error?.hint, operationName]
+    .map((value) => safeString(value).trim().toLowerCase())
+    .join(" ");
+
+  return (
+    code === "42P01" ||
+    code === "42883" ||
+    code === "PGRST202" ||
+    code === "PGRST204" ||
+    haystack.includes(tableIngresosAdminissionTypeHistory.toLowerCase()) ||
+    haystack.includes("update_paciente_ingreso_adminission_type")
   );
 };
 const shouldFallbackToLegacyPacienteEstudiosSelect = (error) => {
@@ -274,6 +355,30 @@ const toNullableId = (value) => {
   if (value === null || value === undefined || value === "") return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
+};
+const stripIngresoConditionType = (payload = {}) => {
+  if (!payload || typeof payload !== "object") return payload;
+  const nextPayload = { ...payload };
+  delete nextPayload.condition_type;
+  return nextPayload;
+};
+const stripRpcIngresoConditionType = (payload = {}) => {
+  if (!payload || typeof payload !== "object") return payload;
+  const nextPayload = { ...payload };
+  delete nextPayload.p_ingreso_condition_type;
+  return nextPayload;
+};
+const stripIngresoAlternativeDiagnosis = (payload = {}) => {
+  if (!payload || typeof payload !== "object") return payload;
+  const nextPayload = { ...payload };
+  delete nextPayload.admission_diagnosis_alternative;
+  return nextPayload;
+};
+const stripRpcIngresoAlternativeDiagnosis = (payload = {}) => {
+  if (!payload || typeof payload !== "object") return payload;
+  const nextPayload = { ...payload };
+  delete nextPayload.p_admission_diagnosis_alternative;
+  return nextPayload;
 };
 const sanitizeFileName = (fileName) =>
   String(fileName ?? "archivo")
@@ -336,17 +441,17 @@ const sortCoberturasAscByStartDate = (rows = []) =>
     if (dateCompare !== 0) return dateCompare;
     return Number(a?.id ?? 0) - Number(b?.id ?? 0);
   });
-const buildCoverageDisplayName = (coverage) => {
-  if (!coverage) return null;
-  if (coverage.coverage_type === "particular") return "Particular";
-  return (
-    [coverage.coverage_provider_name, coverage.coverage_plan_name]
-      .filter(Boolean)
-      .join(" - ") ||
-    coverage.coverage_provider_name ||
-    coverage.coverage_plan_name ||
-    null
-  );
+const resolveCoverageValue = (coverage) =>
+  toNullableString(coverage?.coverage ?? coverage?.cobertura);
+const mapCoberturaRow = (row) => {
+  const coverageValue = resolveCoverageValue(row);
+
+  return {
+    ...row,
+    coverage: coverageValue,
+    coverage_name: coverageValue,
+    coverage_display_name: coverageValue,
+  };
 };
 const matchesPacienteSearch = (row, term) => {
   const normalizedTerm = normalizeSearchTerm(term).toLowerCase();
@@ -362,6 +467,24 @@ const matchesPacienteSearch = (row, term) => {
     safeString(value).trim().toLowerCase().includes(normalizedTerm),
   );
 };
+const matchesPacienteConditionFilter = (row, conditionType = "") => {
+  const normalizedCondition = normalizePacienteConditionType(conditionType);
+  if (!normalizedCondition) return true;
+  return normalizePacienteConditionType(row?.condition_type) === normalizedCondition;
+};
+const isIngresoDischarged = (row) =>
+  Boolean(row?.discharge_at) ||
+  safeString(row?.ingreso_status).trim().toLowerCase() === "discharged";
+const isIngresoAdmitted = (row) =>
+  safeString(row?.ingreso_status).trim().toLowerCase() === "admitted" &&
+  !row?.discharge_at;
+const matchesPacienteEpisodeFilter = (row, episodeStatus = "all") => {
+  const normalizedStatus = safeString(episodeStatus).trim().toLowerCase();
+  if (!normalizedStatus || normalizedStatus === "all") return true;
+  if (normalizedStatus === "admitted") return isIngresoAdmitted(row);
+  if (normalizedStatus === "discharged") return isIngresoDischarged(row);
+  return true;
+};
 const mapIngresoPacienteRow = (row) => {
   const paciente = row?.paciente ?? null;
   if (!paciente?.id) return null;
@@ -371,22 +494,32 @@ const mapIngresoPacienteRow = (row) => {
     admission_at: row?.admission_at ?? null,
     adminission_type: row?.adminission_type ?? null,
     admission_diagnosis: row?.admission_diagnosis ?? "",
+    admission_diagnosis_alternative:
+      row?.admission_diagnosis_alternative ?? "",
     ingreso_id: row?.id ?? null,
     ingreso_status: row?.status ?? null,
     discharge_at: row?.discharge_at ?? null,
+    condition_type: row?.condition_type ?? paciente?.condition_type ?? null,
     sucursal_id: row?.sucursal_id ?? row?.sucursal?.id ?? null,
     sucursal_name: row?.sucursal?.name ?? null,
   };
 };
-const dedupePacientesFromIngresos = (rows = [], term = "", limit = null) => {
+const dedupePacientesFromIngresos = (
+  rows = [],
+  term = "",
+  limit = null,
+  { includeInactive = false, episodeStatus = "all", conditionType = "" } = {},
+) => {
   const seen = new Set();
   const mappedRows = [];
 
   for (const row of rows ?? []) {
     const mapped = mapIngresoPacienteRow(row);
     if (!mapped?.id || seen.has(mapped.id)) continue;
-    if (mapped.is_active === false) continue;
+    if (!includeInactive && mapped.is_active === false) continue;
     if (!matchesPacienteSearch(mapped, term)) continue;
+    if (!matchesPacienteConditionFilter(mapped, conditionType)) continue;
+    if (!matchesPacienteEpisodeFilter(mapped, episodeStatus)) continue;
 
     seen.add(mapped.id);
     mappedRows.push(mapped);
@@ -396,6 +529,19 @@ const dedupePacientesFromIngresos = (rows = [], term = "", limit = null) => {
 
   return mappedRows;
 };
+async function runIngresoPacienteQuery(buildQuery) {
+  let response = await buildQuery(ingresoPacienteSelectFields);
+
+  if (
+    response.error &&
+    shouldFallbackToLegacyIngresoConditionSelect(response.error)
+  ) {
+    response = await buildQuery(legacyIngresoPacienteSelectFields);
+  }
+
+  if (response.error) throw response.error;
+  return response.data ?? [];
+}
 const mapPacienteEstudioRow = (row) => {
   const archivos = sortEstudioArchivosDesc(row?.archivos ?? []);
   return {
@@ -460,107 +606,19 @@ export function resolvePacienteCoberturaByDate(coberturas = [], referenceDate) {
   );
 }
 
-async function getCoberturasFinanciadoresByIds(ids = []) {
-  const uniqueIds = Array.from(
-    new Set((ids ?? []).map((id) => toNullableId(id)).filter(Boolean))
-  );
-  if (!uniqueIds.length) return [];
-
-  const { data, error } = await supabase
-    .from(tableCoberturasFinanciadores)
-    .select("id,nombre,tipo,activo")
-    .in("id", uniqueIds);
-  if (error) throw error;
-  return data ?? [];
-}
-
-async function getCoberturasPlanesByIds(ids = []) {
-  const uniqueIds = Array.from(
-    new Set((ids ?? []).map((id) => toNullableId(id)).filter(Boolean))
-  );
-  if (!uniqueIds.length) return [];
-
-  const { data, error } = await supabase
-    .from(tableCoberturasPlanes)
-    .select("id,financiador_id,nombre,activo")
-    .in("id", uniqueIds);
-  if (error) throw error;
-  return data ?? [];
-}
-
-function mapCoberturaRow(row, financiadoresById, planesById) {
-  const financiadorId = toNullableId(row?.financiador_id);
-  const planId = toNullableId(row?.plan_id);
-  const financiador = financiadorId
-    ? financiadoresById.get(financiadorId) ?? null
-    : null;
-  const plan = planId ? planesById.get(planId) ?? null : null;
-  const coverageType = financiador?.tipo ?? (financiadorId ? null : "particular");
-  const mappedRow = {
-    ...row,
-    financiador,
-    plan,
-    coverage_type: coverageType,
-    coverage_provider_name: financiador?.nombre ?? null,
-    coverage_plan_name: plan?.nombre ?? null,
-  };
-
-  return {
-    ...mappedRow,
-    coverage_name: buildCoverageDisplayName(mappedRow),
-    coverage_display_name: buildCoverageDisplayName(mappedRow),
-  };
-}
-
-async function hydratePacienteCoberturas(rows = []) {
-  const financiadorIds = rows.map((row) => row?.financiador_id);
-  const planIds = rows.map((row) => row?.plan_id);
-  const [financiadores, planes] = await Promise.all([
-    getCoberturasFinanciadoresByIds(financiadorIds),
-    getCoberturasPlanesByIds(planIds),
-  ]);
-
-  const financiadoresById = new Map(
-    (financiadores ?? []).map((row) => [Number(row.id), row])
-  );
-  const planesById = new Map((planes ?? []).map((row) => [Number(row.id), row]));
-
-  return sortCoberturasDescByStartDate(rows).map((row) =>
-    mapCoberturaRow(row, financiadoresById, planesById)
-  );
-}
-
 function normalizeCoverageSyncPayload({ coverage, pacienteId, effectiveDate, createdBy }) {
-  const coverageType = safeString(coverage?.coverage_type).trim().toLowerCase();
-  if (!VALID_COVERAGE_TYPES.has(coverageType)) {
-    throw new Error("Debe seleccionar el tipo de cobertura.");
-  }
-
   const startDate = normalizeDateKey(effectiveDate);
   if (!startDate) {
     throw new Error("Debe indicar la fecha de vigencia de la cobertura.");
   }
-
-  const financiadorId =
-    coverageType === "particular" ? null : toNullableId(coverage?.financiador_id);
-  const planId = coverageType === "particular" ? null : toNullableId(coverage?.plan_id);
-
-  if (coverageType !== "particular" && !financiadorId) {
-    throw new Error("Debe seleccionar un financiador.");
-  }
-
-  if (coverageType === "prepaga" && !planId) {
-    throw new Error("Debe seleccionar un plan.");
+  const coverageValue = resolveCoverageValue(coverage);
+  if (!coverageValue) {
+    throw new Error("Debe seleccionar o indicar una cobertura.");
   }
 
   return {
     paciente_id: pacienteId,
-    financiador_id: financiadorId,
-    plan_id: planId,
-    affiliate_number:
-      coverageType === "particular"
-        ? null
-        : toNullableString(coverage?.affiliate_number),
+    coverage: coverageValue,
     coverage_notes: toNullableString(coverage?.coverage_notes),
     start_date: startDate,
     created_by: createdBy ?? null,
@@ -569,10 +627,7 @@ function normalizeCoverageSyncPayload({ coverage, pacienteId, effectiveDate, cre
 
 function areSameCoberturas(left, right) {
   return (
-    toNullableId(left?.financiador_id) === toNullableId(right?.financiador_id) &&
-    toNullableId(left?.plan_id) === toNullableId(right?.plan_id) &&
-    toNullableString(left?.affiliate_number) ===
-      toNullableString(right?.affiliate_number) &&
+    resolveCoverageValue(left) === resolveCoverageValue(right) &&
     toNullableString(left?.coverage_notes) === toNullableString(right?.coverage_notes)
   );
 }
@@ -612,21 +667,24 @@ export async function getPacientesActivos({
   empresaId,
   search,
   sucursalId,
+  conditionType = "",
 } = {}) {
   if (!empresaId || !sucursalId) return [];
 
-  const { data, error } = await supabase
-    .from(tableIngresos)
-    .select(ingresoPacienteSelectFields)
-    .eq("empresa_id", empresaId)
-    .eq("sucursal_id", sucursalId)
-    .eq("status", "admitted")
-    .is("discharge_at", null)
-    .order("admission_at", { ascending: false });
+  const data = await runIngresoPacienteQuery((selectFields) =>
+    supabase
+      .from(tableIngresos)
+      .select(selectFields)
+      .eq("empresa_id", empresaId)
+      .eq("sucursal_id", sucursalId)
+      .eq("status", "admitted")
+      .is("discharge_at", null)
+      .order("admission_at", { ascending: false })
+  );
 
-  if (error) throw error;
-
-  return dedupePacientesFromIngresos(data ?? [], search);
+  return dedupePacientesFromIngresos(data ?? [], search, null, {
+    conditionType,
+  });
 }
 
 export async function getPacientesIngresadosHoy({
@@ -646,15 +704,40 @@ export async function searchPacientes({
   const normalizedTerm = normalizeSearchTerm(term);
   if (!normalizedTerm || !empresaId || !sucursalId) return [];
 
-  const { data, error } = await supabase
-    .from(tableIngresos)
-    .select(ingresoPacienteSelectFields)
-    .eq("empresa_id", empresaId)
-    .eq("sucursal_id", sucursalId)
-    .order("admission_at", { ascending: false });
-
-  if (error) throw error;
+  const data = await runIngresoPacienteQuery((selectFields) =>
+    supabase
+      .from(tableIngresos)
+      .select(selectFields)
+      .eq("empresa_id", empresaId)
+      .eq("sucursal_id", sucursalId)
+      .order("admission_at", { ascending: false })
+  );
   return dedupePacientesFromIngresos(data ?? [], normalizedTerm, limit);
+}
+
+export async function getPacientesHistorial({
+  empresaId,
+  search,
+  sucursalId,
+  episodeStatus = "all",
+  conditionType = "",
+} = {}) {
+  if (!empresaId || !sucursalId) return [];
+
+  const data = await runIngresoPacienteQuery((selectFields) =>
+    supabase
+      .from(tableIngresos)
+      .select(selectFields)
+      .eq("empresa_id", empresaId)
+      .eq("sucursal_id", sucursalId)
+      .order("admission_at", { ascending: false })
+  );
+
+  return dedupePacientesFromIngresos(data ?? [], search, null, {
+    includeInactive: true,
+    episodeStatus,
+    conditionType,
+  });
 }
 
 export async function insertPaciente(payload) {
@@ -708,11 +791,45 @@ export async function createPacienteConIngreso({ paciente, ingreso } = {}) {
     p_adminission_type: ingreso?.adminission_type ?? null,
     p_admission_reason: ingreso?.admission_reason ?? null,
     p_admission_diagnosis: ingreso?.admission_diagnosis ?? null,
+    p_admission_diagnosis_alternative:
+      ingreso?.admission_diagnosis_alternative ?? null,
+    p_ingreso_condition_type:
+      ingreso?.condition_type ?? paciente?.condition_type ?? null,
   };
-  const { data, error } = await supabase.rpc(
+  let rpcResponse = await supabase.rpc(
     "create_paciente_con_ingreso",
     rpcPayload,
   );
+
+  if (
+    rpcResponse.error &&
+    rpcPayload.p_admission_diagnosis_alternative !== undefined &&
+    shouldFallbackToMissingIngresoAlternativeDiagnosis(
+      rpcResponse.error,
+      "create_paciente_con_ingreso"
+    )
+  ) {
+    rpcResponse = await supabase.rpc(
+      "create_paciente_con_ingreso",
+      stripRpcIngresoAlternativeDiagnosis(rpcPayload)
+    );
+  }
+
+  if (
+    rpcResponse.error &&
+    rpcPayload.p_ingreso_condition_type !== undefined &&
+    shouldFallbackToManualIngresoPersistence(
+      rpcResponse.error,
+      "create_paciente_con_ingreso"
+    )
+  ) {
+    rpcResponse = await supabase.rpc(
+      "create_paciente_con_ingreso",
+      stripRpcIngresoConditionType(rpcPayload)
+    );
+  }
+
+  const { data, error } = rpcResponse;
 
   if (error) {
     if (
@@ -746,13 +863,44 @@ export async function createPacienteConIngreso({ paciente, ingreso } = {}) {
 }
 
 export async function insertPacienteIngreso(payload) {
-  const { data, error } = await supabase
+  let response = await supabase
     .from(tableIngresos)
     .insert(payload)
     .select("*")
     .maybeSingle();
-  if (error) throw error;
-  return data;
+
+  if (
+    response.error &&
+    payload?.admission_diagnosis_alternative !== undefined &&
+    shouldFallbackToMissingIngresoAlternativeDiagnosis(
+      response.error,
+      "insert pacientes_ingresos",
+    )
+  ) {
+    response = await supabase
+      .from(tableIngresos)
+      .insert(stripIngresoAlternativeDiagnosis(payload))
+      .select("*")
+      .maybeSingle();
+  }
+
+  if (
+    response.error &&
+    payload?.condition_type !== undefined &&
+    shouldFallbackToLegacyIngresoConditionWrite(
+      response.error,
+      "insert pacientes_ingresos"
+    )
+  ) {
+    response = await supabase
+      .from(tableIngresos)
+      .insert(stripIngresoConditionType(payload))
+      .select("*")
+      .maybeSingle();
+  }
+
+  if (response.error) throw response.error;
+  return response.data;
 }
 
 export async function createReingresoPaciente({
@@ -773,11 +921,44 @@ export async function createReingresoPaciente({
     p_adminission_type: ingreso?.adminission_type ?? null,
     p_admission_reason: ingreso?.admission_reason ?? null,
     p_admission_diagnosis: ingreso?.admission_diagnosis ?? null,
+    p_admission_diagnosis_alternative:
+      ingreso?.admission_diagnosis_alternative ?? null,
+    p_ingreso_condition_type: ingreso?.condition_type ?? null,
   };
-  const { data, error } = await supabase.rpc(
+  let rpcResponse = await supabase.rpc(
     "create_reingreso_paciente",
     rpcPayload,
   );
+
+  if (
+    rpcResponse.error &&
+    rpcPayload.p_admission_diagnosis_alternative !== undefined &&
+    shouldFallbackToMissingIngresoAlternativeDiagnosis(
+      rpcResponse.error,
+      "create_reingreso_paciente"
+    )
+  ) {
+    rpcResponse = await supabase.rpc(
+      "create_reingreso_paciente",
+      stripRpcIngresoAlternativeDiagnosis(rpcPayload)
+    );
+  }
+
+  if (
+    rpcResponse.error &&
+    rpcPayload.p_ingreso_condition_type !== undefined &&
+    shouldFallbackToManualIngresoPersistence(
+      rpcResponse.error,
+      "create_reingreso_paciente"
+    )
+  ) {
+    rpcResponse = await supabase.rpc(
+      "create_reingreso_paciente",
+      stripRpcIngresoConditionType(rpcPayload)
+    );
+  }
+
+  const { data, error } = rpcResponse;
 
   if (error) {
     if (
@@ -800,14 +981,91 @@ export async function createReingresoPaciente({
 }
 
 export async function updatePacienteIngreso(id, payload) {
-  const { data, error } = await supabase
+  let response = await supabase
     .from(tableIngresos)
     .update(payload)
     .eq("id", id)
     .select("*")
     .maybeSingle();
-  if (error) throw error;
-  return data;
+
+  if (
+    response.error &&
+    payload?.admission_diagnosis_alternative !== undefined &&
+    shouldFallbackToMissingIngresoAlternativeDiagnosis(
+      response.error,
+      "update pacientes_ingresos",
+    )
+  ) {
+    response = await supabase
+      .from(tableIngresos)
+      .update(stripIngresoAlternativeDiagnosis(payload))
+      .eq("id", id)
+      .select("*")
+      .maybeSingle();
+  }
+
+  if (
+    response.error &&
+    payload?.condition_type !== undefined &&
+    shouldFallbackToLegacyIngresoConditionWrite(
+      response.error,
+      "update pacientes_ingresos"
+    )
+  ) {
+    response = await supabase
+      .from(tableIngresos)
+      .update(stripIngresoConditionType(payload))
+      .eq("id", id)
+      .select("*")
+      .maybeSingle();
+  }
+
+  if (response.error) throw response.error;
+  return response.data;
+}
+
+export async function updatePacienteIngresoAdminissionType({
+  ingresoId,
+  adminissionType,
+  changedAt = null,
+  notes = null,
+} = {}) {
+  const normalizedIngresoId = toNullableId(ingresoId);
+  const normalizedAdminissionType = toNullableString(adminissionType);
+  if (!normalizedIngresoId || !normalizedAdminissionType) {
+    throw new Error(
+      "No se pudo registrar el cambio de tipo de internacion.",
+    );
+  }
+
+  const rpcPayload = {
+    p_ingreso_id: normalizedIngresoId,
+    p_adminission_type: normalizedAdminissionType,
+    p_changed_at: changedAt ?? null,
+    p_notes: toNullableString(notes),
+  };
+  const { data, error } = await supabase.rpc(
+    "update_paciente_ingreso_adminission_type",
+    rpcPayload,
+  );
+
+  if (error) {
+    if (
+      !shouldFallbackToMissingIngresoAdminissionHistory(
+        error,
+        "update_paciente_ingreso_adminission_type",
+      )
+    ) {
+      throw error;
+    }
+
+    return updatePacienteIngreso(normalizedIngresoId, {
+      adminission_type: normalizedAdminissionType,
+    });
+  }
+
+  if (Array.isArray(data)) return data[0] ?? null;
+  return data ?? null;
 }
 
 export async function egresarPacienteIngreso(id, payload) {
@@ -879,38 +1137,7 @@ export async function getPacienteCoberturasByPacienteId(pacienteId) {
     .eq("paciente_id", pacienteId)
     .order("start_date", { ascending: false });
   if (error) throw error;
-  return hydratePacienteCoberturas(data ?? []);
-}
-
-export async function getCoberturasFinanciadoresByTipo(tipo) {
-  const normalizedType = safeString(tipo).trim().toLowerCase();
-  if (!normalizedType || normalizedType === "particular") return [];
-  if (!VALID_COVERAGE_TYPES.has(normalizedType)) {
-    throw new Error("Tipo de cobertura invalido.");
-  }
-
-  const { data, error } = await supabase
-    .from(tableCoberturasFinanciadores)
-    .select("id,nombre,tipo,activo")
-    .eq("activo", true)
-    .eq("tipo", normalizedType)
-    .order("nombre", { ascending: true });
-  if (error) throw error;
-  return data ?? [];
-}
-
-export async function getCoberturasPlanesByFinanciadorId(financiadorId) {
-  const normalizedId = toNullableId(financiadorId);
-  if (!normalizedId) return [];
-
-  const { data, error } = await supabase
-    .from(tableCoberturasPlanes)
-    .select("id,financiador_id,nombre,activo")
-    .eq("activo", true)
-    .eq("financiador_id", normalizedId)
-    .order("nombre", { ascending: true });
-  if (error) throw error;
-  return data ?? [];
+  return sortCoberturasDescByStartDate(data ?? []).map((row) => mapCoberturaRow(row));
 }
 
 export async function syncPacienteCoberturaByDate({
@@ -951,15 +1178,12 @@ export async function syncPacienteCoberturaByDate({
     normalizeDateKey(currentCobertura.start_date) === normalizedPayload.start_date
   ) {
     const updated = await updatePacienteCobertura(currentCobertura.id, {
-      financiador_id: normalizedPayload.financiador_id,
-      plan_id: normalizedPayload.plan_id,
-      affiliate_number: normalizedPayload.affiliate_number,
+      coverage: normalizedPayload.coverage,
       coverage_notes: normalizedPayload.coverage_notes,
       start_date: normalizedPayload.start_date,
       end_date: currentCobertura.end_date ?? nextCoverageEndDate,
     });
-    const hydratedRows = await hydratePacienteCoberturas([updated]);
-    return hydratedRows[0] ?? updated;
+    return mapCoberturaRow(updated);
   }
 
   if (currentCobertura) {
@@ -973,8 +1197,7 @@ export async function syncPacienteCoberturaByDate({
     ...normalizedPayload,
     end_date: nextCoverageEndDate,
   });
-  const hydratedRows = await hydratePacienteCoberturas([inserted]);
-  return hydratedRows[0] ?? inserted;
+  return mapCoberturaRow(inserted);
 }
 
 export async function getPacienteIngresosByPacienteId(pacienteId) {
@@ -997,6 +1220,56 @@ export async function getPacienteIngresosByPacienteId(pacienteId) {
     .eq("paciente_id", pacienteId)
     .order("admission_at", { ascending: false });
   if (error) throw error;
+  return data ?? [];
+}
+
+export async function getPacienteIngresoAdminissionTypeHistoryByPacienteId(
+  pacienteId,
+) {
+  const normalizedPacienteId = toNullableId(pacienteId);
+  if (!normalizedPacienteId) return [];
+
+  const { data: ingresos, error: ingresosError } = await supabase
+    .from(tableIngresos)
+    .select("id")
+    .eq("paciente_id", normalizedPacienteId);
+
+  if (ingresosError) throw ingresosError;
+
+  const ingresoIds = (ingresos ?? [])
+    .map((row) => toNullableId(row?.id))
+    .filter(Boolean);
+  if (!ingresoIds.length) return [];
+
+  const { data, error } = await supabase
+    .from(tableIngresosAdminissionTypeHistory)
+    .select(
+      `
+      id,
+      ingreso_id,
+      from_adminission_type,
+      to_adminission_type,
+      changed_at,
+      changed_by,
+      notes
+    `,
+    )
+    .in("ingreso_id", ingresoIds)
+    .order("changed_at", { ascending: false })
+    .order("id", { ascending: false });
+
+  if (error) {
+    if (
+      shouldFallbackToMissingIngresoAdminissionHistory(
+        error,
+        "select pacientes_ingresos_tipo_historial",
+      )
+    ) {
+      return [];
+    }
+    throw error;
+  }
+
   return data ?? [];
 }
 

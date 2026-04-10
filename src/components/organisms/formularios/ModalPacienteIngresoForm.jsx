@@ -15,14 +15,13 @@ import {
 import {
   createPacienteConIngreso,
   createReingresoPaciente,
-  getCoberturasFinanciadoresByTipo,
-  getCoberturasPlanesByFinanciadorId,
   getPacienteCoberturasByPacienteId,
   resolvePacienteCoberturaByDate,
   searchPacientes,
   syncPacienteEquipoTratanteByIngreso,
   syncPacienteCoberturaByDate,
   updatePacienteIngreso,
+  updatePacienteIngresoAdminissionType,
   updatePaciente,
 } from "../../../supabase/crudPacientes";
 import {
@@ -39,12 +38,26 @@ import {
   createDefaultPacienteAntecedentesFormValues,
   mapPacienteAntecedentesToFormValues,
 } from "../../../utils/pacienteAntecedentes";
+import {
+  normalizePacienteConditionType,
+  PACIENTE_CONDITION_OPTIONS,
+} from "../../../utils/pacienteCondition";
 import { Device, DeviceMax } from "../../../styles/breakpoints";
 import { v } from "../../../styles/variables";
 import { PacienteEquipoTratanteSection } from "./PacienteEquipoTratanteSection";
 
 const OTHER_DIAGNOSIS_CODE = "OTHER";
 const ADMINISSION_TYPE_OPTIONS = ["Voluntario", "Involuntario"];
+const COVERAGE_OPTIONS = [
+  "AMEPBA",
+  "IOMA",
+  "LIBSALUD",
+  "Otro",
+  "PAMI",
+  "PSIQUE",
+  "TIKUM",
+  "VITAS",
+];
 
 const defaultEmergencyContact = () => createEmptyEmergencyContact("paciente");
 const getCurrentDateTimeInput = () => {
@@ -55,10 +68,8 @@ const getCurrentDateTimeInput = () => {
   )}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
 };
 const createDefaultCoverageValues = () => ({
-  coverage_type: "",
-  coverage_financiador_id: "",
-  coverage_plan_id: "",
-  coverage_member_number: "",
+  coverage_option: "",
+  coverage_custom: "",
   coverage_notes: "",
 });
 
@@ -75,7 +86,7 @@ const createDefaultValues = ({ admissionAt } = {}) => ({
   email: "",
   address: "",
   localidad: "",
-  condition_type: "agudo",
+  condition_type: normalizePacienteConditionType("agudo") || "agudo",
   estado_civil: "",
   convivencia: "",
   educacion: "",
@@ -155,7 +166,8 @@ const mapPatientToFormValues = (patient) => ({
   email: safeString(patient?.email),
   address: safeString(patient?.address),
   localidad: safeString(patient?.localidad),
-  condition_type: safeString(patient?.condition_type) || "agudo",
+  condition_type:
+    normalizePacienteConditionType(patient?.condition_type) || "agudo",
   estado_civil: safeString(patient?.estado_civil),
   convivencia: safeString(patient?.convivencia),
   educacion: safeString(patient?.educacion),
@@ -173,14 +185,25 @@ const mapPatientToFormValues = (patient) => ({
 });
 
 const mapCoverageToFormValues = (coverage) => ({
-  coverage_type: safeString(coverage?.coverage_type),
-  coverage_financiador_id: coverage?.financiador_id
-    ? String(coverage.financiador_id)
-    : "",
-  coverage_plan_id: coverage?.plan_id ? String(coverage.plan_id) : "",
-  coverage_member_number: safeString(coverage?.affiliate_number),
+  coverage_option: COVERAGE_OPTIONS.includes(safeString(coverage?.coverage).trim())
+    ? safeString(coverage?.coverage).trim()
+    : safeString(coverage?.coverage).trim()
+      ? "Otro"
+      : "",
+  coverage_custom:
+    COVERAGE_OPTIONS.includes(safeString(coverage?.coverage).trim()) ||
+    !safeString(coverage?.coverage).trim()
+      ? ""
+      : safeString(coverage?.coverage).trim(),
   coverage_notes: safeString(coverage?.coverage_notes),
 });
+
+const resolveCoverageValueFromForm = (values) => {
+  const option = safeString(values?.coverage_option).trim();
+  if (!option) return "";
+  if (option === "Otro") return safeString(values?.coverage_custom).trim();
+  return option;
+};
 
 const pickPreservedValues = (values) => ({
   admission_at:
@@ -223,7 +246,8 @@ const buildComparablePacientePayload = ({ paciente, empresaId }) => ({
   email: safeString(paciente?.email).trim() || null,
   address: safeString(paciente?.address).trim() || null,
   localidad: safeString(paciente?.localidad).trim() || null,
-  condition_type: safeString(paciente?.condition_type).trim() || "agudo",
+  condition_type:
+    normalizePacienteConditionType(paciente?.condition_type) || "agudo",
   estado_civil: safeString(paciente?.estado_civil).trim() || null,
   convivencia: safeString(paciente?.convivencia).trim() || null,
   educacion: safeString(paciente?.educacion).trim() || null,
@@ -257,7 +281,7 @@ const buildPacientePayload = ({ data, empresaId }) => {
     email: n(data.email),
     address: n(data.address),
     localidad: n(data.localidad),
-    condition_type: safeString(data.condition_type).trim() || "agudo",
+    condition_type: normalizePacienteConditionType(data.condition_type) || "agudo",
     estado_civil: n(data.estado_civil),
     convivencia: n(data.convivencia),
     educacion: n(data.educacion),
@@ -285,20 +309,12 @@ const getDiagnosisDisplay = (selectedDiagnosis, otherDiagnosis) => {
 };
 
 const buildAdmissionReasonValue = ({ diagnosisLabel, additionalNotes }) => {
-  const normalizedDiagnosis = safeString(diagnosisLabel).trim();
   const normalizedNotes = safeString(additionalNotes).trim();
-
-  return [
-    normalizedDiagnosis ? `Diagnostico: ${normalizedDiagnosis}` : "",
-    normalizedNotes ? `Motivos de internacion: ${normalizedNotes}` : "",
-  ]
-    .filter(Boolean)
-    .join("\n");
+  return normalizedNotes || "";
 };
 
-const getAdmissionReasonNotes = ({ admissionReason, diagnosis }) => {
+const getAdmissionReasonNotes = ({ admissionReason }) => {
   const rawReason = safeString(admissionReason).trim();
-  const rawDiagnosis = safeString(diagnosis).trim();
   if (!rawReason) return "";
 
   const lines = rawReason
@@ -312,9 +328,9 @@ const getAdmissionReasonNotes = ({ admissionReason, diagnosis }) => {
   if (notesLine) {
     return notesLine.replace(/^(motivos de internacion):\s*/i, "").trim();
   }
-  if (rawDiagnosis && rawReason === rawDiagnosis) return "";
-  if (lines.some((line) => line.toLowerCase().startsWith("diagnostico:")))
+  if (lines.some((line) => line.toLowerCase().startsWith("diagnostico:"))) {
     return "";
+  }
   return rawReason;
 };
 
@@ -421,7 +437,12 @@ export function ModalPacienteIngresoForm({
   const [selectedDiagnosis, setSelectedDiagnosis] = useState(null);
   const [otherDiagnosis, setOtherDiagnosis] = useState("");
   const [diagnosisError, setDiagnosisError] = useState("");
-  const [coveragePrefillTarget, setCoveragePrefillTarget] = useState(null);
+  const [selectedAlternativeDiagnosis, setSelectedAlternativeDiagnosis] =
+    useState(null);
+  const [otherAlternativeDiagnosis, setOtherAlternativeDiagnosis] =
+    useState("");
+  const [alternativeDiagnosisError, setAlternativeDiagnosisError] =
+    useState("");
   const [selectedTeamMembers, setSelectedTeamMembers] = useState([]);
   const [expandedPanels, setExpandedPanels] = useState({
     coverage: true,
@@ -457,13 +478,11 @@ export function ModalPacienteIngresoForm({
 
   const hasSelectedPatient = Boolean(selectedPatient?.id);
   const diagnosisIsOther = selectedDiagnosis?.code === OTHER_DIAGNOSIS_CODE;
-  const selectedCoverageType = watch("coverage_type");
-  const selectedCoverageFinanciadorId = watch("coverage_financiador_id");
-  const selectedCoveragePlanId = watch("coverage_plan_id");
+  const alternativeDiagnosisIsOther =
+    selectedAlternativeDiagnosis?.code === OTHER_DIAGNOSIS_CODE;
+  const selectedCoverageOption = watch("coverage_option");
   const selectedAdmissionAt = watch("admission_at");
-  const showCoverageFinanciador =
-    selectedCoverageType === "prepaga" ||
-    selectedCoverageType === "obra_social";
+  const showCoverageCustomInput = selectedCoverageOption === "Otro";
   const currentAdmissionDateTimeInput = getCurrentDateTimeInput();
   const currentDateInput = toDateInput(new Date());
 
@@ -519,22 +538,38 @@ export function ModalPacienteIngresoForm({
       "admission_reason_notes",
       getAdmissionReasonNotes({
         admissionReason: ingresoPreselected?.admission_reason,
-        diagnosis: ingresoPreselected?.admission_diagnosis,
       }),
+    );
+    setValue(
+      "condition_type",
+      normalizePacienteConditionType(
+        ingresoPreselected?.condition_type ?? pacientePreselected?.condition_type
+      ) || "agudo"
     );
 
     const diagnosisState = getDiagnosisStateFromStoredValue(
       ingresoPreselected?.admission_diagnosis,
     );
+    const alternativeDiagnosisState = getDiagnosisStateFromStoredValue(
+      ingresoPreselected?.admission_diagnosis_alternative,
+    );
     setSelectedDiagnosis(diagnosisState.selectedDiagnosis);
     setOtherDiagnosis(diagnosisState.otherDiagnosis);
     setDiagnosisError("");
+    setSelectedAlternativeDiagnosis(
+      alternativeDiagnosisState.selectedDiagnosis,
+    );
+    setOtherAlternativeDiagnosis(alternativeDiagnosisState.otherDiagnosis);
+    setAlternativeDiagnosisError("");
   }, [
     ingresoPreselected?.admission_at,
     ingresoPreselected?.adminission_type,
     ingresoPreselected?.admission_diagnosis,
+    ingresoPreselected?.admission_diagnosis_alternative,
     ingresoPreselected?.admission_reason,
+    ingresoPreselected?.condition_type,
     isEditMode,
+    pacientePreselected?.condition_type,
     referenceAdmissionAt,
     setValue,
   ]);
@@ -587,33 +622,6 @@ export function ModalPacienteIngresoForm({
     refetchOnWindowFocus: false,
   });
 
-  const {
-    data: coverageFinanciadores = [],
-    isLoading: loadingCoverageFinanciadores,
-    isFetched: coverageFinanciadoresFetched,
-  } = useQuery({
-    queryKey: ["coberturasFinanciadores", selectedCoverageType],
-    queryFn: () => getCoberturasFinanciadoresByTipo(selectedCoverageType),
-    enabled: showCoverageFinanciador,
-    refetchOnWindowFocus: false,
-  });
-
-  const {
-    data: coveragePlanes = [],
-    isLoading: loadingCoveragePlanes,
-    isFetched: coveragePlanesFetched,
-  } = useQuery({
-    queryKey: [
-      "coberturasPlanes",
-      selectedCoverageType,
-      selectedCoverageFinanciadorId,
-    ],
-    queryFn: () =>
-      getCoberturasPlanesByFinanciadorId(selectedCoverageFinanciadorId),
-    enabled: showCoverageFinanciador && Boolean(selectedCoverageFinanciadorId),
-    refetchOnWindowFocus: false,
-  });
-
   const selectedPatientEmergencyContactsRows =
     selectedPatientEmergencyContacts ?? EMPTY_ARRAY;
   const selectedPatientCoberturasRows =
@@ -638,43 +646,6 @@ export function ModalPacienteIngresoForm({
       ) ?? null,
     [selectedPatientCoberturasRows, selectedAdmissionAt],
   );
-  const coverageFinanciadoresOptions = useMemo(() => {
-    if (!coveragePrefillTarget?.coverage_financiador_id)
-      return coverageFinanciadores;
-
-    const currentFinanciador = selectedPatientCoverage?.financiador;
-    if (!currentFinanciador?.id) return coverageFinanciadores;
-
-    return coverageFinanciadores.some(
-      (item) => String(item.id) === String(currentFinanciador.id),
-    )
-      ? coverageFinanciadores
-      : [currentFinanciador, ...coverageFinanciadores];
-  }, [
-    coverageFinanciadores,
-    coveragePrefillTarget?.coverage_financiador_id,
-    selectedPatientCoverage?.financiador,
-  ]);
-  const coveragePlanesOptions = useMemo(() => {
-    if (!coveragePrefillTarget?.coverage_plan_id) return coveragePlanes;
-
-    const currentPlan = selectedPatientCoverage?.plan;
-    if (!currentPlan?.id) return coveragePlanes;
-
-    return coveragePlanes.some(
-      (item) => String(item.id) === String(currentPlan.id),
-    )
-      ? coveragePlanes
-      : [currentPlan, ...coveragePlanes];
-  }, [
-    coveragePlanes,
-    coveragePrefillTarget?.coverage_plan_id,
-    selectedPatientCoverage?.plan,
-  ]);
-  const isCoveragePrefilling =
-    Boolean(coveragePrefillTarget) &&
-    safeString(selectedCoverageType).trim() ===
-      safeString(coveragePrefillTarget?.coverage_type).trim();
 
   useEffect(() => {
     if (!selectedPatient?.id) {
@@ -730,192 +701,17 @@ export function ModalPacienteIngresoForm({
   useEffect(() => {
     if (!selectedPatient?.id) {
       const emptyCoverageValues = createDefaultCoverageValues();
-      setValue("coverage_type", emptyCoverageValues.coverage_type);
-      setValue(
-        "coverage_financiador_id",
-        emptyCoverageValues.coverage_financiador_id,
-      );
-      setValue("coverage_plan_id", emptyCoverageValues.coverage_plan_id);
-      setValue(
-        "coverage_member_number",
-        emptyCoverageValues.coverage_member_number,
-      );
+      setValue("coverage_option", emptyCoverageValues.coverage_option);
+      setValue("coverage_custom", emptyCoverageValues.coverage_custom);
       setValue("coverage_notes", emptyCoverageValues.coverage_notes);
-      setCoveragePrefillTarget(null);
       return;
     }
 
     const nextCoverageValues = mapCoverageToFormValues(selectedPatientCoverage);
-    setValue("coverage_type", nextCoverageValues.coverage_type);
-    setValue(
-      "coverage_financiador_id",
-      nextCoverageValues.coverage_financiador_id,
-    );
-    setValue("coverage_plan_id", nextCoverageValues.coverage_plan_id);
-    setValue(
-      "coverage_member_number",
-      nextCoverageValues.coverage_member_number,
-    );
+    setValue("coverage_option", nextCoverageValues.coverage_option);
+    setValue("coverage_custom", nextCoverageValues.coverage_custom);
     setValue("coverage_notes", nextCoverageValues.coverage_notes);
-    setCoveragePrefillTarget(
-      nextCoverageValues.coverage_type &&
-        nextCoverageValues.coverage_type !== "particular" &&
-        nextCoverageValues.coverage_financiador_id
-        ? nextCoverageValues
-        : null,
-    );
   }, [selectedPatient?.id, selectedPatientCoverage, setValue]);
-
-  useEffect(() => {
-    if (!coveragePrefillTarget || !selectedPatient?.id) return;
-    if (
-      safeString(selectedCoverageType).trim() !==
-      safeString(coveragePrefillTarget.coverage_type).trim()
-    )
-      return;
-
-    if (
-      coveragePrefillTarget.coverage_financiador_id &&
-      (loadingCoverageFinanciadores || !coverageFinanciadoresFetched)
-    ) {
-      return;
-    }
-
-    if (
-      coveragePrefillTarget.coverage_financiador_id &&
-      !coverageFinanciadoresOptions.some(
-        (item) =>
-          String(item.id) ===
-          String(coveragePrefillTarget.coverage_financiador_id),
-      )
-    ) {
-      setCoveragePrefillTarget(null);
-      return;
-    }
-
-    if (
-      coveragePrefillTarget.coverage_financiador_id &&
-      safeString(selectedCoverageFinanciadorId).trim() !==
-        coveragePrefillTarget.coverage_financiador_id
-    ) {
-      setValue(
-        "coverage_financiador_id",
-        coveragePrefillTarget.coverage_financiador_id,
-      );
-      return;
-    }
-
-    if (!coveragePrefillTarget.coverage_plan_id) {
-      setCoveragePrefillTarget(null);
-      return;
-    }
-
-    if (loadingCoveragePlanes || !coveragePlanesFetched) {
-      return;
-    }
-
-    if (
-      !coveragePlanesOptions.some(
-        (item) =>
-          String(item.id) === String(coveragePrefillTarget.coverage_plan_id),
-      )
-    ) {
-      setCoveragePrefillTarget(null);
-      return;
-    }
-
-    if (
-      safeString(selectedCoveragePlanId).trim() !==
-      coveragePrefillTarget.coverage_plan_id
-    ) {
-      setValue("coverage_plan_id", coveragePrefillTarget.coverage_plan_id);
-      return;
-    }
-
-    setCoveragePrefillTarget(null);
-  }, [
-    coverageFinanciadoresFetched,
-    coverageFinanciadoresOptions,
-    coveragePlanesFetched,
-    coveragePlanesOptions,
-    coveragePrefillTarget,
-    loadingCoverageFinanciadores,
-    loadingCoveragePlanes,
-    selectedCoverageFinanciadorId,
-    selectedCoveragePlanId,
-    selectedPatient?.id,
-    selectedCoverageType,
-    setValue,
-  ]);
-
-  useEffect(() => {
-    if (selectedCoverageType !== "particular") return;
-    setValue("coverage_financiador_id", "");
-    setValue("coverage_plan_id", "");
-    setValue("coverage_member_number", "");
-  }, [selectedCoverageType, setValue]);
-
-  useEffect(() => {
-    if (isCoveragePrefilling) return;
-    if (!showCoverageFinanciador) return;
-    if (!selectedCoverageFinanciadorId) {
-      if (selectedCoveragePlanId) setValue("coverage_plan_id", "");
-      return;
-    }
-    if (loadingCoverageFinanciadores || !coverageFinanciadoresFetched) return;
-
-    const financiadorExists = coverageFinanciadoresOptions.some(
-      (item) => String(item.id) === String(selectedCoverageFinanciadorId),
-    );
-    if (!financiadorExists) {
-      setValue("coverage_financiador_id", "");
-      setValue("coverage_plan_id", "");
-    }
-  }, [
-    coverageFinanciadoresOptions,
-    coverageFinanciadoresFetched,
-    isCoveragePrefilling,
-    loadingCoverageFinanciadores,
-    selectedCoverageFinanciadorId,
-    selectedCoveragePlanId,
-    setValue,
-    showCoverageFinanciador,
-  ]);
-
-  useEffect(() => {
-    if (isCoveragePrefilling) return;
-    if (!showCoverageFinanciador || !selectedCoverageFinanciadorId) {
-      if (selectedCoveragePlanId) setValue("coverage_plan_id", "");
-      return;
-    }
-    if (loadingCoveragePlanes || !coveragePlanesFetched) return;
-
-    if (!coveragePlanesOptions.length) {
-      if (selectedCoveragePlanId) setValue("coverage_plan_id", "");
-      return;
-    }
-
-    const currentPlanExists = coveragePlanesOptions.some(
-      (item) => String(item.id) === String(selectedCoveragePlanId),
-    );
-    if (!currentPlanExists) {
-      setValue(
-        "coverage_plan_id",
-        coveragePlanesOptions.length === 1
-          ? String(coveragePlanesOptions[0].id)
-          : "",
-      );
-    }
-  }, [
-    coveragePlanesOptions,
-    coveragePlanesFetched,
-    isCoveragePrefilling,
-    loadingCoveragePlanes,
-    selectedCoverageFinanciadorId,
-    selectedCoveragePlanId,
-    setValue,
-    showCoverageFinanciador,
-  ]);
 
   const visibleSearchResults = useMemo(() => {
     if (!Array.isArray(searchResults)) return [];
@@ -964,6 +760,10 @@ export function ModalPacienteIngresoForm({
         selectedDiagnosis,
         otherDiagnosis,
       );
+      const alternativeDiagnosisLabel = getDiagnosisDisplay(
+        selectedAlternativeDiagnosis,
+        otherAlternativeDiagnosis,
+      );
       const admissionAtIso = toIsoDateTime(data.admission_at);
       const adminissionType = normalizeAdminissionType(data.adminission_type);
       if (!diagnosisLabel) {
@@ -983,12 +783,37 @@ export function ModalPacienteIngresoForm({
         diagnosisLabel,
         additionalNotes: data.admission_reason_notes,
       });
-      const shouldSyncCoverage = safeString(data.coverage_type).trim();
+      const coverageValue = resolveCoverageValueFromForm(data);
+      const shouldSyncCoverage = Boolean(coverageValue);
+      const previousAdminissionType = normalizeAdminissionType(
+        ingresoPreselected?.adminission_type,
+      );
+      const adminissionTypeChanged =
+        Boolean(ingresoPreselected?.id) &&
+        previousAdminissionType &&
+        previousAdminissionType !== adminissionType;
 
       if (isEditMode) {
-        let paciente = selectedPatient?.id
-          ? await updatePaciente(selectedPatient.id, pacientePayload)
-          : pacientePreselected;
+        const currentPaciente = selectedPatient ?? pacientePreselected ?? null;
+        const currentPacienteComparable = buildComparablePacientePayload({
+          paciente: currentPaciente,
+          empresaId,
+        });
+        const nextPacienteComparable = buildComparablePacientePayload({
+          paciente: pacientePayload,
+          empresaId,
+        });
+
+        let paciente =
+          currentPaciente?.id &&
+          arePacientePayloadsEqual(
+            currentPacienteComparable,
+            nextPacienteComparable
+          )
+            ? currentPaciente
+            : currentPaciente?.id
+              ? await updatePaciente(currentPaciente.id, pacientePayload)
+              : pacientePreselected;
 
         if (!paciente?.id) throw new Error("No se pudo guardar el paciente.");
 
@@ -1008,10 +833,7 @@ export function ModalPacienteIngresoForm({
                 pacienteId: paciente.id,
                 effectiveDate: data.admission_at || referenceAdmissionAt,
                 coverage: {
-                  coverage_type: data.coverage_type,
-                  financiador_id: data.coverage_financiador_id,
-                  plan_id: data.coverage_plan_id,
-                  affiliate_number: data.coverage_member_number,
+                  coverage: coverageValue,
                   coverage_notes: data.coverage_notes,
                 },
               })
@@ -1019,18 +841,42 @@ export function ModalPacienteIngresoForm({
         ];
 
         if (ingresoPreselected?.id) {
-          tasks.push(
-            updatePacienteIngreso(ingresoPreselected.id, {
-              admission_at: admissionAtIso,
-              adminission_type: adminissionType,
-              admission_diagnosis: diagnosisLabel,
-              admission_reason:
-                buildAdmissionReasonValue({
-                  diagnosisLabel,
-                  additionalNotes: data.admission_reason_notes,
-                }) || null,
-            }),
-          );
+          const ingresoUpdatePayload = {
+            admission_at: admissionAtIso,
+            adminission_type: adminissionType,
+            admission_diagnosis: diagnosisLabel,
+            admission_diagnosis_alternative: alternativeDiagnosisLabel || null,
+            condition_type:
+              normalizePacienteConditionType(data.condition_type) || "agudo",
+            admission_reason:
+              buildAdmissionReasonValue({
+                diagnosisLabel,
+                additionalNotes: data.admission_reason_notes,
+              }) || null,
+          };
+
+          if (adminissionTypeChanged) {
+            tasks.push(
+              updatePacienteIngresoAdminissionType({
+                ingresoId: ingresoPreselected.id,
+                adminissionType,
+              }),
+            );
+            tasks.push(
+              updatePacienteIngreso(ingresoPreselected.id, {
+                admission_at: ingresoUpdatePayload.admission_at,
+                admission_diagnosis: ingresoUpdatePayload.admission_diagnosis,
+                admission_diagnosis_alternative:
+                  ingresoUpdatePayload.admission_diagnosis_alternative,
+                condition_type: ingresoUpdatePayload.condition_type,
+                admission_reason: ingresoUpdatePayload.admission_reason,
+              }),
+            );
+          } else {
+            tasks.push(
+              updatePacienteIngreso(ingresoPreselected.id, ingresoUpdatePayload),
+            );
+          }
         }
 
         await Promise.all(tasks);
@@ -1044,6 +890,9 @@ export function ModalPacienteIngresoForm({
         admission_at: admissionAtIso,
         adminission_type: adminissionType,
         admission_diagnosis: diagnosisLabel,
+        admission_diagnosis_alternative: alternativeDiagnosisLabel || null,
+        condition_type:
+          normalizePacienteConditionType(data.condition_type) || "agudo",
         admission_reason: admissionReason || null,
         status: "admitted",
       };
@@ -1114,10 +963,7 @@ export function ModalPacienteIngresoForm({
               pacienteId: paciente.id,
               effectiveDate: data.admission_at,
               coverage: {
-                coverage_type: data.coverage_type,
-                financiador_id: data.coverage_financiador_id,
-                plan_id: data.coverage_plan_id,
-                affiliate_number: data.coverage_member_number,
+                coverage: coverageValue,
                 coverage_notes: data.coverage_notes,
               },
             })
@@ -1143,6 +989,7 @@ export function ModalPacienteIngresoForm({
       const patientQueryKeys = [
         ["pacienteDetalle", pacienteQueryId],
         ["pacienteIngresos", pacienteQueryId],
+        ["pacienteIngresoAdminissionTypeHistory", pacienteQueryId],
         ["pacienteCoberturas", pacienteQueryId],
         ["pacienteContactosEmergencia", pacienteQueryId],
         ["pacienteAntecedentes", pacienteQueryId],
@@ -1196,6 +1043,26 @@ export function ModalPacienteIngresoForm({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [mutation.isPending, onClose]);
 
+  const handleCancelRequest = async () => {
+    if (mutation.isPending) return;
+
+    const result = await Swal.fire({
+      icon: "warning",
+      title: "Cancelar",
+      text: "¿Estas seguro que queres cancelar?",
+      showCancelButton: true,
+      confirmButtonText: "Si, cancelar",
+      cancelButtonText: "Seguir editando",
+      confirmButtonColor: v.rojo,
+      cancelButtonColor: v.colorPrincipal,
+      reverseButtons: true,
+    });
+
+    if (result.isConfirmed) {
+      onClose?.();
+    }
+  };
+
   const onSubmit = (data) => {
     const shouldValidateDiagnosis =
       !isEditMode || Boolean(ingresoPreselected?.id);
@@ -1205,6 +1072,10 @@ export function ModalPacienteIngresoForm({
         selectedDiagnosis,
         otherDiagnosis,
       );
+      const alternativeDiagnosisLabel = getDiagnosisDisplay(
+        selectedAlternativeDiagnosis,
+        otherAlternativeDiagnosis,
+      );
       if (!diagnosisLabel) {
         setDiagnosisError(
           diagnosisIsOther
@@ -1213,20 +1084,19 @@ export function ModalPacienteIngresoForm({
         );
         return;
       }
+      if (alternativeDiagnosisIsOther && !alternativeDiagnosisLabel) {
+        setAlternativeDiagnosisError("Debe indicar el diagnostico secundario.");
+        return;
+      }
     }
 
     setDiagnosisError("");
+    setAlternativeDiagnosisError("");
     mutation.mutate(data);
   };
 
   return (
-    <Overlay
-      onClick={(event) =>
-        event.target === event.currentTarget &&
-        !mutation.isPending &&
-        onClose?.()
-      }
-    >
+    <Overlay>
       <Modal onClick={(event) => event.stopPropagation()}>
         {mutation.isPending && (
           <div className="processingOverlay">
@@ -1247,7 +1117,7 @@ export function ModalPacienteIngresoForm({
             </h1>
           </section>
           <section>
-            <span onClick={() => !mutation.isPending && onClose?.()}>x</span>
+            <span onClick={handleCancelRequest}>x</span>
           </section>
         </div>
 
@@ -1339,109 +1209,53 @@ export function ModalPacienteIngresoForm({
             <div className="fieldsGrid">
               <article>
                 <InputText icono={<v.iconocategorias />}>
-                  <select
-                    className="form__field"
-                    {...register("coverage_type", {
-                      validate: (value) =>
-                        isEditMode || safeString(value).trim()
-                          ? true
-                          : "Seleccione un tipo de cobertura",
-                    })}
-                  >
+                  <select className="form__field" {...register("coverage_option")}>
                     <option value="">Seleccionar</option>
-                    <option value="obra_social">Obra social</option>
-                    <option value="prepaga">Prepaga</option>
-                    <option value="particular">Particular</option>
+                    {COVERAGE_OPTIONS.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
                   </select>
-                  <label className="form__label">Tipo de cobertura</label>
-                  {errors.coverage_type?.message && (
-                    <p>{errors.coverage_type.message}</p>
-                  )}
+                  <label className="form__label">Cobertura</label>
                 </InputText>
               </article>
 
-              {showCoverageFinanciador && (
+              {showCoverageCustomInput ? (
                 <article>
                   <InputText icono={<v.iconoempresa />}>
-                    <select
+                    <input
                       className="form__field"
-                      {...register("coverage_financiador_id", {
+                      type="text"
+                      placeholder="Nombre de cobertura"
+                      {...register("coverage_custom", {
                         validate: (value) =>
-                          !showCoverageFinanciador ||
-                          (safeString(value).trim()
-                            ? true
-                            : "Seleccione un financiador"),
+                          !showCoverageCustomInput ||
+                          safeString(value).trim() ||
+                          "Indique la cobertura",
                       })}
-                    >
-                      <option value="">
-                        {loadingCoverageFinanciadores
-                          ? "Cargando..."
-                          : "Seleccionar"}
-                      </option>
-                      {coverageFinanciadoresOptions.map((financiador) => (
-                        <option key={financiador.id} value={financiador.id}>
-                          {financiador.nombre}
-                        </option>
-                      ))}
-                    </select>
-                    <label className="form__label">Financiador</label>
-                    {errors.coverage_financiador_id?.message && (
-                      <p>{errors.coverage_financiador_id.message}</p>
-                    )}
-                  </InputText>
-                </article>
-              )}
-
-              {selectedCoverageType === "prepaga" ||
-              (selectedCoverageType === "obra_social" &&
-                coveragePlanesOptions.length) ? (
-                <article>
-                  <InputText icono={<v.iconocategorias />}>
-                    <select
-                      className="form__field"
-                      {...register("coverage_plan_id", {
-                        validate: (value) =>
-                          selectedCoverageType !== "prepaga" ||
-                          (safeString(value).trim()
-                            ? true
-                            : "Seleccione un plan"),
-                      })}
-                    >
-                      <option value="">
-                        {loadingCoveragePlanes ? "Cargando..." : "Seleccionar"}
-                      </option>
-                      {coveragePlanesOptions.map((plan) => (
-                        <option key={plan.id} value={plan.id}>
-                          {plan.nombre}
-                        </option>
-                      ))}
-                    </select>
-                    <label className="form__label">
-                      {selectedCoverageType === "obra_social"
-                        ? "Plan (opcional)"
-                        : "Plan"}
-                    </label>
-                    {errors.coverage_plan_id?.message && (
-                      <p>{errors.coverage_plan_id.message}</p>
+                    />
+                    <label className="form__label">Otra cobertura</label>
+                    {errors.coverage_custom?.message && (
+                      <p>{errors.coverage_custom.message}</p>
                     )}
                   </InputText>
                 </article>
               ) : null}
 
-              {!!selectedCoverageType && (
-                <article>
-                  <InputText icono={<v.iconoImportante />}>
-                    <input
-                      className="form__field"
-                      type="text"
-                      placeholder="Observaciones"
-                      {...register("coverage_notes")}
-                    />
-                    <label className="form__label">Observaciones</label>
-                  </InputText>
-                </article>
-              )}
-              {showCoverageFinanciador && (
+
+              <article>
+                <InputText icono={<v.iconoImportante />}>
+                  <input
+                    className="form__field"
+                    type="text"
+                    placeholder="Swiss Medical / Plan X / etc..."
+                    {...register("coverage_notes")}
+                  />
+                  <label className="form__label">Detalle</label>
+                </InputText>
+              </article>
+              {false && (
                 <article>
                   <InputText icono={<v.iconocodigobarras />}>
                     <input
@@ -1822,8 +1636,11 @@ export function ModalPacienteIngresoForm({
                       className="form__field"
                       {...register("condition_type")}
                     >
-                      <option value="agudo">Agudo</option>
-                      <option value="cronico">Cronico</option>
+                      {PACIENTE_CONDITION_OPTIONS.map((option) => (
+                        <option key={option.id} value={option.id}>
+                          {option.label}
+                        </option>
+                      ))}
                     </select>
                     <label className="form__label">Condicion</label>
                   </InputText>
@@ -1860,6 +1677,43 @@ export function ModalPacienteIngresoForm({
                     </InputText>
                   </article>
                 )}
+                <article className="full">
+                  <Icd10TreeSelect
+                    value={selectedAlternativeDiagnosis}
+                    onChange={(value) => {
+                      setSelectedAlternativeDiagnosis(value);
+                      setAlternativeDiagnosisError("");
+                      if (value?.code !== OTHER_DIAGNOSIS_CODE) {
+                        setOtherAlternativeDiagnosis("");
+                      }
+                    }}
+                    label="Diagnostico secundario de ingreso (ICD-10)"
+                    error={alternativeDiagnosisError}
+                    allowOther
+                    icono={<v.iconoImportante />}
+                  />
+                </article>
+                {alternativeDiagnosisIsOther && (
+                  <article className="full">
+                    <InputText icono={<v.iconoImportante />}>
+                      <textarea
+                        className="form__field textarea"
+                        rows={3}
+                        placeholder="Indique diagnostico secundario"
+                        value={otherAlternativeDiagnosis}
+                        onChange={(e) => {
+                          setOtherAlternativeDiagnosis(e.target.value);
+                          if (e.target.value.trim()) {
+                            setAlternativeDiagnosisError("");
+                          }
+                        }}
+                      />
+                      <label className="form__label">
+                        Indique diagnostico secundario
+                      </label>
+                    </InputText>
+                  </article>
+                )}
               </div>
             </AccordionPanel>
           )}
@@ -1867,7 +1721,7 @@ export function ModalPacienteIngresoForm({
           {!isEditMode && (
             <AccordionPanel
               title="Equipo tratante"
-              subtitle="La asignacion del equipo define los permisos clinicos por internacion."
+              subtitle="La asignacion del equipo y el area configurada en Permisos definen la elegibilidad clinica por internacion."
               isOpen={expandedPanels.treatmentTeam}
               onToggle={() => togglePanel("treatmentTeam")}
             >
@@ -1905,7 +1759,7 @@ export function ModalPacienteIngresoForm({
               titulo="Cancelar"
               bgcolor="var(--bg-surface-muted)"
               disabled={mutation.isPending}
-              funcion={onClose}
+              funcion={handleCancelRequest}
             />
             <Btn1
               icono={<v.iconoguardar />}

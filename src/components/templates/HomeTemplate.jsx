@@ -59,7 +59,7 @@ export function HomeTemplate({ displayName = "Usuario" }) {
       title: "Enfermeria",
       description: "Registros diarios del area de enfermeria.",
       to: enfermeriaLink,
-      icon: v.iconoProfesional,
+      icon: v.iconoEnfermera,
     };
 
     if (!canSeeEmpleados && !canSeePacientes && !canSeeReportes) {

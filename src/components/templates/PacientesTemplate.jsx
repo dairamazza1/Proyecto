@@ -6,7 +6,7 @@ import {
   Btn1,
   ModalPacienteIngresoForm,
   Spinner1,
-  TablaPacientes,
+  TablaPacientesHistorial,
   Title,
   UserAuth,
   getCurrentUserSucursalId,
@@ -14,14 +14,31 @@ import {
   usePermissions,
   useSucursalesStore,
 } from "../../index";
-import { getPacientesActivos } from "../../supabase/crudPacientes";
+import {
+  getPacientesHistorial,
+} from "../../supabase/crudPacientes";
 import { v } from "../../styles/variables";
 import { DeviceMax } from "../../styles/breakpoints";
+import {
+  PACIENTE_CONDITION_TABS,
+  PACIENTE_DEFAULT_EPISODE_FILTER_BY_CONDITION,
+  formatPacienteConditionType,
+} from "../../utils/pacienteCondition";
+
+const HISTORY_EPISODE_FILTERS = [
+  { id: "all", label: "Todos" },
+  { id: "admitted", label: "Internados" },
+  { id: "discharged", label: "Egresados" },
+];
 
 export function PacientesTemplate() {
+  const [activeTab, setActiveTab] = useState("agudo");
   const [search, setSearch] = useState("");
   const [openIngresoModal, setOpenIngresoModal] = useState(false);
   const [selectedSucursalId, setSelectedSucursalId] = useState(null);
+  const [historyEpisodeFilter, setHistoryEpisodeFilter] = useState(
+    PACIENTE_DEFAULT_EPISODE_FILTER_BY_CONDITION.agudo
+  );
 
   const { canCreate, isAdmin, isRRHH } = usePermissions();
   const { user } = UserAuth();
@@ -67,17 +84,33 @@ export function PacientesTemplate() {
     ? selectedSucursalId
     : autoSucursalId;
 
+  const handleTabChange = (tabId) => {
+    setActiveTab(tabId);
+    setHistoryEpisodeFilter(
+      PACIENTE_DEFAULT_EPISODE_FILTER_BY_CONDITION[tabId] ?? "all"
+    );
+  };
+
   const {
     data: pacientes = [],
     isLoading,
     error,
   } = useQuery({
-    queryKey: ["pacientesActivos", empresaId, resolvedSucursalId, search],
+    queryKey: [
+      "pacientesHistorial",
+      empresaId,
+      resolvedSucursalId,
+      activeTab,
+      search,
+      historyEpisodeFilter,
+    ],
     queryFn: () =>
-      getPacientesActivos({
+      getPacientesHistorial({
         empresaId,
         sucursalId: resolvedSucursalId,
         search,
+        episodeStatus: historyEpisodeFilter,
+        conditionType: activeTab,
       }),
     enabled: Boolean(empresaId && resolvedSucursalId),
     refetchOnWindowFocus: false,
@@ -86,6 +119,11 @@ export function PacientesTemplate() {
   const showEmptyState =
     (canSelectSucursal && !resolvedSucursalId) ||
     (!canSelectSucursal && !resolvedSucursalId && !loadingSucursal);
+  const subtitle = `${formatPacienteConditionType(
+    activeTab
+  )} por ultimo episodio en la sucursal seleccionada`;
+  const emptyMessage =
+    "Sin pacientes para la condicion y filtros seleccionados.";
 
   const handleOpenIngreso = () => {
     if (canSelectSucursal && !resolvedSucursalId) {
@@ -122,15 +160,34 @@ export function PacientesTemplate() {
       <Header>
         <div className="titleGroup">
           <Title>Pacientes</Title>
-          <p>Pacientes internados</p>
+          <p>{subtitle}</p>
         </div>
-        <div className="actions">
+      </Header>
+
+      <TabsRow>
+        {PACIENTE_CONDITION_TABS.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            className={`tab ${activeTab === tab.id ? "active" : ""}`}
+            onClick={() => handleTabChange(tab.id)}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </TabsRow>
+
+      <ControlsCard>
+        <div className="searchBlock">
           <input
             type="search"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Buscar paciente"
+            placeholder="Buscar por DNI, nombre o apellido"
           />
+        </div>
+
+        <div className="actions">
           {canSelectSucursal && (
             <div className="selector-sucursal">
               <select
@@ -153,6 +210,7 @@ export function PacientesTemplate() {
               </select>
             </div>
           )}
+
           {canCreate("pacientes") && (
             <Btn1
               icono={<v.iconoagregar />}
@@ -162,13 +220,33 @@ export function PacientesTemplate() {
             />
           )}
         </div>
-      </Header>
+      </ControlsCard>
+
+      <HistoryFiltersCard>
+        <span className="filterLabel">Estado de internacion</span>
+        <div
+          className="filterOptions"
+          role="tablist"
+          aria-label="Filtrar pacientes por estado de internacion"
+        >
+          {HISTORY_EPISODE_FILTERS.map((filter) => (
+            <button
+              key={filter.id}
+              type="button"
+              className={historyEpisodeFilter === filter.id ? "active" : ""}
+              onClick={() => setHistoryEpisodeFilter(filter.id)}
+            >
+              {filter.label}
+            </button>
+          ))}
+        </div>
+      </HistoryFiltersCard>
 
       <ResultsCard>
         {showEmptyState ? (
           <EmptyState>
             {canSelectSucursal
-              ? "Selecciona una sucursal para ver los pacientes internados."
+              ? "Selecciona una sucursal para ver los pacientes."
               : "No se pudo determinar la sucursal asignada."}
           </EmptyState>
         ) : isLoading ? (
@@ -176,9 +254,9 @@ export function PacientesTemplate() {
         ) : error ? (
           <span>ha ocurrido un error: {error.message}</span>
         ) : pacientes.length ? (
-          <TablaPacientes data={pacientes} />
+          <TablaPacientesHistorial data={pacientes} />
         ) : (
-          <EmptyState>Sin pacientes internados para los filtros seleccionados.</EmptyState>
+          <EmptyState>{emptyMessage}</EmptyState>
         )}
       </ResultsCard>
 
@@ -209,7 +287,6 @@ const Header = styled.header`
   justify-content: space-between;
   align-items: flex-start;
   gap: 14px;
-  flex-wrap: wrap;
 
   .titleGroup {
     display: grid;
@@ -221,6 +298,55 @@ const Header = styled.header`
     color: ${({ theme }) => theme.textsecundary};
     font-weight: 500;
   }
+`;
+
+const TabsRow = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px;
+
+  .tab {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    padding: 0 12px;
+    border: 1px solid ${({ theme }) => theme.color2};
+    background: ${({ theme }) => theme.bg};
+    color: ${({ theme }) => theme.text};
+    font-weight: 600;
+    cursor: pointer;
+    width: 100%;
+    height: 40px;
+    min-height: 40px;
+    line-height: 1;
+    font-size: 0.95rem;
+  }
+
+  .tab.active {
+    border-color: ${({ theme }) => theme.color1};
+    color: ${({ theme }) => theme.color1};
+    background: var(--bg-accent-soft);
+  }
+
+  @media ${DeviceMax.mobile} {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+`;
+
+const ControlsCard = styled.section`
+  background: ${({ theme }) => theme.bg};
+  border-radius: 18px;
+  padding: 14px 16px;
+  box-shadow: var(--shadow-elev-1);
+  display: grid;
+  grid-template-columns: minmax(240px, 1.4fr) minmax(0, 1fr);
+  gap: 12px 16px;
+  align-items: center;
+
+  .searchBlock {
+    min-width: 0;
+  }
 
   .actions {
     display: flex;
@@ -228,6 +354,7 @@ const Header = styled.header`
     gap: 10px;
     align-items: center;
     justify-content: flex-end;
+    min-width: 0;
   }
 
   input {
@@ -236,7 +363,8 @@ const Header = styled.header`
     background: ${({ theme }) => theme.bgtotal};
     color: ${({ theme }) => theme.text};
     padding: 10px 12px;
-    min-width: 200px;
+    min-width: 0;
+    width: 100%;
     outline: none;
   }
 
@@ -266,18 +394,86 @@ const Header = styled.header`
     color: var(--color-danger);
   }
 
+  .select-sucursal option {
+    color: ${({ theme }) => theme.text};
+  }
+
+  @media ${DeviceMax.tablet} {
+    grid-template-columns: 1fr;
+
+    .actions {
+      justify-content: stretch;
+    }
+  }
+
   @media ${DeviceMax.mobile} {
     .actions {
       width: 100%;
+      display: grid;
+      grid-template-columns: 1fr;
     }
-    input {
-      width: 100%;
-    }
+
     .selector-sucursal {
       width: 100%;
     }
+
     .select-sucursal {
       min-width: 0;
+    }
+  }
+`;
+
+const HistoryFiltersCard = styled.section`
+  background: ${({ theme }) => theme.bg};
+  border-radius: 18px;
+  padding: 14px 16px;
+  box-shadow: var(--shadow-elev-1);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+
+  .filterLabel {
+    color: ${({ theme }) => theme.textsecundary};
+    font-weight: 600;
+  }
+
+  .filterOptions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .filterOptions button {
+    border: 1px solid ${({ theme }) => theme.color2};
+    background: ${({ theme }) => theme.bgtotal};
+    color: ${({ theme }) => theme.text};
+    border-radius: 999px;
+    min-height: 36px;
+    padding: 0 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .filterOptions button.active {
+    border-color: ${({ theme }) => theme.color1};
+    color: ${({ theme }) => theme.color1};
+    background: var(--bg-accent-soft);
+  }
+
+  @media ${DeviceMax.mobile} {
+    align-items: stretch;
+
+    .filterLabel {
+      width: 100%;
+    }
+
+    .filterOptions {
+      width: 100%;
+    }
+
+    .filterOptions button {
+      flex: 1 1 calc(50% - 8px);
     }
   }
 `;

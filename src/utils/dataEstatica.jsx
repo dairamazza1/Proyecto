@@ -51,7 +51,7 @@ export const LinksArray = [
   },
   {
     label: "Enfermeria",
-    icon: "mdi:stethoscope",
+    icon: v.iconoEnfermera,
     to: "/enfermeria",
     feature: FEATURES.ENFERMERIA,
   },

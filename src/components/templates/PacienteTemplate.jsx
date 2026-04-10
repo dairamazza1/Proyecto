@@ -1,7 +1,7 @@
 import styled from "styled-components";
 import { useEffect, useMemo, useState } from "react";
 import Swal from "sweetalert2";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Btn1,
   downloadPacienteIndicacionPdf,
@@ -34,6 +34,7 @@ import {
   getPacienteById,
   getPacienteCoberturasByPacienteId,
   getPacienteEquipoTratanteByPacienteId,
+  getPacienteIngresoAdminissionTypeHistoryByPacienteId,
   getPacienteEvolucionesByDate,
   getPacienteEvolucionesByRange,
   getPacienteEvolucionesExportContext,
@@ -62,7 +63,9 @@ import {
   hasPacienteAntecedentesContent,
   normalizeAntecedentesTextArray,
 } from "../../utils/pacienteAntecedentes";
+import { formatPacienteConditionType } from "../../utils/pacienteCondition";
 import { downloadPacienteEpicrisisDocx } from "../../utils/pacienteEpicrisisExport";
+import { downloadPacienteFichaDocx } from "../../utils/pacienteFichaExport";
 
 const formatDateTime = (value) => {
   if (!value) return "-";
@@ -141,6 +144,25 @@ const formatDocument = (type, number) => {
 const formatIngresoCreatedBy = (ingreso) => {
   return resolvePerfilDisplayName(ingreso?.creador, ingreso?.created_by);
 };
+const formatAdminissionTypeHistoryLabel = (row) => {
+  const fromType = formatAdminissionType(row?.from_adminission_type);
+  const toType = formatAdminissionType(row?.to_adminission_type);
+  if (!row?.from_adminission_type) return toType;
+  if (fromType === toType) return toType;
+  return `${fromType} -> ${toType}`;
+};
+const formatIngresoDiagnoses = (
+  admissionDiagnosis,
+  admissionDiagnosisAlternative,
+) => {
+  const principal = formatText(admissionDiagnosis);
+  const secondary = formatText(admissionDiagnosisAlternative);
+
+  if (principal === "-" && secondary === "-") return "-";
+  if (secondary === "-") return `Principal: ${principal}`;
+  if (principal === "-") return `Secundario: ${secondary}`;
+  return `Principal: ${principal} | Secundario: ${secondary}`;
+};
 
 const parseAdmissionReasonParts = (value) => {
   const raw = String(value ?? "").trim();
@@ -210,11 +232,12 @@ const BASE_TAB_DEFS = [
 const DEFAULT_EXPANDED_SECTIONS = {
   patientInfo: false,
   antecedentes: false,
-  ingresos: false,
+  ingresos: true,
   emergencyContacts: false,
 };
 
 export function PacienteTemplate({ pacienteId }) {
+  const queryClient = useQueryClient();
   const { canCreate, canUpdate } = usePermissions();
   const [activeTab, setActiveTab] = useState("evoluciones");
   const [selectedIngresoId, setSelectedIngresoId] = useState(null);
@@ -320,11 +343,28 @@ export function PacienteTemplate({ pacienteId }) {
       setSelectedIngresoId(currentActiveIngreso?.id ?? null);
     },
   });
+  const {
+    data: adminissionTypeHistory = [],
+  } = useQuery({
+    queryKey: ["pacienteIngresoAdminissionTypeHistory", pacienteId],
+    queryFn: () => getPacienteIngresoAdminissionTypeHistoryByPacienteId(pacienteId),
+    enabled: Boolean(pacienteId),
+    refetchOnWindowFocus: false,
+  });
 
   const activeIngreso = useMemo(
     () => (ingresos ?? []).find((ingreso) => isIngresoActivo(ingreso)) ?? null,
     [ingresos],
   );
+  const adminissionTypeHistoryByIngreso = useMemo(() => {
+    return (adminissionTypeHistory ?? []).reduce((acc, row) => {
+      const ingresoId = String(row?.ingreso_id ?? "");
+      if (!ingresoId) return acc;
+      if (!acc[ingresoId]) acc[ingresoId] = [];
+      acc[ingresoId].push(row);
+      return acc;
+    }, {});
+  }, [adminissionTypeHistory]);
 
   useEffect(() => {
     if (hasManualIngresoSelection) return;
@@ -338,6 +378,7 @@ export function PacienteTemplate({ pacienteId }) {
       ) ?? null,
     [ingresos, selectedIngresoId],
   );
+  const isIngresosExpanded = true;
   const evolutionIngresoContext = selectedIngreso ?? activeIngreso ?? null;
   const evolutionIngresoId = evolutionIngresoContext?.id ?? null;
   const evolutionPeriodBounds = useMemo(
@@ -527,7 +568,6 @@ export function PacienteTemplate({ pacienteId }) {
   );
   const admissionAdditionalNotesLabel = useMemo(() => {
     const raw = String(ingresoContext?.admission_reason ?? "").trim();
-    const diagnosis = String(ingresoContext?.admission_diagnosis ?? "").trim();
 
     if (!raw) return "-";
     if (
@@ -536,13 +576,8 @@ export function PacienteTemplate({ pacienteId }) {
     ) {
       return admissionReasonDetails.additionalNotes;
     }
-    if (diagnosis && raw === diagnosis) return "-";
     return raw;
-  }, [
-    admissionReasonDetails.additionalNotes,
-    ingresoContext?.admission_diagnosis,
-    ingresoContext?.admission_reason,
-  ]);
+  }, [admissionReasonDetails.additionalNotes, ingresoContext?.admission_reason]);
 
   const coverageReferenceDate =
     selectedIngreso?.admission_at ??
@@ -618,8 +653,13 @@ export function PacienteTemplate({ pacienteId }) {
     paciente.document_number,
   );
   const patientAge = computeAge(paciente.birthday);
-  const patientCondition = formatConditionType(paciente.condition_type);
+  const patientCondition = formatPacienteConditionType(
+    activeIngreso?.condition_type ?? paciente.condition_type
+  );
   const patientStatus = activeIngreso ? "Internado" : "Egresado";
+  const patientAdminissionType = formatAdminissionType(
+    ingresoContext?.adminission_type,
+  );
   const evolutionModePeriodLabel =
     evolutionPeriodBounds.fromDate && evolutionPeriodBounds.toDate
       ? `${formatDateInputLabel(evolutionPeriodBounds.fromDate)} - ${formatDateInputLabel(
@@ -740,6 +780,58 @@ export function PacienteTemplate({ pacienteId }) {
     }
   };
 
+  const handlePrintPacienteInfo = async () => {
+    try {
+      Swal.fire({
+        title: "Generando documento",
+        text: "Estamos preparando la ficha del paciente.",
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        didOpen: () => {
+          Swal.showLoading();
+        },
+      });
+
+      const [antecedentesDoc, emergencyContactsDoc] = await Promise.all([
+        queryClient.fetchQuery({
+          queryKey: ["pacienteAntecedentes", pacienteId],
+          queryFn: () => getPacienteAntecedentesByPacienteId(pacienteId),
+        }),
+        queryClient.fetchQuery({
+          queryKey: ["pacienteContactosEmergencia", pacienteId],
+          queryFn: () => getPacienteContactosEmergenciaByPacienteId(pacienteId),
+        }),
+      ]);
+
+      const emergencyContactsForIngreso = resolvePacienteContactosEmergenciaByIngreso(
+        emergencyContactsDoc,
+        ingresoContext,
+      );
+
+      await downloadPacienteFichaDocx({
+        paciente,
+        ingreso: ingresoContext,
+        cobertura: coberturaSeleccionada,
+        antecedentes: antecedentesDoc,
+        emergencyContacts: emergencyContactsForIngreso,
+      });
+
+      Swal.fire({
+        icon: "success",
+        title: "Documento generado",
+        text: "La ficha del paciente fue exportada correctamente.",
+      });
+    } catch (error) {
+      Swal.fire({
+        icon: "error",
+        title: "Oops...",
+        text:
+          error?.message ||
+          "No se pudo generar la ficha del paciente.",
+      });
+    }
+  };
+
   return (
     <Container>
       <Header>
@@ -753,6 +845,9 @@ export function PacienteTemplate({ pacienteId }) {
                 {patientStatus}
               </StatusTag>
               <StatusTag>{patientCondition}</StatusTag>
+              {showIngresoSummaryInPatientInfo ? (
+                <StatusTag>{patientAdminissionType}</StatusTag>
+              ) : null}
               {!showIngresoSummaryInPatientInfo ? (
                 <HeaderWarning>
                   Para ver mas informacion, seleccione una opcion en el
@@ -772,7 +867,7 @@ export function PacienteTemplate({ pacienteId }) {
               {activeIngreso && canCloseActiveIngreso && (
                 <Btn1
                   icono={<v.iconocerrar />}
-                  titulo="Egresar"
+                  titulo="Alta Sanatorial"
                   bgcolor="var(--color-danger-action)"
                   funcion={() => setOpenEgresoModal(true)}
                 />
@@ -782,12 +877,8 @@ export function PacienteTemplate({ pacienteId }) {
         </div>
       </Header>
 
-      <TimelineCard className={expandedSections.ingresos ? "" : "collapsed"}>
-        <SectionToggle
-          type="button"
-          onClick={() => toggleSection("ingresos")}
-          aria-expanded={expandedSections.ingresos}
-        >
+      <TimelineCard className={isIngresosExpanded ? "" : "collapsed"}>
+        <SectionToggle as="div" aria-expanded={isIngresosExpanded}>
           <div>
             <span className="title">Historial de ingresos</span>
             <small>
@@ -796,18 +887,8 @@ export function PacienteTemplate({ pacienteId }) {
                 : "Sin registros"}
             </small>
           </div>
-          <span
-            className={`chevron ${expandedSections.ingresos ? "expanded" : ""}`}
-          >
-            <span className="chevronLabel">
-              {expandedSections.ingresos ? "Ver menos" : "Ver mas"}
-            </span>
-            <span className="chevronIcon">
-              <v.iconoFlechabajo />
-            </span>
-          </span>
         </SectionToggle>
-        {expandedSections.ingresos &&
+        {isIngresosExpanded &&
           (ingresos.length ? (
             <div className="timelineList">
               <div className="timelineHead" aria-hidden="true">
@@ -820,49 +901,76 @@ export function PacienteTemplate({ pacienteId }) {
                 <span>Cantidad de dias</span>
                 <span>Estado</span>
               </div>
-              {ingresos.map((ingreso) => (
-                <button
-                  type="button"
-                  key={ingreso.id}
-                  className={`timelineItem ${
-                    String(ingreso.id) === String(selectedIngresoId)
-                      ? "active"
-                      : ""
-                  }`}
-                  onClick={() => {
-                    setHasManualIngresoSelection(true);
-                    setSelectedIngresoId(ingreso.id);
-                  }}
-                >
-                  <span data-label="Fecha de ingreso">
-                    {formatDateTime(ingreso.admission_at)}
-                  </span>
-                  <span data-label="Fecha de egreso">
-                    {formatDateTime(ingreso.discharge_at)}
-                  </span>
-                  <span data-label="Tipo de internacion">
-                    {formatAdminissionType(ingreso.adminission_type)}
-                  </span>
-                  <span data-label="Sucursal">
-                    {ingreso?.sucursal?.name ?? "-"}
-                  </span>
-                  <span data-label="Ingresado por">
-                    {formatIngresoCreatedBy(ingreso)}
-                  </span>
-                  <span className="diagnosis" data-label="Diagnostico">
-                    {ingreso.admission_diagnosis ?? "-"}
-                  </span>
-                  <span data-label="Cantidad de dias">
-                    {getIngresoDurationLabel(ingreso)}
-                  </span>
-                  <span
-                    className={`status ${isIngresoActivo(ingreso) ? "active" : "closed"}`}
-                    data-label="Estado"
-                  >
-                    {isIngresoActivo(ingreso) ? "Activo" : "Cerrado"}
-                  </span>
-                </button>
-              ))}
+              {ingresos.map((ingreso) => {
+                const ingresoHistory =
+                  adminissionTypeHistoryByIngreso[String(ingreso.id)] ?? [];
+
+                return (
+                  <div key={ingreso.id} className="timelineEntry">
+                    <button
+                      type="button"
+                      className={`timelineItem ${
+                        String(ingreso.id) === String(selectedIngresoId)
+                          ? "active"
+                          : ""
+                      }`}
+                      onClick={() => {
+                        setHasManualIngresoSelection(true);
+                        setSelectedIngresoId(ingreso.id);
+                      }}
+                    >
+                      <span data-label="Fecha de ingreso">
+                        {formatDateTime(ingreso.admission_at)}
+                      </span>
+                      <span data-label="Fecha de egreso">
+                        {formatDateTime(ingreso.discharge_at)}
+                      </span>
+                      <span data-label="Tipo de internacion">
+                        {formatAdminissionType(ingreso.adminission_type)}
+                      </span>
+                      <span data-label="Sucursal">
+                        {ingreso?.sucursal?.name ?? "-"}
+                      </span>
+                      <span data-label="Ingresado por">
+                        {formatIngresoCreatedBy(ingreso)}
+                      </span>
+                      <span className="diagnosis" data-label="Diagnostico">
+                        {formatIngresoDiagnoses(
+                          ingreso.admission_diagnosis,
+                          ingreso.admission_diagnosis_alternative,
+                        )}
+                      </span>
+                      <span data-label="Cantidad de dias">
+                        {getIngresoDurationLabel(ingreso)}
+                      </span>
+                      <span
+                        className={`status ${isIngresoActivo(ingreso) ? "active" : "closed"}`}
+                        data-label="Estado"
+                      >
+                        {isIngresoActivo(ingreso) ? "Activo" : "Cerrado"}
+                      </span>
+                    </button>
+                    {ingresoHistory.length ? (
+                      <div className="timelineChanges">
+                        <span className="changesTitle">
+                          Cambios de tipo de internacion
+                        </span>
+                        <div className="changesList">
+                          {ingresoHistory.map((row) => (
+                            <div
+                              key={`${ingreso.id}-${row.id}`}
+                              className="changeItem"
+                            >
+                              <strong>{formatDateTime(row.changed_at)}</strong>
+                              <span>{formatAdminissionTypeHistoryLabel(row)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <EmptyState>Sin ingresos registrados.</EmptyState>
@@ -877,8 +985,18 @@ export function PacienteTemplate({ pacienteId }) {
             aria-expanded={expandedSections.patientInfo}
           >
             <span className="title">Informacion del paciente</span>
+             <small>
+              Datos del paciente y su ingreso actual (si tiene). Para editar la informacion del paciente, utilice el boton de editar. Para ver la informacion relacionada a otro ingreso, seleccione el ingreso deseado en el historial de ingresos.
+            </small>
           </CardHeaderTitleButton>
           <CardHeaderActions>
+            <CardActionButton
+              type="button"
+              onClick={handlePrintPacienteInfo}
+            >
+              <v.iconoWord />
+              <span>Imprimir</span>
+            </CardActionButton>
             {canEditPatient && (
               <CardActionButton
                 type="button"
@@ -909,7 +1027,9 @@ export function PacienteTemplate({ pacienteId }) {
               <InfoItem>
                 <span className="label">Condición</span>
                 <span className="value">
-                  {formatConditionType(paciente.condition_type)}
+                  {formatPacienteConditionType(
+                    ingresoContext?.condition_type ?? paciente.condition_type
+                  )}
                 </span>
               </InfoItem>
             ) : null}
@@ -949,42 +1069,39 @@ export function PacienteTemplate({ pacienteId }) {
             ) : null}
             {showIngresoSummaryInPatientInfo ? (
               <InfoItem>
-                <span className="label">Diagnostico</span>
+                <span className="label">Diagnostico principal</span>
+                <span className="value">
+                  {formatText(ingresoContext?.admission_diagnosis)}
+                </span>
+              </InfoItem>
+            ) : null}
+            {showIngresoSummaryInPatientInfo ? (
+              <InfoItem>
+                <span className="label">Diagnostico secundario</span>
                 <span className="value">
                   {formatText(
-                    ingresoContext?.admission_diagnosis ??
-                      admissionReasonDetails.diagnosis,
+                    ingresoContext?.admission_diagnosis_alternative,
                   )}
                 </span>
               </InfoItem>
             ) : null}
 
             <InfoItem>
-              <span className="label">Cobertura medica</span>
+              <span className="label">Cobertura</span>
               <span className="value">
                 {errorCoberturas
                   ? "No disponible"
-                  : (coberturaSeleccionada?.coverage_provider_name ??
-                    coberturaSeleccionada?.coverage_display_name ??
-                    coberturaSeleccionada?.coverage_name ??
+                  : (coberturaSeleccionada?.coverage ??
                     (loadingCoberturas ? "Cargando..." : "-"))}
               </span>
             </InfoItem>
             <InfoItem>
-              <span className="label">Plan</span>
+              <span className="label">Detalle de cobertura</span>
               <span className="value">
                 {errorCoberturas
                   ? "No disponible"
-                  : (coberturaSeleccionada?.coverage_plan_name ??
+                  : (coberturaSeleccionada?.coverage_notes ??
                     (loadingCoberturas ? "Cargando..." : "-"))}
-              </span>
-            </InfoItem>
-            <InfoItem>
-              <span className="label">Numero de afiliado</span>
-              <span className="value">
-                {errorCoberturas
-                  ? "No disponible"
-                  : formatText(coberturaSeleccionada?.affiliate_number)}
               </span>
             </InfoItem>
             <InfoItem>
@@ -1973,6 +2090,11 @@ const TimelineCard = styled.section`
     gap: 8px;
   }
 
+  .timelineEntry {
+    display: grid;
+    gap: 6px;
+  }
+
   .timelineHead {
     display: none;
   }
@@ -2000,6 +2122,40 @@ const TimelineCard = styled.section`
   .timelineItem.active {
     border-color: ${({ theme }) => theme.color1};
     background: var(--bg-accent-soft);
+  }
+
+  .timelineChanges {
+    border-left: 2px solid ${({ theme }) => theme.color2};
+    margin-left: 10px;
+    padding-left: 12px;
+    display: grid;
+    gap: 6px;
+  }
+
+  .changesTitle {
+    color: ${({ theme }) => theme.textsecundary};
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+  }
+
+  .changesList {
+    display: grid;
+    gap: 6px;
+  }
+
+  .changeItem {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+    font-size: 0.86rem;
+    color: ${({ theme }) => theme.text};
+  }
+
+  .changeItem strong {
+    font-size: 0.82rem;
+    color: ${({ theme }) => theme.textsecundary};
   }
 
   .status {
@@ -2047,6 +2203,11 @@ const TimelineCard = styled.section`
 
     .timelineItem span.diagnosis {
       overflow-wrap: anywhere;
+    }
+
+    .timelineChanges {
+      margin-left: 0;
+      padding-left: 10px;
     }
   }
 `;

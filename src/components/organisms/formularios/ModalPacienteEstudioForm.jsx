@@ -290,6 +290,7 @@ export function ModalPacienteEstudioForm({
                   ref={fileInputRef}
                   className="form__field"
                   type="file"
+                  //multiple={true}
                   accept={ALLOWED_DOCUMENT_TYPES.join(",")}
                   onChange={handleFileChange}
                 />

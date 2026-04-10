@@ -212,7 +212,7 @@ export function ModalPacienteEgresoForm({
   const mutation = useMutation({
     mutationFn: async (data) => {
       if (!ingreso?.id) {
-        throw new Error("No hay ingreso activo para egresar.");
+        throw new Error("No hay ingreso activo para alta sanatorial.");
       }
 
       const dischargeAtIso = toIsoDateTime(data.discharge_at);
@@ -373,7 +373,7 @@ export function ModalPacienteEgresoForm({
 
           <FormSection
             title="Observaciones del equipo tratante"
-            subtitle="Este bloque queda preparado para ampliar el resumen de egreso"
+            subtitle=""
             isOpen={expandedSections.teamSummary}
             onToggle={() => toggleSection("teamSummary")}
           >

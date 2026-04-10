@@ -19,11 +19,12 @@ function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { themeStyle } = useThemeStore();
   const { pathname } = useLocation();
-  const { canRead } = usePermissions();
+  const { canRead, profile } = usePermissions();
   const canSeeNotifications = canRead("notificaciones");
+  const perfilId = profile?.id ?? null;
   const { data: unreadCount = 0 } = useNotificationsUnreadCount(
-    { limit: 500 },
-    canSeeNotifications
+    { limit: 500, perfilId },
+    canSeeNotifications && Boolean(perfilId)
   );
   const unreadLabel = unreadCount > 99 ? "99+" : unreadCount;
 

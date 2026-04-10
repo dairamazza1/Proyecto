@@ -4,6 +4,7 @@ const tableFeatures = "funcionalidades";
 const tableRoles = "app_roles";
 const tablePermissions = "funcionalidades_roles";
 const tablePuestos = "puestos_laborales";
+const tableAreas = "areas_laborales";
 
 const emptyPermission = {
   can_view: false,
@@ -84,6 +85,34 @@ export async function fetchPuestosLaborales() {
     .order("name", { ascending: true });
   if (error) throw error;
   return data ?? [];
+}
+
+export async function fetchClinicalAreas() {
+  const { data, error } = await supabase
+    .from(tableAreas)
+    .select("id, name, grants_patient_clinical_permissions")
+    .order("name", { ascending: true });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function updateClinicalAreaPermission(id, enabled) {
+  const areaId = Number(id);
+  if (!areaId) {
+    throw new Error("ID de area invalido");
+  }
+
+  const { data, error } = await supabase
+    .from(tableAreas)
+    .update({
+      grants_patient_clinical_permissions: Boolean(enabled),
+    })
+    .eq("id", areaId)
+    .select("id, name, grants_patient_clinical_permissions")
+    .maybeSingle();
+
+  if (error) throw error;
+  return data ?? null;
 }
 
 export async function fetchPermissions({

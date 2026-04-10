@@ -3,6 +3,7 @@ import styled from "styled-components";
 import { useNavigate } from "react-router-dom";
 import {
   Spinner1,
+  useMarkAllReadMutation,
   useMarkReadMutation,
   useNotificationsList,
   usePermissions,
@@ -47,18 +48,21 @@ const formatDate = (value) => {
 export function NotificacionesSection() {
   const navigate = useNavigate();
   const { profile } = usePermissions();
+  const perfilId = profile?.id ?? null;
   const {
     data: notifications = [],
     isLoading,
     error,
-  } = useNotificationsList({ limit: 100 });
+  } = useNotificationsList({ limit: 100, perfilId }, Boolean(perfilId));
   const markReadMutation = useMarkReadMutation();
+  const markAllReadMutation = useMarkAllReadMutation();
+  const unreadNotifications = notifications.filter((item) => !item.is_read);
+  const unreadNotificationIds = unreadNotifications.map((item) => item.id);
 
   const handleOpen = useCallback(
     (item) => {
       if (!item) return;
       if (!item.is_read) {
-        const perfilId = profile?.id ?? null;
         if (perfilId) {
           markReadMutation.mutate({
             notificationId: item.id,
@@ -72,10 +76,19 @@ export function NotificacionesSection() {
         navigate(`/empleados/${item.empleado_id}?tab=${tab}`);
       }
     },
-    [markReadMutation, navigate, profile?.id]
+    [markReadMutation, navigate, perfilId]
   );
 
-  if (isLoading) {
+  const handleMarkAllRead = useCallback(() => {
+    if (!perfilId || !unreadNotificationIds.length) return;
+
+    markAllReadMutation.mutate({
+      perfilId,
+      notificationIds: unreadNotificationIds,
+    });
+  }, [markAllReadMutation, perfilId, unreadNotificationIds]);
+
+  if (!perfilId || isLoading) {
     return <Spinner1 />;
   }
 
@@ -85,6 +98,23 @@ export function NotificacionesSection() {
 
   return (
     <Section>
+      <div className="sectionHeader">
+        <div className="sectionCopy">
+          <h3>Bandeja</h3>
+          <p>Las no leidas quedan resaltadas hasta que las marques.</p>
+        </div>
+        <ActionButton
+          type="button"
+          onClick={handleMarkAllRead}
+          disabled={
+            !unreadNotificationIds.length || markAllReadMutation.isPending
+          }
+        >
+          {markAllReadMutation.isPending
+            ? "Marcando..."
+            : "Marcar todas como leidas"}
+        </ActionButton>
+      </div>
       {notifications.length ? (
         <List>
           {notifications.map((item) => {
@@ -120,24 +150,44 @@ const Section = styled.section`
   display: grid;
   gap: 16px;
 
-  /* .sectionHeader {
+  .sectionHeader {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
     gap: 16px;
     flex-wrap: wrap;
+  }
 
+  .sectionCopy {
+    display: grid;
+    gap: 6px;
+  }
+
+  .sectionCopy h3 {
+    margin: 0;
+    font-size: 1.05rem;
+    color: ${({ theme }) => theme.text};
+  }
+
+  .sectionCopy p {
+    margin: 0;
+    color: ${({ theme }) => theme.textsecundary};
+    font-size: 0.95rem;
+  }
+
+  @media (max-width: 767px) {
     h3 {
-      margin: 0 0 6px;
-      font-size: 1.1rem;
+      font-size: 1rem;
     }
 
-    p {
-      margin: 0;
-      color: ${({ theme }) => theme.textsecundary};
-      font-size: 0.95rem;
+    .sectionHeader {
+      align-items: stretch;
     }
-  } */
+
+    .sectionCopy {
+      width: 100%;
+    }
+  }
 `;
 
 const List = styled.div`
@@ -195,6 +245,40 @@ const NotificationItem = styled.button`
     margin: 0;
     font-size: 0.95rem;
     color: ${({ theme }) => theme.text};
+  }
+`;
+
+const ActionButton = styled.button`
+  border: none;
+  border-radius: 12px;
+  min-height: 44px;
+  padding: 0 16px;
+  background: ${({ theme }) => theme.color1};
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: transform 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: var(--shadow-elev-1);
+
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-elev-2);
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${({ theme }) => theme.text};
+    outline-offset: 2px;
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  @media (max-width: 767px) {
+    width: 100%;
   }
 `;
 

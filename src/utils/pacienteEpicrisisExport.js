@@ -46,10 +46,7 @@ const buildPacienteNombre = (paciente) =>
 
 const buildCoverageLabel = (cobertura) =>
   safeText(
-    cobertura?.coverage_provider_name ??
-      cobertura?.coverage_display_name ??
-      cobertura?.coverage_name ??
-      (cobertura?.coverage_type === "particular" ? "Particular" : "-"),
+    cobertura?.coverage ?? cobertura?.coverage_display_name ?? cobertura?.coverage_name,
   );
 
 const normalizeFileSegment = (value) => {

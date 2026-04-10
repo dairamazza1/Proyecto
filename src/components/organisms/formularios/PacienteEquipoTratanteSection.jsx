@@ -100,7 +100,8 @@ export function PacienteEquipoTratanteSection({
           <h3>Equipo tratante</h3>
           <p>
             Busca profesionales activos de la empresa y asignalos a esta
-            internacion.
+            internacion. La elegibilidad clinica depende del area configurada
+            en Permisos.
           </p>
         </div>
       </div>
@@ -140,7 +141,7 @@ export function PacienteEquipoTratanteSection({
                     <div className="suggestionHeader">
                       <strong>{buildSearchLabel(item) || "Profesional"}</strong>
                       <span className={`eligibility ${isEligible ? "enabled" : "disabled"}`}>
-                        {isEligible ? "Otorga permisos clinicos" : "Sin permisos clinicos"}
+                        {isEligible ? "Area clinica" : "Area no clinica"}
                       </span>
                     </div>
                     <span>{safeString(puesto?.name).trim() || "Sin puesto"}</span>
@@ -176,7 +177,7 @@ export function PacienteEquipoTratanteSection({
                   <div className="memberHeader">
                     <strong>{buildSearchLabel(item) || "Profesional"}</strong>
                     <span className={`eligibility ${isEligible ? "enabled" : "disabled"}`}>
-                      {isEligible ? "Clinico" : "No clinico"}
+                      {isEligible ? "Area clinica" : "Area no clinica"}
                     </span>
                   </div>
                   <p>{safeString(puesto?.name).trim() || "Sin puesto"}</p>

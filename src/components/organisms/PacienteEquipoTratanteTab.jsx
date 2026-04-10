@@ -223,7 +223,7 @@ export function PacienteEquipoTratanteTab({
                       <div className="suggestionHeader">
                         <strong>{getProfessionalName(item) || "Profesional"}</strong>
                         <span className={`badge ${eligible ? "enabled" : "disabled"}`}>
-                          {eligible ? "Otorga permisos clinicos" : "Sin permisos clinicos"}
+                          {eligible ? "Area clinica" : "Area no clinica"}
                         </span>
                       </div>
                       <span>{safeString(puesto?.name).trim() || "Sin puesto"}</span>
@@ -265,7 +265,7 @@ export function PacienteEquipoTratanteTab({
                         {isActive ? "Activo" : "Finalizado"}
                       </span>
                       <span className={`badge ${eligible ? "enabled" : "disabled"}`}>
-                        {eligible ? "Clinico" : "No clinico"}
+                        {eligible ? "Area clinica" : "Area no clinica"}
                       </span>
                     </div>
                   </div>
