@@ -25,7 +25,7 @@ function AppWrapper() {
   }
 
   useEffect(() => {
-    // Inicializar sesi?n al cargar la aplicaci?n
+    // Inicializar sesi?n al cargar la aplicacion
     initializeAuth({
       skipProfileCheck: initialPath.current === "/set-password",
     });
