@@ -8,11 +8,14 @@ import {
   InputText,
   Spinner1,
   getAvailableEmpleados,
+  fetchFinanciadores,
   useAppRoles,
   inviteUser,
+  updateEmpleado,
 } from "../../../index";
 import { v } from "../../../styles/variables";
 import { Device, DeviceMax } from "../../../styles/breakpoints";
+import { ROLE_IDS } from "../../../utils/permissions";
 
 const _V = v;
 
@@ -47,13 +50,17 @@ export function ModalInvitarUsuario({
     formState: { errors },
     handleSubmit,
     reset,
+    watch,
   } = useForm({
     defaultValues: {
       email: "",
       app_role_id: "",
       empleado_id: "",
+      auditor_financiador_id: "",
     },
   });
+  const selectedRoleId = Number(watch("app_role_id"));
+  const isAuditorRole = selectedRoleId === ROLE_IDS.AUDITOR;
 
   const { data: empleados = [], isLoading: loadingEmpleados } = useQuery({
     queryKey: ["empleadosDisponibles", empresaId],
@@ -75,6 +82,17 @@ export function ModalInvitarUsuario({
     error: rolesError,
   } = useAppRoles();
   const hasRoles = roles.length > 0;
+
+  const {
+    data: financiadores = [],
+    isLoading: loadingFinanciadores,
+    error: financiadoresError,
+  } = useQuery({
+    queryKey: ["financiadores"],
+    queryFn: () => fetchFinanciadores(),
+    enabled: isAuditorRole,
+    refetchOnWindowFocus: false,
+  });
 
   useEffect(() => {
     if (!lockedEmpleadoId) return;
@@ -99,16 +117,29 @@ export function ModalInvitarUsuario({
       if (!empresaId) {
         throw new Error("Empresa no disponible");
       }
-      return inviteUser({
+      const resolvedEmpleadoId =
+        lockedEmpleadoId ?? (formData.empleado_id || null);
+      const auditorFinanciadorId = isAuditorRole
+        ? Number(formData.auditor_financiador_id)
+        : null;
+
+      const result = await inviteUser({
         empresa_id: empresaId,
         email: formData.email.trim(),
         app_role_id: formData.app_role_id,
-        empleado_id: lockedEmpleadoId ?? (formData.empleado_id || null),
+        empleado_id: resolvedEmpleadoId,
+        auditor_financiador_id: auditorFinanciadorId,
       });
+
+      if (resolvedEmpleadoId) {
+        await updateEmpleado(resolvedEmpleadoId, {
+          auditor_financiador_id: isAuditorRole ? auditorFinanciadorId : null,
+        });
+      }
+
+      return result;
     },
     onError: (err) => {
-      console.log(err);
-      
       showSwal({
         icon: "error",
         title: "No se pudo invitar",
@@ -141,6 +172,10 @@ export function ModalInvitarUsuario({
       }
       queryClient.invalidateQueries({ queryKey: ["invitaciones"] });
       queryClient.invalidateQueries({ queryKey: ["empleadosDisponibles"] });
+      queryClient.invalidateQueries({ queryKey: ["empleados"] });
+      queryClient.invalidateQueries({
+        queryKey: ["currentUserAuditorFinanciadorId"],
+      });
       if (lockedEmpleadoId) {
         queryClient.invalidateQueries({ queryKey: ["empleado", String(lockedEmpleadoId)] });
         queryClient.invalidateQueries({ queryKey: ["empleado", lockedEmpleadoId] });
@@ -157,6 +192,7 @@ export function ModalInvitarUsuario({
   };
 
   const onSubmit = (data) => {
+    if (isPending) return;
     mutate(data);
   };
 
@@ -228,6 +264,39 @@ export function ModalInvitarUsuario({
               </InputText>
             </article>
 
+            {isAuditorRole && (
+              <article>
+                <InputText icono={<v.iconocategorias />}>
+                  <select
+                    className="form__field"
+                    {...register("auditor_financiador_id", {
+                      required: "El financiador es obligatorio para auditor.",
+                      valueAsNumber: true,
+                    })}
+                    disabled={loadingFinanciadores}
+                  >
+                    <option value="">
+                      {loadingFinanciadores
+                        ? "Cargando financiadores..."
+                        : "Seleccionar financiador"}
+                    </option>
+                    {financiadores.map((financiador) => (
+                      <option key={financiador.id} value={financiador.id}>
+                        {financiador.name}
+                      </option>
+                    ))}
+                  </select>
+                  <label className="form__label">Financiador</label>
+                  {errors.auditor_financiador_id?.message && (
+                    <p>{errors.auditor_financiador_id.message}</p>
+                  )}
+                  {financiadoresError && (
+                    <p>No se pudieron cargar los financiadores.</p>
+                  )}
+                </InputText>
+              </article>
+            )}
+
             <article>
               <InputText icono={<v.icononombre />}>
                 {lockedEmpleadoId ? (
@@ -246,6 +315,10 @@ export function ModalInvitarUsuario({
                     <select
                       className="form__field"
                       {...register("empleado_id", {
+                        validate: (value) =>
+                          !isAuditorRole || value
+                            ? true
+                            : "El auditor debe estar asociado a un empleado.",
                         setValueAs: (value) =>
                           value ? Number(value) : null,
                       })}
@@ -277,7 +350,10 @@ export function ModalInvitarUsuario({
                   </>
                 )}
               </InputText>
+              {errors.empleado_id?.message && <p>{errors.empleado_id.message}</p>}
             </article>
+
+            
 
             {!empresaId && (
               <span className="warning">
@@ -292,12 +368,13 @@ export function ModalInvitarUsuario({
                 bgcolor="var(--bg-surface-muted)"
                 funcion={onClose}
                 tipo="button"
+                disabled={isPending}
               />
               <Btn1
                 icono={<v.iconoagregar />}
-                titulo="Invitar"
+                titulo={isPending ? "Invitando..." : "Invitar"}
                 bgcolor={v.colorPrincipal}
-                disabled={!empresaId}
+                disabled={!empresaId || isPending || (isAuditorRole && loadingFinanciadores)}
               />
             </div>
           </section>

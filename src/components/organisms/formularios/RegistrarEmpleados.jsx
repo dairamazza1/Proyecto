@@ -16,7 +16,10 @@ import {
   getPuestosByArea,
   getPuestoById,
   checkEmpleadoDuplicate,
+  fetchFinanciadores,
+  fetchRoles,
   upsertSucursalEmpleado,
+  updatePerfilRole,
 } from "../../../index";
 import { useFieldArray, useForm } from "react-hook-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -27,8 +30,14 @@ import {
   syncEmpleadoContactosEmergencia,
 } from "../../../supabase/crudContactosEmergencia";
 import { createEmptyEmergencyContact } from "../../../utils/contactosEmergencia";
+import { ROLE_IDS } from "../../../utils/permissions";
 
 const EMPTY_ARRAY = [];
+
+const resolveSingleRelation = (value) => {
+  if (Array.isArray(value)) return value[0] ?? null;
+  return value ?? null;
+};
 
 export function RegistrarEmpleados({
   mode = "create",
@@ -47,6 +56,10 @@ export function RegistrarEmpleados({
   const isModal = Boolean(onClose);
   const headerTitle = isEdit ? "Editar empleado" : "Registrar empleado";
   const prevAreaRef = useRef();
+  const empleadoPerfil = resolveSingleRelation(empleado?.perfil);
+  const empleadoPerfilId = empleado?.user_id ?? empleadoPerfil?.id ?? null;
+  const currentAppRoleId = empleadoPerfil?.app_role_id ?? "";
+  const canEditEmpleadoRole = isEdit && Boolean(empleadoPerfilId);
 
   const getEmpleadoErrorText = (err, fallbackText) => {
     if (err?.code !== "23505") {
@@ -141,10 +154,11 @@ export function RegistrarEmpleados({
     defaultValues: {
       document_type: "DNI",
       is_registered: false,
-      is_active: "true",
       birthday: "",
       genre: "",
       shift: "",
+      app_role_id: "",
+      auditor_financiador_id: "",
       emergency_contacts: [createEmptyEmergencyContact("empleado")],
     },
   });
@@ -161,9 +175,10 @@ export function RegistrarEmpleados({
 
   const areaId = watch("area_id");
   const puestoId = watch("puesto_id");
+  const selectedAppRoleId = watch("app_role_id");
   const isRegistered = watch("is_registered");
-  const isActiveValue = watch("is_active");
-  const showTerminationDate = isEdit && String(isActiveValue) === "false";
+  const nextAppRoleId = selectedAppRoleId ? Number(selectedAppRoleId) : null;
+  const isAuditorRoleSelected = nextAppRoleId === ROLE_IDS.AUDITOR;
   const normalizeDateInputValue = (value) => {
     if (!value) return "";
     const raw = String(value);
@@ -196,12 +211,50 @@ export function RegistrarEmpleados({
     },
   });
 
+  const { data: roles = [], isLoading: loadingRoles } = useQuery({
+    queryKey: ["empleadoEditRoles"],
+    queryFn: fetchRoles,
+    enabled: canEditEmpleadoRole,
+    refetchOnWindowFocus: false,
+    onError: (err) => {
+      Swal.fire({
+        icon: "error",
+        title: "Oops...",
+        text: err?.message || "Error al cargar roles.",
+      });
+    },
+  });
+
+  const {
+    data: financiadores = [],
+    isLoading: loadingFinanciadores,
+    error: financiadoresError,
+  } = useQuery({
+    queryKey: ["financiadores"],
+    queryFn: () => fetchFinanciadores(),
+    enabled: canEditEmpleadoRole && isAuditorRoleSelected,
+    refetchOnWindowFocus: false,
+    onError: (err) => {
+      Swal.fire({
+        icon: "error",
+        title: "Oops...",
+        text: err?.message || "Error al cargar financiadores.",
+      });
+    },
+  });
+
   useEffect(() => {
     if (prevAreaRef.current && prevAreaRef.current !== areaId) {
       setValue("puesto_id", "");
     }
     prevAreaRef.current = areaId;
   }, [areaId, setValue]);
+
+  useEffect(() => {
+    if (!isAuditorRoleSelected) {
+      setValue("auditor_financiador_id", "");
+    }
+  }, [isAuditorRoleSelected, setValue]);
 
   const selectedPuesto = dataPuestos?.find(
     (puesto) => String(puesto.id) === String(puestoId)
@@ -239,11 +292,13 @@ export function RegistrarEmpleados({
         ? String(sucursalEmpleado.sucursal_id)
         : "",
       hire_date: empleado.hire_date ?? "",
-      is_active: empleado.is_active ? "true" : "false",
-      termination_date: empleado.termination_date ?? "",
+      app_role_id: currentAppRoleId ? String(currentAppRoleId) : "",
+      auditor_financiador_id: empleado.auditor_financiador_id
+        ? String(empleado.auditor_financiador_id)
+        : "",
       emergency_contacts: [createEmptyEmergencyContact("empleado")],
     });
-  }, [empleado, isEdit, reset, sucursalEmpleado]);
+  }, [currentAppRoleId, empleado, isEdit, reset, sucursalEmpleado]);
 
   useEffect(() => {
     if (!isEdit || !empleadoId) {
@@ -319,6 +374,11 @@ export function RegistrarEmpleados({
       (data) => {
         queryClient.invalidateQueries({ queryKey: ["empleado", empleadoId] });
         queryClient.invalidateQueries({ queryKey: ["empleados"] });
+        queryClient.invalidateQueries({ queryKey: ["permissions"] });
+        queryClient.invalidateQueries({ queryKey: ["pacienteEquipo"] });
+        queryClient.invalidateQueries({
+          queryKey: ["currentUserAuditorFinanciadorId"],
+        });
         queryClient.invalidateQueries({
           queryKey: ["empleadoContactosEmergencia", empleadoId],
         });
@@ -416,7 +476,8 @@ export function RegistrarEmpleados({
       }
     }
 
-    const isActiveBool = String(data.is_active) === "true";
+    const nextRoleId = data.app_role_id ? Number(data.app_role_id) : null;
+    const previousRoleId = currentAppRoleId ? Number(currentAppRoleId) : null;
     const payload = {
       first_name: ConvertirCapitalize(data.first_name),
       last_name: ConvertirCapitalize(data.last_name),
@@ -431,13 +492,25 @@ export function RegistrarEmpleados({
         : null,
       shift: data.shift || null,
       is_registered: data.is_registered ?? false,
-      is_active: isActiveBool,
-      termination_date: isActiveBool ? null : data.termination_date || null,
       hire_date: data.hire_date || null,
       telephone: data.telephone,
+      auditor_financiador_id:
+        nextRoleId === ROLE_IDS.AUDITOR
+          ? Number(data.auditor_financiador_id)
+          : null,
     };
 
     const empleadoActualizado = await updateEmpleado(empleadoId, payload);
+
+    if (
+      canEditEmpleadoRole &&
+      empleadoPerfilId &&
+      nextRoleId &&
+      Number.isFinite(nextRoleId) &&
+      nextRoleId !== previousRoleId
+    ) {
+      await updatePerfilRole(empleadoPerfilId, nextRoleId);
+    }
 
     if (data.sucursal_id && empleadoActualizado?.id) {
       await upsertSucursalEmpleado({
@@ -494,38 +567,66 @@ export function RegistrarEmpleados({
         <form className="formulario" onSubmit={handleSubmit(handlesub)}>
           <section className="form-subcontainer">
 
-            {isEdit && (
+            {canEditEmpleadoRole && (
               <article>
-                <InputText icono={<v.iconoImportante />}>
+                <InputText icono={<v.iconoUser />}>
                   <select
                     className="form__field"
-                    {...register("is_active")}
-                    defaultValue="true"
+                    {...register("app_role_id", {
+                      required: canEditEmpleadoRole
+                        ? "El rol es obligatorio."
+                        : false,
+                      setValueAs: (value) => (value ? value : null),
+                    })}
+                    defaultValue=""
+                    disabled={loadingRoles}
                   >
-                    <option value="true">Activo</option>
-                    <option value="false">Inactivo</option>
+                    <option value="" disabled>
+                      {loadingRoles ? "Cargando roles..." : "Seleccionar rol"}
+                    </option>
+                    {roles.map((role) => (
+                      <option key={role.id} value={role.id}>
+                        {role.name}
+                      </option>
+                    ))}
                   </select>
-                  <label className="form__label">Estado</label>
+                  <label className="form__label">Rol</label>
+                  {errors.app_role_id?.message && (
+                    <p>{errors.app_role_id.message}</p>
+                  )}
                 </InputText>
               </article>
             )}
 
-            {showTerminationDate && (
+            {canEditEmpleadoRole && isAuditorRoleSelected && (
               <article>
-                <InputText icono={<v.iconoCalendario />}>
-                  <input
+                <InputText icono={<v.iconocategorias />}>
+                  <select
                     className="form__field"
-                    type="date"
-                    placeholder="fecha de finalizacion laboral"
-                    {...register("termination_date", {
-                      required: "La fecha de finalizacion es obligatoria.",
+                    {...register("auditor_financiador_id", {
+                      required: "El financiador es obligatorio para auditor.",
+                      valueAsNumber: true,
                     })}
-                  />
-                  <label className="form__label">
-                    Fecha de finalizacion laboral
-                  </label>
-                  {errors.termination_date?.message && (
-                    <p>{errors.termination_date.message}</p>
+                    defaultValue=""
+                    disabled={loadingFinanciadores}
+                  >
+                    <option value="" disabled>
+                      {loadingFinanciadores
+                        ? "Cargando financiadores..."
+                        : "Seleccionar financiador"}
+                    </option>
+                    {financiadores.map((financiador) => (
+                      <option key={financiador.id} value={financiador.id}>
+                        {financiador.name}
+                      </option>
+                    ))}
+                  </select>
+                  <label className="form__label">Financiador auditor</label>
+                  {errors.auditor_financiador_id?.message && (
+                    <p>{errors.auditor_financiador_id.message}</p>
+                  )}
+                  {financiadoresError && (
+                    <p>No se pudieron cargar los financiadores.</p>
                   )}
                 </InputText>
               </article>

@@ -309,9 +309,7 @@ export const downloadPacienteFichaDocx = async ({
             banner,
             clinicName: CLINICA_NOMBRE,
             title: DOCUMENT_TITLE,
-            subtitle: ingreso?.sucursal?.name
-              ? `Sucursal: ${safeText(ingreso.sucursal.name)}`
-              : "",
+           
           }),
           new Paragraph({
             alignment: AlignmentType.RIGHT,

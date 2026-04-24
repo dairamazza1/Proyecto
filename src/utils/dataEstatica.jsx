@@ -8,12 +8,12 @@ export const DesplegableUser = [
     tipo: "miperfil",
   },
   {
-    text: "configuraciÃ³n",
+    text: "configuración",
     icono: <v.iconoSettings />,
-    tipo: "configuraciÃ³n",
+    tipo: "configuración",
   },
   {
-    text: "Cerrar sesiÃ³n",
+    text: "Cerrar sesión",
     icono: <v.iconoCerrarSesion />,
     tipo: "cerrarsesion",
   },

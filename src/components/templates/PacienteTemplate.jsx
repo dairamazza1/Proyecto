@@ -122,6 +122,15 @@ const formatAdminissionType = (value) => {
   return String(value).trim() || "-";
 };
 
+const normalizeAdminissionTypeValue = (value) =>
+  String(value ?? "").trim().toLowerCase();
+
+const hasAdminissionTypeChange = (row) => {
+  const fromType = normalizeAdminissionTypeValue(row?.from_adminission_type);
+  const toType = normalizeAdminissionTypeValue(row?.to_adminission_type);
+  return Boolean(fromType && toType && fromType !== toType);
+};
+
 const formatText = (value) => {
   if (value === null || value === undefined) return "-";
   const text = String(value).trim();
@@ -151,8 +160,6 @@ const formatIngresoCreatedBy = (ingreso) => {
 const formatAdminissionTypeHistoryLabel = (row) => {
   const fromType = formatAdminissionType(row?.from_adminission_type);
   const toType = formatAdminissionType(row?.to_adminission_type);
-  if (!row?.from_adminission_type) return toType;
-  if (fromType === toType) return toType;
   return `${fromType} -> ${toType}`;
 };
 const formatIngresoDiagnoses = (
@@ -362,6 +369,7 @@ export function PacienteTemplate({ pacienteId }) {
   );
   const adminissionTypeHistoryByIngreso = useMemo(() => {
     return (adminissionTypeHistory ?? []).reduce((acc, row) => {
+      if (!hasAdminissionTypeChange(row)) return acc;
       const ingresoId = String(row?.ingreso_id ?? "");
       if (!ingresoId) return acc;
       if (!acc[ingresoId]) acc[ingresoId] = [];
@@ -743,7 +751,7 @@ export function PacienteTemplate({ pacienteId }) {
     });
   };
 
-  const handleDownloadIndicacionPdf = () => {
+  const handleDownloadIndicacionPdf = async () => {
     if (!selectedIndicacionRecord) {
       Swal.fire({
         icon: "info",
@@ -754,10 +762,46 @@ export function PacienteTemplate({ pacienteId }) {
     }
 
     try {
-      downloadPacienteIndicacionPdf({
+      Swal.fire({
+        title: "Generando PDF",
+        text: "Estamos preparando la hoja de indicaciones.",
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        didOpen: () => {
+          Swal.showLoading();
+        },
+      });
+
+      let banner = null;
+      const ingresoContext = selectedIngreso ?? activeIngreso ?? null;
+      const bannerSucursalId =
+        ingresoContext?.sucursal?.id ?? ingresoContext?.sucursal_id ?? null;
+
+      if (bannerSucursalId) {
+        const sucursal = await queryClient.fetchQuery({
+          queryKey: ["sucursalDetalle", bannerSucursalId],
+          queryFn: () => getSucursalById(bannerSucursalId),
+        });
+
+        if (sucursal?.banner_template) {
+          banner = await queryClient.fetchQuery({
+            queryKey: ["sucursalBannerTemplate", sucursal.banner_template],
+            queryFn: () => downloadSucursalBannerTemplate(sucursal.banner_template),
+          });
+        }
+      }
+
+      await downloadPacienteIndicacionPdf({
         paciente,
-        ingreso: selectedIngreso ?? activeIngreso ?? null,
+        ingreso: ingresoContext,
         indicacion: selectedIndicacionRecord,
+        banner,
+      });
+
+      Swal.fire({
+        icon: "success",
+        title: "PDF generado",
+        text: "La hoja de indicaciones fue exportada correctamente.",
       });
     } catch (error) {
       Swal.fire({

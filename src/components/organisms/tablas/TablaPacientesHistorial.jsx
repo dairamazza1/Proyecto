@@ -20,32 +20,21 @@ const formatDate = (value) => {
   return `${pad(parsed.getDate())}/${pad(parsed.getMonth() + 1)}/${parsed.getFullYear()}`;
 };
 
-const formatConditionType = (value) => {
-  if (!value) return "-";
-  const raw = String(value).trim().toLowerCase();
-  if (raw === "agudo") return "Agudo";
-  if (raw === "cronico") return "Cronico";
-  return value;
-};
-
 const getEpisodeStatusLabel = (row) => {
   const status = String(row?.ingreso_status ?? "").trim().toLowerCase();
   if (row?.discharge_at || status === "discharged") return "Egresado";
   return "Internado";
 };
-const formatIngresoDiagnoses = (primary, secondary) => {
-  const principal = String(primary ?? "").trim();
-  const secundario = String(secondary ?? "").trim();
 
-  if (!principal && !secundario) return "-";
-  if (!secundario) return `Principal: ${principal}`;
-  if (!principal) return `Secundario: ${secundario}`;
-  return `Principal: ${principal} | Secundario: ${secundario}`;
+const formatText = (value) => {
+  const text = String(value ?? "").trim();
+  return text || "-";
 };
 
-export function TablaPacientesHistorial({ data }) {
+export function TablaPacientesHistorial({ data, episodeStatusFilter = "all" }) {
   const safeData = Array.isArray(data) ? data : [];
   const [sorting, setSorting] = useState([{ id: "admission_at", desc: true }]);
+  const hideDischargeColumn = episodeStatusFilter === "admitted";
 
   const columns = [
     {
@@ -176,28 +165,35 @@ export function TablaPacientesHistorial({ data }) {
     },
     {
       accessorKey: "admission_diagnosis",
-      header: "Diagnostico",
+      header: "Diagnostico primario",
       meta: {
-        cardLabel: "Diagnostico",
-        cardValue: (row) =>
-          formatIngresoDiagnoses(
-            row.admission_diagnosis,
-            row.admission_diagnosis_alternative,
-          ),
+        cardLabel: "Diagnostico primario",
+        cardValue: (row) => formatText(row.admission_diagnosis),
       },
       cell: (info) => (
-        <div data-title="Diagnostico" className="ContentCell diagnosis">
-          <span>
-            {formatIngresoDiagnoses(
-              info.row.original?.admission_diagnosis,
-              info.row.original?.admission_diagnosis_alternative,
-            )}
-          </span>
+        <div data-title="Diagnostico primario" className="ContentCell diagnosis">
+          <span>{formatText(info.getValue())}</span>
         </div>
       ),
       enableSorting: true,
     },
-  ];
+    {
+      accessorKey: "admission_diagnosis_alternative",
+      header: "Diagnostico secundario",
+      meta: {
+        cardLabel: "Diagnostico secundario",
+        cardValue: (row) => formatText(row.admission_diagnosis_alternative),
+      },
+      cell: (info) => (
+        <div data-title="Diagnostico secundario" className="ContentCell diagnosis">
+          <span>{formatText(info.getValue())}</span>
+        </div>
+      ),
+      enableSorting: true,
+    },
+  ].filter(
+    (column) => !(hideDischargeColumn && column.accessorKey === "discharge_at"),
+  );
 
   const table = useReactTable({
     data: safeData,

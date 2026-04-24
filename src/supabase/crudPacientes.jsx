@@ -2,6 +2,7 @@ import { supabase } from "./supabase.config.jsx";
 import {
   getArgentinaDateRangeUtcBounds,
   getArgentinaDayUtcRange,
+  getArgentinaTodayDateInput,
 } from "../utils/argentinaDateTime";
 import { normalizePacienteConditionType } from "../utils/pacienteCondition";
 import {
@@ -94,16 +95,17 @@ const equipoSelectFields = `
     document_number,
     employee_id_number,
     professional_number,
+    termination_date,
     is_active,
     puesto_id,
     puesto:puestos_laborales(
       id,
       name,
       id_area,
+      clinical_section_access,
       area:areas_laborales(
         id,
-        name,
-        grants_patient_clinical_permissions
+        name
       )
     )
   )
@@ -115,6 +117,7 @@ const equipoProfesionalSearchSelectFields = `
   document_number,
   employee_id_number,
   professional_number,
+  termination_date,
   is_active,
   empresa_id,
   puesto_id,
@@ -122,10 +125,10 @@ const equipoProfesionalSearchSelectFields = `
     id,
     name,
     id_area,
+    clinical_section_access,
     area:areas_laborales(
       id,
-      name,
-      grants_patient_clinical_permissions
+      name
     )
   )
 `;
@@ -343,7 +346,6 @@ const shouldFallbackToLegacyPacienteEquipoSelect = (error) => {
     code === "PGRST204" ||
     code === "42703" ||
     haystack.includes("areas_laborales") ||
-    haystack.includes("grants_patient_clinical_permissions") ||
     haystack.includes("ingreso_id")
   );
 };
@@ -442,15 +444,23 @@ const sortCoberturasAscByStartDate = (rows = []) =>
     return Number(a?.id ?? 0) - Number(b?.id ?? 0);
   });
 const resolveCoverageValue = (coverage) =>
-  toNullableString(coverage?.coverage ?? coverage?.cobertura);
+  toNullableString(
+    coverage?.coverage ??
+      coverage?.cobertura ??
+      coverage?.financiador?.name ??
+      coverage?.financiador?.code
+  );
 const mapCoberturaRow = (row) => {
   const coverageValue = resolveCoverageValue(row);
+  const financiador = resolveSingleRelation(row?.financiador);
 
   return {
     ...row,
     coverage: coverageValue,
     coverage_name: coverageValue,
     coverage_display_name: coverageValue,
+    financiador,
+    financiador_id: row?.financiador_id ?? financiador?.id ?? null,
   };
 };
 const matchesPacienteSearch = (row, term) => {
@@ -504,24 +514,35 @@ const mapIngresoPacienteRow = (row) => {
     sucursal_name: row?.sucursal?.name ?? null,
   };
 };
+const getLatestIngresoRowsByPaciente = (rows = []) => {
+  const seen = new Set();
+  const latestRows = [];
+
+  for (const row of rows ?? []) {
+    const pacienteId = toNullableId(row?.paciente_id ?? row?.paciente?.id);
+    if (!pacienteId || seen.has(pacienteId)) continue;
+    seen.add(pacienteId);
+    latestRows.push(row);
+  }
+
+  return latestRows;
+};
 const dedupePacientesFromIngresos = (
   rows = [],
   term = "",
   limit = null,
   { includeInactive = false, episodeStatus = "all", conditionType = "" } = {},
 ) => {
-  const seen = new Set();
   const mappedRows = [];
 
-  for (const row of rows ?? []) {
+  for (const row of getLatestIngresoRowsByPaciente(rows)) {
     const mapped = mapIngresoPacienteRow(row);
-    if (!mapped?.id || seen.has(mapped.id)) continue;
+    if (!mapped?.id) continue;
     if (!includeInactive && mapped.is_active === false) continue;
     if (!matchesPacienteSearch(mapped, term)) continue;
     if (!matchesPacienteConditionFilter(mapped, conditionType)) continue;
     if (!matchesPacienteEpisodeFilter(mapped, episodeStatus)) continue;
 
-    seen.add(mapped.id);
     mappedRows.push(mapped);
 
     if (limit && mappedRows.length >= limit) break;
@@ -541,6 +562,52 @@ async function runIngresoPacienteQuery(buildQuery) {
 
   if (response.error) throw response.error;
   return response.data ?? [];
+}
+const isCoberturaVigenteForIngreso = (cobertura, ingreso) => {
+  const ingresoDate = normalizeDateKey(ingreso?.admission_at);
+  const startDate = normalizeDateKey(cobertura?.start_date);
+  const endDate = normalizeDateKey(cobertura?.end_date);
+  if (!ingresoDate || !startDate) return false;
+  return startDate <= ingresoDate && (!endDate || endDate >= ingresoDate);
+};
+
+async function filterIngresosByFinanciador(data = [], financiadorId = null) {
+  const normalizedFinanciadorId = toNullableId(financiadorId);
+  if (!normalizedFinanciadorId) return data ?? [];
+
+  const pacienteIds = Array.from(
+    new Set(
+      (data ?? [])
+        .map((row) => toNullableId(row?.paciente_id))
+        .filter(Boolean)
+    )
+  );
+  if (!pacienteIds.length) return [];
+
+  const { data: coberturas, error } = await supabase
+    .from(tableCoberturas)
+    .select("id, paciente_id, financiador_id, start_date, end_date")
+    .in("paciente_id", pacienteIds)
+    .eq("financiador_id", normalizedFinanciadorId);
+
+  if (error) throw error;
+
+  const coberturasByPaciente = new Map();
+  (coberturas ?? []).forEach((row) => {
+    const pacienteId = toNullableId(row?.paciente_id);
+    if (!pacienteId) return;
+    const currentRows = coberturasByPaciente.get(pacienteId) ?? [];
+    currentRows.push(row);
+    coberturasByPaciente.set(pacienteId, currentRows);
+  });
+
+  return (data ?? []).filter((ingreso) => {
+    const pacienteId = toNullableId(ingreso?.paciente_id);
+    const rows = coberturasByPaciente.get(pacienteId) ?? [];
+    return rows.some((cobertura) =>
+      isCoberturaVigenteForIngreso(cobertura, ingreso)
+    );
+  });
 }
 const mapPacienteEstudioRow = (row) => {
   const archivos = sortEstudioArchivosDesc(row?.archivos ?? []);
@@ -612,12 +679,14 @@ function normalizeCoverageSyncPayload({ coverage, pacienteId, effectiveDate, cre
     throw new Error("Debe indicar la fecha de vigencia de la cobertura.");
   }
   const coverageValue = resolveCoverageValue(coverage);
-  if (!coverageValue) {
+  const financiadorId = toNullableId(coverage?.financiador_id);
+  if (!coverageValue || !financiadorId) {
     throw new Error("Debe seleccionar o indicar una cobertura.");
   }
 
   return {
     paciente_id: pacienteId,
+    financiador_id: financiadorId,
     coverage: coverageValue,
     coverage_notes: toNullableString(coverage?.coverage_notes),
     start_date: startDate,
@@ -628,6 +697,7 @@ function normalizeCoverageSyncPayload({ coverage, pacienteId, effectiveDate, cre
 function areSameCoberturas(left, right) {
   return (
     resolveCoverageValue(left) === resolveCoverageValue(right) &&
+    toNullableId(left?.financiador_id) === toNullableId(right?.financiador_id) &&
     toNullableString(left?.coverage_notes) === toNullableString(right?.coverage_notes)
   );
 }
@@ -650,6 +720,12 @@ async function insertPacienteCobertura(payload) {
     .maybeSingle();
   if (error) throw error;
   return data;
+}
+
+async function deletePacienteCobertura(id) {
+  const { error } = await supabase.from(tableCoberturas).delete().eq("id", id);
+  if (error) throw error;
+  return true;
 }
 
 async function updatePacienteCobertura(id, payload) {
@@ -719,6 +795,7 @@ export async function getPacientesHistorial({
   empresaId,
   search,
   sucursalId,
+  financiadorId = null,
   episodeStatus = "all",
   conditionType = "",
 } = {}) {
@@ -733,7 +810,9 @@ export async function getPacientesHistorial({
       .order("admission_at", { ascending: false })
   );
 
-  return dedupePacientesFromIngresos(data ?? [], search, null, {
+  const scopedData = await filterIngresosByFinanciador(data ?? [], financiadorId);
+
+  return dedupePacientesFromIngresos(scopedData ?? [], search, null, {
     includeInactive: true,
     episodeStatus,
     conditionType,
@@ -1133,7 +1212,7 @@ export async function getPacienteById(id) {
 export async function getPacienteCoberturasByPacienteId(pacienteId) {
   const { data, error } = await supabase
     .from(tableCoberturas)
-    .select("*")
+    .select("*, financiador:financiadores(id, code, name)")
     .eq("paciente_id", pacienteId)
     .order("start_date", { ascending: false });
   if (error) throw error;
@@ -1150,17 +1229,42 @@ export async function syncPacienteCoberturaByDate({
     throw new Error("No se encontro el paciente para guardar la cobertura.");
   }
 
-  const normalizedPayload = normalizeCoverageSyncPayload({
-    coverage,
-    pacienteId,
-    effectiveDate,
-    createdBy,
-  });
+  const referenceDate = normalizeDateKey(effectiveDate);
+  if (!referenceDate) {
+    throw new Error("Debe indicar la fecha de vigencia de la cobertura.");
+  }
+
   const existingCoberturas = await getPacienteCoberturasByPacienteId(pacienteId);
   const currentCobertura = resolvePacienteCoberturaByDate(
     existingCoberturas,
-    normalizedPayload.start_date
+    referenceDate
   );
+
+  if (!coverage) {
+    if (!currentCobertura) return null;
+
+    if (normalizeDateKey(currentCobertura.start_date) === referenceDate) {
+      await deletePacienteCobertura(currentCobertura.id);
+      return null;
+    }
+
+    const endDate = subtractOneDay(referenceDate);
+    if (!endDate || endDate < normalizeDateKey(currentCobertura.start_date)) {
+      return currentCobertura;
+    }
+
+    const updated = await updatePacienteCobertura(currentCobertura.id, {
+      end_date: endDate,
+    });
+    return mapCoberturaRow(updated);
+  }
+
+  const normalizedPayload = normalizeCoverageSyncPayload({
+    coverage,
+    pacienteId,
+    effectiveDate: referenceDate,
+    createdBy,
+  });
   const nextCobertura = getNextPacienteCobertura(
     existingCoberturas,
     normalizedPayload.start_date
@@ -1349,7 +1453,7 @@ export async function searchPacienteEquipoProfesionales({
         is_active,
         empresa_id,
         puesto_id,
-        puesto:puestos_laborales(id, name, id_area)
+        puesto:puestos_laborales(id, name, id_area, clinical_section_access)
       `,
       )
       .eq("empresa_id", empresaId)
@@ -1551,7 +1655,7 @@ export async function assignPacienteEquipoTratante({
 
 export async function finishPacienteEquipoTratanteAssignment(
   id,
-  endDate = normalizeDateKey(new Date()),
+  endDate = getArgentinaTodayDateInput(),
 ) {
   return updatePacienteEquipoTratanteAssignment(id, {
     end_date: endDate || null,

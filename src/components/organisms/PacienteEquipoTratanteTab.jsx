@@ -8,7 +8,6 @@ import { InputText } from "./formularios/inputText";
 import {
   assignPacienteEquipoTratante,
   finishPacienteEquipoTratanteAssignment,
-  reopenPacienteEquipoTratanteAssignment,
   searchPacienteEquipoProfesionales,
 } from "../../supabase/crudPacientes";
 import {
@@ -17,6 +16,7 @@ import {
   getPacienteEquipoPuesto,
   isPacienteEquipoAssignmentActive,
   isPacienteEquipoClinicallyEligible,
+  isPacienteEquipoEmpleadoActive,
 } from "../../utils/pacienteEquipoTratante";
 import { DeviceMax } from "../../styles/breakpoints";
 import { v } from "../../styles/variables";
@@ -40,6 +40,12 @@ const getProfessionalName = (row) =>
     .filter(Boolean)
     .join(" ")
     .trim();
+
+const getAssignmentEndDate = (row) =>
+  row?.end_date ?? row?.empleado?.termination_date ?? row?.termination_date ?? null;
+
+const IconoBuscar = v.iconoBuscar;
+const IconoCerrar = v.iconocerrar;
 
 export function PacienteEquipoTratanteTab({
   pacienteId,
@@ -75,6 +81,16 @@ export function PacienteEquipoTratanteTab({
 
     return map;
   }, [rows]);
+
+  const activeRows = useMemo(
+    () => (rows ?? []).filter((item) => isPacienteEquipoAssignmentActive(item)),
+    [rows],
+  );
+
+  const finishedRows = useMemo(
+    () => (rows ?? []).filter((item) => !isPacienteEquipoAssignmentActive(item)),
+    [rows],
+  );
 
   const { data: searchResults = [], isLoading: searchLoading } = useQuery({
     queryKey: ["pacienteEquipoProfesionalesSearch", empresaId, debouncedSearch],
@@ -142,23 +158,9 @@ export function PacienteEquipoTratanteTab({
     },
   });
 
-  const reopenMutation = useMutation({
-    mutationFn: (assignmentId) =>
-      reopenPacienteEquipoTratanteAssignment(assignmentId),
-    onSuccess: invalidateTeam,
-    onError: (error) => {
-      Swal.fire({
-        icon: "error",
-        title: "No se pudo reactivar la asignacion",
-        text: error?.message ?? "Intenta nuevamente.",
-      });
-    },
-  });
-
   const isMutating =
     assignMutation.isPending ||
-    finishMutation.isPending ||
-    reopenMutation.isPending;
+    finishMutation.isPending;
 
   const handleFinishAssignment = async (assignment) => {
     const result = await Swal.fire({
@@ -186,7 +188,7 @@ export function PacienteEquipoTratanteTab({
     <Container>
       {canManageTeam ? (
         <section className="searchPanel">
-          <InputText icono={<v.iconoBuscar />}>
+          <InputText icono={<IconoBuscar />}>
             <input
               className="form__field"
               type="search"
@@ -200,7 +202,7 @@ export function PacienteEquipoTratanteTab({
             </label>
           </InputText>
 
-          {!!searchTerm.trim() ? (
+          {searchTerm.trim() ? (
             <div className="suggestions">
               {searchLoading ? (
                 <div className="suggestionItem muted">Buscando profesionales...</div>
@@ -223,7 +225,7 @@ export function PacienteEquipoTratanteTab({
                       <div className="suggestionHeader">
                         <strong>{getProfessionalName(item) || "Profesional"}</strong>
                         <span className={`badge ${eligible ? "enabled" : "disabled"}`}>
-                          {eligible ? "Area clinica" : "Area no clinica"}
+                          {eligible ? "Acceso clinico" : "Sin acceso clinico"}
                         </span>
                       </div>
                       <span>{safeString(puesto?.name).trim() || "Sin puesto"}</span>
@@ -247,25 +249,24 @@ export function PacienteEquipoTratanteTab({
 
       {isMutating ? <Spinner1 /> : null}
 
-      {(rows ?? []).length ? (
-        <List>
-          {(rows ?? []).map((item) => {
-            const puesto = getPacienteEquipoPuesto(item);
-            const area = getPacienteEquipoArea(item);
-            const eligible = isPacienteEquipoClinicallyEligible(item);
-            const isActive = isPacienteEquipoAssignmentActive(item);
+      <TeamSection>
+        <SectionTitle>Activos</SectionTitle>
+        {activeRows.length ? (
+          <List>
+            {activeRows.map((item) => {
+              const puesto = getPacienteEquipoPuesto(item);
+              const area = getPacienteEquipoArea(item);
+              const eligible = isPacienteEquipoClinicallyEligible(item);
 
-            return (
+              return (
               <article key={item.id} className="memberCard">
                 <div className="memberBody">
                   <div className="memberHeader">
                     <strong>{getProfessionalName(item) || "Profesional"}</strong>
                     <div className="badgeGroup">
-                      <span className={`badge ${isActive ? "active" : "inactive"}`}>
-                        {isActive ? "Activo" : "Finalizado"}
-                      </span>
+                      <span className="badge active">Activo</span>
                       <span className={`badge ${eligible ? "enabled" : "disabled"}`}>
-                        {eligible ? "Area clinica" : "Area no clinica"}
+                        {eligible ? "Acceso clinico" : "Sin acceso clinico"}
                       </span>
                     </div>
                   </div>
@@ -273,45 +274,76 @@ export function PacienteEquipoTratanteTab({
                   <small>
                     {safeString(area?.name).trim() || "Sin area"}
                     {item?.empleado?.professional_number
-                      ? ` · Matricula ${item.empleado.professional_number}`
+                      ? ` - Matricula ${item.empleado.professional_number}`
                       : item?.empleado?.employee_id_number
-                        ? ` · Legajo ${item.empleado.employee_id_number}`
+                        ? ` - Legajo ${item.empleado.employee_id_number}`
                         : ""}
                   </small>
                   <div className="datesRow">
                     <span>Desde: {formatDate(item?.start_date ?? item?.created_at)}</span>
-                    <span>Hasta: {formatDate(item?.end_date)}</span>
                   </div>
                 </div>
 
                 {canManageTeam ? (
-                  isActive ? (
-                    <Btn1
-                      tipo="button"
-                      titulo="Finalizar"
-                      bgcolor="var(--bg-surface-muted)"
-                      icono={<v.iconocerrar />}
-                      funcion={() => handleFinishAssignment(item)}
-                      disabled={isMutating}
-                    />
-                  ) : (
-                    <Btn1
-                      tipo="button"
-                      titulo="Reactivar"
-                      bgcolor="var(--bg-accent-soft-strong)"
-                      icono={<v.iconoagregar />}
-                      funcion={() => reopenMutation.mutate(item.id)}
-                      disabled={isMutating}
-                    />
-                  )
+                  <Btn1
+                    tipo="button"
+                    titulo="Finalizar"
+                    bgcolor="var(--bg-surface-muted)"
+                    icono={<IconoCerrar />}
+                    funcion={() => handleFinishAssignment(item)}
+                    disabled={isMutating}
+                  />
                 ) : null}
               </article>
-            );
-          })}
-        </List>
-      ) : (
-        <EmptyState>Sin profesionales asignados para esta internacion.</EmptyState>
-      )}
+              );
+            })}
+          </List>
+        ) : (
+          <EmptyState>Sin profesionales activos para esta internacion.</EmptyState>
+        )}
+      </TeamSection>
+
+      {finishedRows.length ? (
+        <TeamSection>
+          <SectionTitle>Finalizados</SectionTitle>
+          <List>
+            {finishedRows.map((item) => {
+              const puesto = getPacienteEquipoPuesto(item);
+              const area = getPacienteEquipoArea(item);
+              const employeeActive = isPacienteEquipoEmpleadoActive(item);
+
+              return (
+                <article key={item.id} className="memberCard finished">
+                  <div className="memberBody">
+                    <div className="memberHeader">
+                      <strong>{getProfessionalName(item) || "Profesional"}</strong>
+                      <div className="badgeGroup">
+                        <span className="badge inactive">Finalizado</span>
+                        {!employeeActive ? (
+                          <span className="badge inactive">Empleado inactivo</span>
+                        ) : null}
+                      </div>
+                    </div>
+                    <p>{safeString(puesto?.name).trim() || "Sin puesto"}</p>
+                    <small>
+                      {safeString(area?.name).trim() || "Sin area"}
+                      {item?.empleado?.professional_number
+                        ? ` - Matricula ${item.empleado.professional_number}`
+                        : item?.empleado?.employee_id_number
+                          ? ` - Legajo ${item.empleado.employee_id_number}`
+                          : ""}
+                    </small>
+                    <div className="datesRow">
+                      <span>Desde: {formatDate(item?.start_date ?? item?.created_at)}</span>
+                      <span>Hasta: {formatDate(getAssignmentEndDate(item))}</span>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </List>
+        </TeamSection>
+      ) : null}
     </Container>
   );
 }
@@ -418,6 +450,11 @@ const List = styled.div`
     box-shadow: var(--shadow-elev-1);
   }
 
+  .memberCard.finished {
+    box-shadow: none;
+    opacity: 0.86;
+  }
+
   .memberBody {
     min-width: 0;
     display: grid;
@@ -467,6 +504,18 @@ const List = styled.div`
       display: grid;
     }
   }
+`;
+
+const TeamSection = styled.section`
+  display: grid;
+  gap: 10px;
+`;
+
+const SectionTitle = styled.h3`
+  margin: 0;
+  color: ${({ theme }) => theme.text};
+  font-size: 0.95rem;
+  font-weight: 800;
 `;
 
 const EmptyState = styled.div`

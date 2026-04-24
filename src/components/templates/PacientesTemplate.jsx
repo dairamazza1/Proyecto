@@ -1,9 +1,10 @@
 import styled from "styled-components";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Swal from "sweetalert2";
 import {
   Btn1,
+  fetchCurrentUserAuditorFinanciadorId,
   ModalPacienteIngresoForm,
   Spinner1,
   TablaPacientesHistorial,
@@ -11,6 +12,7 @@ import {
   UserAuth,
   getCurrentUserSucursalId,
   useCompanyStore,
+  usePersistedSucursalSelection,
   usePermissions,
   useSucursalesStore,
 } from "../../index";
@@ -35,16 +37,16 @@ export function PacientesTemplate() {
   const [activeTab, setActiveTab] = useState("agudo");
   const [search, setSearch] = useState("");
   const [openIngresoModal, setOpenIngresoModal] = useState(false);
-  const [selectedSucursalId, setSelectedSucursalId] = useState(null);
   const [historyEpisodeFilter, setHistoryEpisodeFilter] = useState(
     PACIENTE_DEFAULT_EPISODE_FILTER_BY_CONDITION.agudo
   );
 
-  const { canCreate, isAdmin, isRRHH } = usePermissions();
+  const { canCreate, isAdmin, isAuditor } = usePermissions();
   const { user } = UserAuth();
   const { dataCompany, showCompany } = useCompanyStore();
   const { showSucursales, dataSucursales } = useSucursalesStore();
-  const canSelectSucursal = isAdmin() || isRRHH();
+  const canSelectSucursal = isAdmin();
+  const isAuditorRole = isAuditor();
 
   useQuery({
     queryKey: ["empresa", user?.id],
@@ -73,12 +75,25 @@ export function PacientesTemplate() {
     refetchOnWindowFocus: false,
   });
 
-  useEffect(() => {
-    if (!canSelectSucursal) return;
-    if (selectedSucursalId !== null && selectedSucursalId !== undefined) return;
-    if (!autoSucursalId) return;
-    setSelectedSucursalId(Number(autoSucursalId));
-  }, [autoSucursalId, canSelectSucursal, selectedSucursalId]);
+  const {
+    data: auditorFinanciadorId = null,
+    isLoading: loadingAuditorFinanciador,
+    error: auditorFinanciadorError,
+  } = useQuery({
+    queryKey: ["currentUserAuditorFinanciadorId"],
+    queryFn: fetchCurrentUserAuditorFinanciadorId,
+    enabled: isAuditorRole,
+    refetchOnWindowFocus: false,
+  });
+
+  const [selectedSucursalId, setSelectedSucursalId] =
+    usePersistedSucursalSelection({
+      userId: user?.id,
+      empresaId,
+      sucursales: dataSucursales,
+      enabled: canSelectSucursal,
+      fallbackSucursalId: autoSucursalId,
+    });
 
   const resolvedSucursalId = canSelectSucursal
     ? selectedSucursalId
@@ -103,20 +118,27 @@ export function PacientesTemplate() {
       activeTab,
       search,
       historyEpisodeFilter,
+      auditorFinanciadorId,
     ],
     queryFn: () =>
       getPacientesHistorial({
         empresaId,
         sucursalId: resolvedSucursalId,
+        financiadorId: isAuditorRole ? auditorFinanciadorId : null,
         search,
         episodeStatus: historyEpisodeFilter,
         conditionType: activeTab,
       }),
-    enabled: Boolean(empresaId && resolvedSucursalId),
+    enabled: Boolean(
+      empresaId &&
+        resolvedSucursalId &&
+        (!isAuditorRole || auditorFinanciadorId)
+    ),
     refetchOnWindowFocus: false,
   });
 
   const showEmptyState =
+    (isAuditorRole && !auditorFinanciadorId) ||
     (canSelectSucursal && !resolvedSucursalId) ||
     (!canSelectSucursal && !resolvedSucursalId && !loadingSucursal);
   const subtitle = `${formatPacienteConditionType(
@@ -147,12 +169,16 @@ export function PacientesTemplate() {
     setOpenIngresoModal(true);
   };
 
-  if (!canSelectSucursal && loadingSucursal) {
+  if (!canSelectSucursal && (loadingSucursal || (isAuditorRole && loadingAuditorFinanciador))) {
     return <Spinner1 />;
   }
 
   if (!canSelectSucursal && sucursalError) {
     return <span>ha ocurrido un error: {sucursalError.message}</span>;
+  }
+
+  if (isAuditorRole && auditorFinanciadorError) {
+    return <span>ha ocurrido un error: {auditorFinanciadorError.message}</span>;
   }
 
   return (
@@ -245,16 +271,21 @@ export function PacientesTemplate() {
       <ResultsCard>
         {showEmptyState ? (
           <EmptyState>
-            {canSelectSucursal
-              ? "Selecciona una sucursal para ver los pacientes."
-              : "No se pudo determinar la sucursal asignada."}
+            {isAuditorRole && !auditorFinanciadorId
+              ? "No hay financiador asociado al auditor."
+              : canSelectSucursal
+                ? "Selecciona una sucursal para ver los pacientes."
+                : "No se pudo determinar la sucursal asignada."}
           </EmptyState>
         ) : isLoading ? (
           <Spinner1 />
         ) : error ? (
           <span>ha ocurrido un error: {error.message}</span>
         ) : pacientes.length ? (
-          <TablaPacientesHistorial data={pacientes} />
+          <TablaPacientesHistorial
+            data={pacientes}
+            episodeStatusFilter={historyEpisodeFilter}
+          />
         ) : (
           <EmptyState>{emptyMessage}</EmptyState>
         )}
@@ -470,10 +501,16 @@ const HistoryFiltersCard = styled.section`
 
     .filterOptions {
       width: 100%;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
     .filterOptions button {
-      flex: 1 1 calc(50% - 8px);
+      width: 100%;
+      min-width: 0;
+      padding: 0 8px;
+      font-size: 0.82rem;
+      white-space: nowrap;
     }
   }
 `;

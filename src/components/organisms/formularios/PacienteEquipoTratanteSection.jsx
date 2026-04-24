@@ -22,6 +22,9 @@ const buildSearchLabel = (item) =>
 const getItemIdentity = (item) =>
   String(item?.empleado_id ?? item?.id ?? "").trim();
 
+const IconoBuscar = v.iconoBuscar;
+const IconoCerrar = v.iconocerrar;
+
 export function PacienteEquipoTratanteSection({
   empresaId,
   value = [],
@@ -100,14 +103,14 @@ export function PacienteEquipoTratanteSection({
           <h3>Equipo tratante</h3>
           <p>
             Busca profesionales activos de la empresa y asignalos a esta
-            internacion. La elegibilidad clinica depende del area configurada
-            en Permisos.
+            internacion. La elegibilidad clinica depende del flag de acceso
+            clinico configurado en el puesto.
           </p>
         </div>
       </div>
 
       <div className="searchBox">
-        <InputText icono={<v.iconoBuscar />}>
+        <InputText icono={<IconoBuscar />}>
           <input
             className="form__field"
             type="search"
@@ -141,16 +144,16 @@ export function PacienteEquipoTratanteSection({
                     <div className="suggestionHeader">
                       <strong>{buildSearchLabel(item) || "Profesional"}</strong>
                       <span className={`eligibility ${isEligible ? "enabled" : "disabled"}`}>
-                        {isEligible ? "Area clinica" : "Area no clinica"}
+                        {isEligible ? "Acceso clinico" : "Sin acceso clinico"}
                       </span>
                     </div>
                     <span>{safeString(puesto?.name).trim() || "Sin puesto"}</span>
                     <small>
                       {safeString(area?.name).trim() || "Sin area"}
                       {item?.professional_number
-                        ? ` · Matricula ${item.professional_number}`
+                        ? ` - Matricula ${item.professional_number}`
                         : item?.employee_id_number
-                          ? ` · Legajo ${item.employee_id_number}`
+                          ? ` - Legajo ${item.employee_id_number}`
                           : ""}
                     </small>
                   </button>
@@ -177,16 +180,16 @@ export function PacienteEquipoTratanteSection({
                   <div className="memberHeader">
                     <strong>{buildSearchLabel(item) || "Profesional"}</strong>
                     <span className={`eligibility ${isEligible ? "enabled" : "disabled"}`}>
-                      {isEligible ? "Area clinica" : "Area no clinica"}
+                      {isEligible ? "Acceso clinico" : "Sin acceso clinico"}
                     </span>
                   </div>
                   <p>{safeString(puesto?.name).trim() || "Sin puesto"}</p>
                   <small>
                     {safeString(area?.name).trim() || "Sin area"}
                     {item?.professional_number
-                      ? ` · Matricula ${item.professional_number}`
+                      ? ` - Matricula ${item.professional_number}`
                       : item?.employee_id_number
-                        ? ` · Legajo ${item.employee_id_number}`
+                        ? ` - Legajo ${item.employee_id_number}`
                         : ""}
                   </small>
                 </div>
@@ -194,7 +197,7 @@ export function PacienteEquipoTratanteSection({
                   tipo="button"
                   titulo="Quitar"
                   bgcolor="var(--bg-surface-muted)"
-                  icono={<v.iconocerrar />}
+                  icono={<IconoCerrar />}
                   funcion={() => handleRemove(identity)}
                   disabled={disabled}
                 />

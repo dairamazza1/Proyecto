@@ -16,8 +16,10 @@ export function usePacienteClinicalPermissions({
   selectedIngreso = null,
   evolutionIngreso = null,
 } = {}) {
-  const { canCreate, canUpdate, can, isAdmin, empleado, profile } = usePermissions();
+  const { canUpdate, can, isAdmin, hasClinicalSectionAccess, empleado, profile } =
+    usePermissions();
   const todayDate = getArgentinaTodayDateInput();
+  const hasClinicalActionsAccess = hasClinicalSectionAccess();
 
   const selectedIngresoEquipo = useMemo(
     () => filterPacienteEquipoRowsByIngreso(equipo, selectedIngreso?.id ?? null),
@@ -71,7 +73,7 @@ export function usePacienteClinicalPermissions({
     Boolean(evolutionIngreso?.id) &&
     evolutionIngresoEditable &&
     (isAdmin() ||
-      (canCreate("evolucion") &&
+      (hasClinicalActionsAccess &&
         isAssignedToEvolutionIngreso &&
         hasEvolutionClinicalEligibility));
 
@@ -84,7 +86,7 @@ export function usePacienteClinicalPermissions({
     if (isAdmin()) return true;
 
     return (
-      canUpdate("evolucion") &&
+      hasClinicalActionsAccess &&
       isAssignedToEvolutionIngreso &&
       hasEvolutionClinicalEligibility &&
       String(evolucion?.created_by ?? "") === String(profile?.id ?? "")
@@ -95,7 +97,7 @@ export function usePacienteClinicalPermissions({
     Boolean(selectedIngreso?.id) &&
     selectedIngresoEditable &&
     (isAdmin() ||
-      (canCreate("indicaciones") &&
+      (hasClinicalActionsAccess &&
         isAssignedToSelectedIngreso &&
         hasSelectedIngresoClinicalEligibility));
 
@@ -104,7 +106,7 @@ export function usePacienteClinicalPermissions({
     if (isAdmin()) return true;
 
     return (
-      canUpdate("indicaciones") &&
+      hasClinicalActionsAccess &&
       isAssignedToSelectedIngreso &&
       hasSelectedIngresoClinicalEligibility &&
       String(indicacion?.created_by ?? "") === String(profile?.id ?? "")
@@ -115,16 +117,16 @@ export function usePacienteClinicalPermissions({
     Boolean(selectedIngreso?.id) &&
     selectedIngresoEditable &&
     (isAdmin() ||
-      (canCreate("estudios") &&
+      (hasClinicalActionsAccess &&
         isAssignedToSelectedIngreso &&
         hasSelectedIngresoClinicalEligibility));
 
-  const canEditEstudio = (_estudio) => {
+  const canEditEstudio = () => {
     if (!selectedIngresoEditable) return false;
     if (isAdmin()) return true;
 
     return (
-      canUpdate("estudios") &&
+      hasClinicalActionsAccess &&
       isAssignedToSelectedIngreso &&
       hasSelectedIngresoClinicalEligibility
     );

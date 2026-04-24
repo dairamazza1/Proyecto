@@ -37,7 +37,7 @@ const selectFields = `
     empresa:empresas(id, name),
     puesto:puestos_laborales(id, name),
     sucursal:sucursales_empleados(
-      sucursal:sucursales(id, name, address)
+      sucursal:sucursales(id, name, address, banner_template)
     )
   )
 `;

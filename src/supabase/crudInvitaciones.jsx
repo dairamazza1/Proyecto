@@ -170,11 +170,18 @@ export async function deleteInvitation(id) {
     .from(table)
     .delete()
     .eq("id", id)
-    .select("id")
-    .maybeSingle();
+    .select("id");
 
   if (error) throw error;
-  return data ?? null;
+
+  const deletedRow = Array.isArray(data) ? data[0] ?? null : data ?? null;
+  if (!deletedRow?.id) {
+    throw new Error(
+      "No se elimino la invitacion. Verifica permisos o si el registro ya no existe.",
+    );
+  }
+
+  return deletedRow;
 }
 
 export async function getInvitations({

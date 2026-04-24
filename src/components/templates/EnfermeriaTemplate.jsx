@@ -11,6 +11,7 @@ import {
   getCurrentUserSucursalId,
   getEnfermeriaAllowedShifts,
   getEnfermeriaRecords,
+  usePersistedSucursalSelection,
   useCompanyStore,
   usePermissions,
   useSucursalesStore,
@@ -71,11 +72,18 @@ export function EnfermeriaTemplate() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState("manana");
   const [selectedDate, setSelectedDate] = useState(getTodayDate);
-  const [selectedSucursalId, setSelectedSucursalId] = useState(null);
   const [openModal, setOpenModal] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState(null);
   const todayDate = getTodayDate();
   const isNextDisabled = selectedDate >= todayDate;
+  const empresaId = dataCompany?.id ?? null;
+  const [selectedSucursalId, setSelectedSucursalId] =
+    usePersistedSucursalSelection({
+      userId: user?.id,
+      empresaId,
+      sucursales: dataSucursales,
+      enabled: isAdminRole,
+    });
 
   useQuery({
     queryKey: ["empresa", user?.id],
@@ -85,9 +93,9 @@ export function EnfermeriaTemplate() {
   });
 
   useQuery({
-    queryKey: ["sucursales", dataCompany?.id],
-    queryFn: () => showSucursales({ empresa_id: dataCompany?.id }),
-    enabled: isAdminRole && Boolean(dataCompany?.id),
+    queryKey: ["sucursales", empresaId],
+    queryFn: () => showSucursales({ empresa_id: empresaId }),
+    enabled: isAdminRole && Boolean(empresaId),
     refetchOnWindowFocus: false,
   });
 

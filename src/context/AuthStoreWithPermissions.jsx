@@ -3,6 +3,7 @@ import { supabase } from "../supabase/supabase.config.jsx";
 import { getUsers } from "../supabase/crudUsers";
 import { ROLE_IDS } from "../utils/permissions";
 import { getEmpleadoByPerfil } from "../index.js";
+import { clearPersistedSucursalSelections } from "../hooks/usePersistedSucursalSelection.jsx";
 
 /**
  * ============================================
@@ -114,7 +115,15 @@ export const useAuthStore = create((set, get) => ({
       typeof profile?.app_role_id === "number"
         ? profile.app_role_id
         : ROLE_IDS.EMPLOYEE;
-    if ((!empleado || !empleado.is_active) && roleId === ROLE_IDS.EMPLOYEE) {
+
+    // Si el perfil esta vinculado a un empleado dado de baja, no puede acceder
+    // aunque conserve credenciales o tenga un rol distinto a EMPLOYEE.
+    if (empleado && empleado.is_active === false) {
+      return { ok: false, reason: "Empleado no activo" };
+    }
+
+    // Los perfiles operativos no admin deben tener un empleado activo asociado.
+    if (!empleado && roleId !== ROLE_IDS.ADMIN) {
       return { ok: false, reason: "Empleado no activo" };
     }
 
@@ -210,11 +219,13 @@ export const useAuthStore = create((set, get) => ({
   // Cerrar sesión
   // ============================================
   cerrarSesion: async () => {
+    const currentUserId = get().user?.id;
     try {
       await supabase.auth.signOut();
     } catch (error) {
       console.error('Error al cerrar sesión:', error);
     } finally {
+      clearPersistedSucursalSelections(currentUserId);
       set({ user: null, session: null, profile: null, empleado: null, error: null });
     }
   },

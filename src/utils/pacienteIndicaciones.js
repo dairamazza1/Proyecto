@@ -254,8 +254,11 @@ const PDF_TEXT_COLOR = "0.07 0.09 0.13";
 const PDF_MUTED_COLOR = "0.42 0.45 0.5";
 const PDF_BORDER_COLOR = "0.82 0.85 0.89";
 const PDF_HEADER_FILL_COLOR = "0.95 0.96 0.98";
+const PDF_BANNER_WIDTH = 520;
+const PDF_BANNER_HEIGHT = 92;
 const PDF_FONT_REGULAR = "F1";
 const PDF_FONT_BOLD = "F2";
+const PDF_BANNER_IMAGE = "ImBanner";
 const PDF_DATE_FALLBACK_SEGMENT = "fecha";
 
 const PDF_CP1252_MAP = new Map([
@@ -346,6 +349,115 @@ const toPdfHexString = (value) =>
 
     return byte.toString(16).padStart(2, "0").toUpperCase();
   }).join("");
+
+const bytesToHexString = (bytes) =>
+  Array.from(bytes ?? [])
+    .map((byte) => byte.toString(16).padStart(2, "0").toUpperCase())
+    .join("");
+
+const readJpegSize = (bytes) => {
+  const data = new Uint8Array(bytes ?? []);
+  if (data.length < 4 || data[0] !== 0xff || data[1] !== 0xd8) return null;
+
+  let offset = 2;
+  while (offset + 9 < data.length) {
+    if (data[offset] !== 0xff) {
+      offset += 1;
+      continue;
+    }
+
+    const marker = data[offset + 1];
+    const length = (data[offset + 2] << 8) + data[offset + 3];
+    if (!length || offset + length >= data.length) return null;
+
+    if (
+      (marker >= 0xc0 && marker <= 0xc3) ||
+      (marker >= 0xc5 && marker <= 0xc7) ||
+      (marker >= 0xc9 && marker <= 0xcb) ||
+      (marker >= 0xcd && marker <= 0xcf)
+    ) {
+      return {
+        height: (data[offset + 5] << 8) + data[offset + 6],
+        width: (data[offset + 7] << 8) + data[offset + 8],
+      };
+    }
+
+    offset += 2 + length;
+  }
+
+  return null;
+};
+
+const blobToImage = (blob) =>
+  new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(blob);
+    const image = new Image();
+    image.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(image);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("No se pudo cargar el banner para el PDF."));
+    };
+    image.src = url;
+  });
+
+const canvasToJpegBlob = (canvas) =>
+  new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (blob) {
+          resolve(blob);
+          return;
+        }
+        reject(new Error("No se pudo convertir el banner para el PDF."));
+      },
+      "image/jpeg",
+      0.92,
+    );
+  });
+
+const preparePdfBannerImage = async (banner = null) => {
+  if (!banner?.data) return null;
+
+  const type = String(banner?.type ?? "").toLowerCase();
+  const sourceBytes = new Uint8Array(banner.data);
+
+  if (type === "jpg" || type === "jpeg") {
+    const size = readJpegSize(sourceBytes);
+    if (!size) return null;
+    return {
+      bytes: sourceBytes,
+      width: size.width,
+      height: size.height,
+    };
+  }
+
+  if (typeof document === "undefined") return null;
+
+  const blob = new Blob([sourceBytes], { type: `image/${type || "png"}` });
+  const image = await blobToImage(blob);
+  const canvas = document.createElement("canvas");
+  canvas.width = image.naturalWidth || image.width;
+  canvas.height = image.naturalHeight || image.height;
+  const context = canvas.getContext("2d");
+  if (!context) return null;
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.drawImage(image, 0, 0);
+
+  const jpegBlob = await canvasToJpegBlob(canvas);
+  const jpegBytes = new Uint8Array(await jpegBlob.arrayBuffer());
+  const size = readJpegSize(jpegBytes);
+  if (!size) return null;
+
+  return {
+    bytes: jpegBytes,
+    width: size.width,
+    height: size.height,
+  };
+};
 
 const getPdfCharFactor = (character) => {
   if ("ilI1|.,:;![]()'` ".includes(character)) return 0.26;
@@ -495,10 +607,27 @@ const createPdfTextCommand = ({
     "ET",
   ].join("\n");
 
+const createPdfImageCommand = ({
+  name,
+  x,
+  y,
+  width,
+  height,
+}) =>
+  [
+    "q",
+    `${pdfNumber(width)} 0 0 ${pdfNumber(height)} ${pdfNumber(x)} ${pdfNumber(
+      PDF_PAGE_HEIGHT - y - height,
+    )} cm`,
+    `/${name} Do`,
+    "Q",
+  ].join("\n");
+
 const buildPacienteIndicacionPdfBytes = ({
   paciente,
   ingreso,
   indicacion,
+  bannerImage = null,
 } = {}) => {
   const hydrated =
     indicacion?.indication_rows ? indicacion : hydratePacienteIndicacionRecord(indicacion);
@@ -532,35 +661,25 @@ const buildPacienteIndicacionPdfBytes = ({
     if (cursorY + height <= pageContentLimit) return;
     newPage();
   };
-  const drawWrappedText = ({
-    x,
-    y,
-    text,
-    maxWidth,
-    font,
-    fontSize,
-    lineHeight,
-    color = PDF_TEXT_COLOR,
-  }) => {
-    const lines = wrapPdfText(text, maxWidth, fontSize);
-    lines.forEach((line, index) => {
-      pushCommand(
-        createPdfTextCommand({
-          x,
-          y: y + lineHeight * index,
-          text: line,
-          font,
-          fontSize,
-          color,
-        })
-      );
-    });
-    return lines.length;
-  };
+  if (bannerImage?.bytes?.length) {
+    pushCommand(
+      createPdfImageCommand({
+        name: PDF_BANNER_IMAGE,
+        x: (PDF_PAGE_WIDTH - PDF_BANNER_WIDTH) / 2,
+        y: cursorY,
+        width: PDF_BANNER_WIDTH,
+        height: PDF_BANNER_HEIGHT,
+      }),
+    );
+    cursorY += PDF_BANNER_HEIGHT + 18;
+  }
 
   pushCommand(
     createPdfTextCommand({
-      x: PDF_MARGIN_X,
+      x:
+        (PDF_PAGE_WIDTH -
+          measurePdfTextWidth("Hoja de indicaciones", 22)) /
+        2,
       y: cursorY,
       text: "Hoja de indicaciones",
       font: PDF_FONT_BOLD,
@@ -856,11 +975,20 @@ const buildPacienteIndicacionPdfBytes = ({
   };
 
   const regularFontId = addObject(
-    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>"
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Times-Roman >>"
   );
   const boldFontId = addObject(
-    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>"
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Times-Bold >>"
   );
+  const bannerImageId = bannerImage?.bytes?.length
+    ? addObject(
+        `<< /Type /XObject /Subtype /Image /Width ${bannerImage.width} /Height ${
+          bannerImage.height
+        } /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter [/ASCIIHexDecode /DCTDecode] /Length ${
+          bannerImage.bytes.length * 2 + 2
+        } >>\nstream\n${bytesToHexString(bannerImage.bytes)}>\nendstream`,
+      )
+    : null;
   const pagesId = addObject("");
   const pageIds = [];
 
@@ -874,7 +1002,11 @@ const buildPacienteIndicacionPdfBytes = ({
         PDF_PAGE_WIDTH
       )} ${pdfNumber(
         PDF_PAGE_HEIGHT
-      )}] /Resources << /Font << /${PDF_FONT_REGULAR} ${regularFontId} 0 R /${PDF_FONT_BOLD} ${boldFontId} 0 R >> >> /Contents ${contentId} 0 R >>`
+      )}] /Resources << /Font << /${PDF_FONT_REGULAR} ${regularFontId} 0 R /${PDF_FONT_BOLD} ${boldFontId} 0 R >>${
+        bannerImageId
+          ? ` /XObject << /${PDF_BANNER_IMAGE} ${bannerImageId} 0 R >>`
+          : ""
+      } >> /Contents ${contentId} 0 R >>`
     );
     pageIds.push(pageId);
   });
@@ -973,7 +1105,7 @@ export const buildPacienteIndicacionPrintHtml = ({
       <title>Indicaciones</title>
       <style>
         body {
-          font-family: Arial, sans-serif;
+          font-family: "Times New Roman", Times, serif;
           margin: 24px;
           color: #111827;
         }
@@ -1099,8 +1231,12 @@ export const buildPacienteIndicacionPrintHtml = ({
   </html>`;
 };
 
-export const downloadPacienteIndicacionPdf = (params = {}) => {
-  const bytes = buildPacienteIndicacionPdfBytes(params);
+export const downloadPacienteIndicacionPdf = async (params = {}) => {
+  const bannerImage = await preparePdfBannerImage(params?.banner);
+  const bytes = buildPacienteIndicacionPdfBytes({
+    ...params,
+    bannerImage,
+  });
   const hydratedIndicacion =
     params?.indicacion?.indication_rows
       ? params.indicacion

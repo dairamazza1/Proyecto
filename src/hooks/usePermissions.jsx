@@ -1,7 +1,7 @@
 import { useContext } from "react";
 import { useAuthStore } from "../context/AuthStoreWithPermissions";
 import { PermissionsContext } from "../context/permissionsContext.jsx";
-import { FEATURE_ALIASES } from "../utils/features";
+import { FEATURE_ALIASES, FEATURES } from "../utils/features";
 import { ROLE_IDS } from "../utils/permissions";
 
 /**
@@ -67,9 +67,33 @@ export function usePermissions() {
   const resolveFeature = (resource) =>
     FEATURE_ALIASES[resource] ?? resource;
 
+  const normalizeAction = (action) => {
+    const normalized = String(action ?? "view").toLowerCase();
+    if (normalized === "read") return "view";
+    return normalized;
+  };
+
+  const hasClinicalSectionAccess = () =>
+    empleado?.clinical_section_access === true;
+
   const can = (resource, action = "view") => {
+    const feature = resolveFeature(resource);
+    const normalizedAction = normalizeAction(action);
+
+    if (feature === FEATURES.PACIENTES && normalizedAction === "view") {
+      return (
+        isAdminRole ||
+        hasClinicalSectionAccess() ||
+        (isAuditorRole && Boolean(permissionsContext?.can?.(feature, "view")))
+      );
+    }
+
+    if (feature === FEATURES.PACIENTES && isAuditorRole) {
+      return false;
+    }
+
     if (!permissionsContext?.can) return false;
-    return permissionsContext.can(resolveFeature(resource), action);
+    return permissionsContext.can(feature, action);
   };
 
   const canEditSolicitud = (row, resource) => {
@@ -91,7 +115,7 @@ export function usePermissions() {
   const isNurseEmployee = () => {
     if (!isEmployeeRole) return false;
     const puesto = empleado?.puesto?.name ?? empleado?.puesto ?? "";
-    return normalizePuesto(puesto) === "enfermero/a";
+    return (normalizePuesto(puesto) === "enfermero/a" || normalizePuesto(puesto) === "Enfermero/a");
   };
 
   const defaultTabFromShift = (shift) => {
@@ -113,11 +137,12 @@ export function usePermissions() {
     userRoleId,
     profile,
     empleado,
+    hasClinicalSectionAccess,
 
     /**
      * Verificar si el usuario tiene un permiso especÃ­fico
      * @param {string} resource - Recurso (ej: 'empleados', 'vacaciones')
-     * @param {string} action - AcciÃ³n (ej: 'create', 'view', 'update', 'delete')
+     * @param {string} action - Acción (ej: 'create', 'view', 'update', 'delete')
      * @returns {boolean}
      */
     can,

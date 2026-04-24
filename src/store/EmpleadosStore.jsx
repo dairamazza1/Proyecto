@@ -8,8 +8,17 @@ import {
 
 export const useEmpleadosStore = create((set) => ({
   buscador: "",
+  estadoFiltro: "active",
   setBuscador: (p) => {
     set({ buscador: p });
+  },
+  setEstadoFiltro: (estadoFiltro) => {
+    const validFilters = ["all", "active", "inactive"];
+    set({
+      estadoFiltro: validFilters.includes(estadoFiltro)
+        ? estadoFiltro
+        : "active",
+    });
   },
   dataEmpleados: [],
   loading: false,

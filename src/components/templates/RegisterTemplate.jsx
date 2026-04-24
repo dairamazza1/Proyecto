@@ -2,15 +2,14 @@ import styled from "styled-components";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
-import {
-  Title,
-  InputText2,
-  Btn1,
-  Footer,
-} from "../../index";
+import { Title, InputText2, Btn1, Footer } from "../../index";
 import { useAuthStore } from "../../context/AuthStoreWithPermissions";
 import { v } from "../../styles/variables";
 import { Device } from "../../styles/breakpoints";
+import {
+  PASSWORD_REQUIRED_MESSAGE,
+  validatePasswordRules,
+} from "../../utils/passwordValidation";
 
 export function RegisterTemplate() {
   const navigate = useNavigate();
@@ -31,7 +30,6 @@ export function RegisterTemplate() {
       ...prev,
       [name]: value,
     }));
-    // Limpiar error del campo cuando el usuario empieza a escribir
     if (validationErrors[name]) {
       setValidationErrors((prev) => ({
         ...prev,
@@ -43,27 +41,25 @@ export function RegisterTemplate() {
   const validateForm = () => {
     const errors = {};
 
-    // Validar nombre
     if (!formData.name.trim()) {
       errors.name = "El nombre es requerido";
     }
 
-    // Validar email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!formData.email.trim()) {
       errors.email = "El email es requerido";
     } else if (!emailRegex.test(formData.email)) {
-      errors.email = "Email inválido";
+      errors.email = "Email invÃ¡lido";
     }
 
-    // Validar contraseña
-    if (!formData.password) {
-      errors.password = "La contraseña es requerida";
-    } else if (formData.password.length < 6) {
-      errors.password = "La contraseña debe tener al menos 6 caracteres";
+    const passwordError = validatePasswordRules(formData.password);
+    if (passwordError) {
+      errors.password =
+        passwordError === PASSWORD_REQUIRED_MESSAGE
+          ? "La contraseña es requerida"
+          : passwordError;
     }
 
-    // Validar confirmación de contraseña
     if (!formData.confirmPassword) {
       errors.confirmPassword = "Confirma tu contraseña";
     } else if (formData.password !== formData.confirmPassword) {
@@ -90,7 +86,7 @@ export function RegisterTemplate() {
     if (result.success) {
       await Swal.fire({
         icon: "success",
-        title: "¡Registro exitoso!",
+        title: "Â¡Registro exitoso!",
         text: "Tu cuenta ha sido creada. Por favor verifica tu email.",
         confirmButtonText: "Aceptar",
       });
@@ -111,7 +107,7 @@ export function RegisterTemplate() {
         <ContentLogo>
           <img src={v.logo} alt="Logo" />
           <span>
-            Clínica de Salud Mental <br /> Dr. Gutierrez Walker
+            ClÃ­nica de Salud Mental <br /> Dr. Gutierrez Walker
           </span>
         </ContentLogo>
         <Title $paddingbottom="20px">Crear cuenta</Title>
@@ -184,7 +180,7 @@ export function RegisterTemplate() {
           />
 
           <LoginLink onClick={() => navigate("/")}>
-            ¿Ya tienes cuenta? <strong>Inicia sesión</strong>
+            Â¿Ya tienes cuenta? <strong>Inicia sesión</strong>
           </LoginLink>
         </form>
       </div>

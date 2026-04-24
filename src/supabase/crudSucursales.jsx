@@ -2,13 +2,86 @@ import { supabase } from "./supabase.config.jsx";
 
 const bucketDocuments = "documents";
 
+const SUPPORTED_BANNER_IMAGE_TYPES = new Set(["png", "jpg", "gif", "bmp"]);
+
+const normalizeEmpleadoStatusFilter = (statusFilter = "active") => {
+  const normalized = String(statusFilter ?? "active").trim().toLowerCase();
+  return ["all", "active", "inactive"].includes(normalized)
+    ? normalized
+    : "active";
+};
+
+const filterEmpleadosByStatus = (empleados = [], statusFilter = "active") => {
+  const normalized = normalizeEmpleadoStatusFilter(statusFilter);
+  if (normalized === "active") {
+    return empleados.filter((empleado) => empleado?.is_active === true);
+  }
+  if (normalized === "inactive") {
+    return empleados.filter((empleado) => empleado?.is_active === false);
+  }
+  return empleados;
+};
+
 const inferBannerImageType = (filePath = "") => {
   const normalized = String(filePath ?? "").trim().toLowerCase();
   if (normalized.endsWith(".png")) return "png";
   if (normalized.endsWith(".jpg") || normalized.endsWith(".jpeg")) return "jpg";
   if (normalized.endsWith(".gif")) return "gif";
   if (normalized.endsWith(".bmp")) return "bmp";
-  return "png";
+  return "";
+};
+
+const inferBannerImageTypeFromMime = (contentType = "") => {
+  const mime = String(contentType ?? "").split(";")[0].trim().toLowerCase();
+  if (mime === "image/png") return "png";
+  if (mime === "image/jpeg" || mime === "image/jpg") return "jpg";
+  if (mime === "image/gif") return "gif";
+  if (mime === "image/bmp" || mime === "image/x-ms-bmp") return "bmp";
+  return "";
+};
+
+const inferBannerImageTypeFromBytes = (arrayBuffer) => {
+  const bytes = new Uint8Array(arrayBuffer ?? new ArrayBuffer(0));
+  if (
+    bytes.length >= 8 &&
+    bytes[0] === 0x89 &&
+    bytes[1] === 0x50 &&
+    bytes[2] === 0x4e &&
+    bytes[3] === 0x47 &&
+    bytes[4] === 0x0d &&
+    bytes[5] === 0x0a &&
+    bytes[6] === 0x1a &&
+    bytes[7] === 0x0a
+  ) {
+    return "png";
+  }
+
+  if (
+    bytes.length >= 3 &&
+    bytes[0] === 0xff &&
+    bytes[1] === 0xd8 &&
+    bytes[2] === 0xff
+  ) {
+    return "jpg";
+  }
+
+  if (
+    bytes.length >= 6 &&
+    bytes[0] === 0x47 &&
+    bytes[1] === 0x49 &&
+    bytes[2] === 0x46 &&
+    bytes[3] === 0x38 &&
+    (bytes[4] === 0x37 || bytes[4] === 0x39) &&
+    bytes[5] === 0x61
+  ) {
+    return "gif";
+  }
+
+  if (bytes.length >= 2 && bytes[0] === 0x42 && bytes[1] === 0x4d) {
+    return "bmp";
+  }
+
+  return "";
 };
 
 const isAbsoluteUrl = (value = "") => /^https?:\/\//i.test(String(value).trim());
@@ -42,10 +115,24 @@ const fetchBannerBinary = async ({ url, filePath }) => {
     throw new Error("No se pudo descargar el banner configurado para la sucursal.");
   }
 
+  const data = await response.arrayBuffer();
+  const typeFromBytes = inferBannerImageTypeFromBytes(data);
+  const typeFromMime = inferBannerImageTypeFromMime(
+    response.headers.get("content-type")
+  );
+  const typeFromPath = inferBannerImageType(filePath || url);
+  const type = typeFromBytes || typeFromMime || typeFromPath;
+
+  if (!SUPPORTED_BANNER_IMAGE_TYPES.has(type) || !typeFromBytes) {
+    throw new Error(
+      "El banner configurado para la sucursal no es una imagen valida. Usa PNG, JPG, GIF o BMP."
+    );
+  }
+
   return {
     filePath,
-    type: inferBannerImageType(filePath || url),
-    data: await response.arrayBuffer(),
+    type,
+    data,
   };
 };
 
@@ -169,7 +256,8 @@ export async function getEmpleadosBySucursal({
   sucursal_id,
   empresa_id,
   orderBy = "last_name",
-  ascending = true
+  ascending = true,
+  statusFilter = "active",
 } = {}) {
   let query = supabase
     
@@ -188,7 +276,8 @@ export async function getEmpleadosBySucursal({
         professional_number,
         telephone,
         birthday,
-        genre
+        genre,
+        is_active
       )
     `
     );
@@ -207,6 +296,8 @@ export async function getEmpleadosBySucursal({
   if (empresa_id) {
     empleados = empleados.filter((emp) => emp.empresa_id === empresa_id);
   }
+
+  empleados = filterEmpleadosByStatus(empleados, statusFilter);
 
   // Ordenar los resultados
   empleados.sort((a, b) => {
@@ -228,14 +319,16 @@ export async function searchEmpleadosBySucursal({
   empresa_id,
   search = "",
   orderBy = "last_name",
-  ascending = true
+  ascending = true,
+  statusFilter = "active",
 } = {}) {
   const term = search?.trim();
   let empleados = await getEmpleadosBySucursal({
     sucursal_id,
     empresa_id,
     orderBy,
-    ascending
+    ascending,
+    statusFilter,
   });
 
   if (term) {

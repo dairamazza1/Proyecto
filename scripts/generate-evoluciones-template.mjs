@@ -20,6 +20,10 @@ const doc = new Document({
     {
       children: [
         new Paragraph({
+          text: "{{banner}}",
+          alignment: AlignmentType.CENTER,
+        }),
+        new Paragraph({
           text: "{{empresa_nombre}}",
           heading: HeadingLevel.HEADING_4,
           alignment: AlignmentType.LEFT,
@@ -37,7 +41,6 @@ const doc = new Document({
         }),
         new Paragraph({ text: "Edad: {{paciente_edad}}" }),
         new Paragraph({ text: "" }),
-        new Paragraph({ text: "Sucursal: {{internacion_sucursal}}" }),
         new Paragraph({
           text: "Fecha de ingreso: {{internacion_fecha_ingreso}}",
         }),

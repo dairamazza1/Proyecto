@@ -6,6 +6,7 @@ import { Btn1, InputText2, Title } from "../../index";
 import { supabase } from "../../supabase/supabase.config.jsx";
 import { v } from "../../styles/variables";
 import { Device } from "../../styles/breakpoints";
+import { validatePasswordRules } from "../../utils/passwordValidation";
 
 export function SetPasswordTemplate() {
   const navigate = useNavigate();
@@ -54,10 +55,10 @@ export function SetPasswordTemplate() {
 
   const validateForm = () => {
     const nextErrors = {};
-    if (!formData.password) {
-      nextErrors.password = "Ingresa una contraseña";
-    } else if (formData.password.length < 6) {
-      nextErrors.password = "Minimo 6 caracteres";
+    const passwordError = validatePasswordRules(formData.password);
+
+    if (passwordError) {
+      nextErrors.password = passwordError;
     }
 
     if (!formData.confirmPassword) {

@@ -7,6 +7,7 @@ import {
   Btn1,
   ConvertirCapitalize,
   EmergencyContactsSection,
+  fetchFinanciadores,
   Icd10TreeSelect,
   InputText,
   PacienteAntecedentesSection,
@@ -47,18 +48,8 @@ import { v } from "../../../styles/variables";
 import { PacienteEquipoTratanteSection } from "./PacienteEquipoTratanteSection";
 
 const OTHER_DIAGNOSIS_CODE = "OTHER";
+const SHOW_COVERAGE_MEMBER_NUMBER = false;
 const ADMINISSION_TYPE_OPTIONS = ["Voluntario", "Involuntario"];
-const COVERAGE_OPTIONS = [
-  "AMEPBA",
-  "IOMA",
-  "LIBSALUD",
-  "Otro",
-  "PAMI",
-  "PSIQUE",
-  "TIKUM",
-  "VITAS",
-];
-
 const defaultEmergencyContact = () => createEmptyEmergencyContact("paciente");
 const getCurrentDateTimeInput = () => {
   const now = new Date();
@@ -68,8 +59,7 @@ const getCurrentDateTimeInput = () => {
   )}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
 };
 const createDefaultCoverageValues = () => ({
-  coverage_option: "",
-  coverage_custom: "",
+  financiador_id: "",
   coverage_notes: "",
 });
 
@@ -184,25 +174,49 @@ const mapPatientToFormValues = (patient) => ({
       : String(patient.hijos),
 });
 
-const mapCoverageToFormValues = (coverage) => ({
-  coverage_option: COVERAGE_OPTIONS.includes(safeString(coverage?.coverage).trim())
-    ? safeString(coverage?.coverage).trim()
-    : safeString(coverage?.coverage).trim()
-      ? "Otro"
-      : "",
-  coverage_custom:
-    COVERAGE_OPTIONS.includes(safeString(coverage?.coverage).trim()) ||
-    !safeString(coverage?.coverage).trim()
-      ? ""
-      : safeString(coverage?.coverage).trim(),
-  coverage_notes: safeString(coverage?.coverage_notes),
-});
+const normalizeFinanciadorName = (value) =>
+  safeString(value).trim().toLowerCase();
 
-const resolveCoverageValueFromForm = (values) => {
-  const option = safeString(values?.coverage_option).trim();
-  if (!option) return "";
-  if (option === "Otro") return safeString(values?.coverage_custom).trim();
-  return option;
+const resolveFinanciadorFromCoverage = (coverage, financiadores = []) => {
+  const directId = coverage?.financiador_id;
+  if (directId) {
+    const matched = financiadores.find(
+      (financiador) => String(financiador.id) === String(directId)
+    );
+    if (matched) return matched;
+  }
+
+  const coverageName = normalizeFinanciadorName(coverage?.coverage);
+  if (!coverageName) return null;
+  return (
+    financiadores.find(
+      (financiador) =>
+        normalizeFinanciadorName(financiador.name) === coverageName ||
+        normalizeFinanciadorName(financiador.code) === coverageName
+    ) ?? null
+  );
+};
+
+const mapCoverageToFormValues = (coverage, financiadores = []) => {
+  const financiador = resolveFinanciadorFromCoverage(coverage, financiadores);
+  return {
+    financiador_id: financiador?.id ? String(financiador.id) : "",
+    coverage_notes: safeString(coverage?.coverage_notes),
+  };
+};
+
+const resolveCoverageFromForm = (values, financiadores = []) => {
+  const financiadorId = safeString(values?.financiador_id).trim();
+  if (!financiadorId) return null;
+  const financiador = financiadores.find(
+    (item) => String(item.id) === String(financiadorId)
+  );
+  if (!financiador) return null;
+  return {
+    financiador_id: Number(financiador.id),
+    coverage: financiador.name || financiador.code,
+    coverage_notes: values?.coverage_notes,
+  };
 };
 
 const pickPreservedValues = (values) => ({
@@ -308,7 +322,7 @@ const getDiagnosisDisplay = (selectedDiagnosis, otherDiagnosis) => {
     .join(" - ");
 };
 
-const buildAdmissionReasonValue = ({ diagnosisLabel, additionalNotes }) => {
+const buildAdmissionReasonValue = ({ additionalNotes }) => {
   const normalizedNotes = safeString(additionalNotes).trim();
   return normalizedNotes || "";
 };
@@ -476,13 +490,21 @@ export function ModalPacienteIngresoForm({
     name: "emergency_contacts",
   });
 
+  const {
+    data: financiadores = [],
+    isLoading: loadingFinanciadores,
+    error: financiadoresError,
+  } = useQuery({
+    queryKey: ["financiadores"],
+    queryFn: () => fetchFinanciadores(),
+    refetchOnWindowFocus: false,
+  });
+
   const hasSelectedPatient = Boolean(selectedPatient?.id);
   const diagnosisIsOther = selectedDiagnosis?.code === OTHER_DIAGNOSIS_CODE;
   const alternativeDiagnosisIsOther =
     selectedAlternativeDiagnosis?.code === OTHER_DIAGNOSIS_CODE;
-  const selectedCoverageOption = watch("coverage_option");
   const selectedAdmissionAt = watch("admission_at");
-  const showCoverageCustomInput = selectedCoverageOption === "Otro";
   const currentAdmissionDateTimeInput = getCurrentDateTimeInput();
   const currentDateInput = toDateInput(new Date());
 
@@ -701,17 +723,18 @@ export function ModalPacienteIngresoForm({
   useEffect(() => {
     if (!selectedPatient?.id) {
       const emptyCoverageValues = createDefaultCoverageValues();
-      setValue("coverage_option", emptyCoverageValues.coverage_option);
-      setValue("coverage_custom", emptyCoverageValues.coverage_custom);
+      setValue("financiador_id", emptyCoverageValues.financiador_id);
       setValue("coverage_notes", emptyCoverageValues.coverage_notes);
       return;
     }
 
-    const nextCoverageValues = mapCoverageToFormValues(selectedPatientCoverage);
-    setValue("coverage_option", nextCoverageValues.coverage_option);
-    setValue("coverage_custom", nextCoverageValues.coverage_custom);
+    const nextCoverageValues = mapCoverageToFormValues(
+      selectedPatientCoverage,
+      financiadores
+    );
+    setValue("financiador_id", nextCoverageValues.financiador_id);
     setValue("coverage_notes", nextCoverageValues.coverage_notes);
-  }, [selectedPatient?.id, selectedPatientCoverage, setValue]);
+  }, [financiadores, selectedPatient?.id, selectedPatientCoverage, setValue]);
 
   const visibleSearchResults = useMemo(() => {
     if (!Array.isArray(searchResults)) return [];
@@ -783,8 +806,10 @@ export function ModalPacienteIngresoForm({
         diagnosisLabel,
         additionalNotes: data.admission_reason_notes,
       });
-      const coverageValue = resolveCoverageValueFromForm(data);
-      const shouldSyncCoverage = Boolean(coverageValue);
+      const coveragePayload = resolveCoverageFromForm(data, financiadores);
+      const shouldSyncCoverage = Boolean(
+        coveragePayload || selectedPatientCoverage?.id,
+      );
       const previousAdminissionType = normalizeAdminissionType(
         ingresoPreselected?.adminission_type,
       );
@@ -832,10 +857,7 @@ export function ModalPacienteIngresoForm({
             ? syncPacienteCoberturaByDate({
                 pacienteId: paciente.id,
                 effectiveDate: data.admission_at || referenceAdmissionAt,
-                coverage: {
-                  coverage: coverageValue,
-                  coverage_notes: data.coverage_notes,
-                },
+                coverage: coveragePayload,
               })
             : Promise.resolve(null),
         ];
@@ -962,10 +984,7 @@ export function ModalPacienteIngresoForm({
           ? syncPacienteCoberturaByDate({
               pacienteId: paciente.id,
               effectiveDate: data.admission_at,
-              coverage: {
-                coverage: coverageValue,
-                coverage_notes: data.coverage_notes,
-              },
+              coverage: coveragePayload,
             })
           : Promise.resolve(null),
         syncPacienteAntecedentes({
@@ -997,6 +1016,7 @@ export function ModalPacienteIngresoForm({
       ];
 
       queryClient.invalidateQueries({ queryKey: ["pacientesActivos"] });
+      queryClient.invalidateQueries({ queryKey: ["pacientesHistorial"] });
       patientQueryKeys.forEach((queryKey) => {
         queryClient.invalidateQueries({ queryKey });
         queryClient.refetchQueries({
@@ -1209,40 +1229,24 @@ export function ModalPacienteIngresoForm({
             <div className="fieldsGrid">
               <article>
                 <InputText icono={<v.iconocategorias />}>
-                  <select className="form__field" {...register("coverage_option")}>
-                    <option value="">Seleccionar</option>
-                    {COVERAGE_OPTIONS.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
+                  <select className="form__field" {...register("financiador_id")}>
+                    <option value="">
+                      {loadingFinanciadores
+                        ? "Cargando coberturas..."
+                        : "Seleccionar"}
+                    </option>
+                    {financiadores.map((financiador) => (
+                      <option key={financiador.id} value={financiador.id}>
+                        {financiador.name}
                       </option>
                     ))}
                   </select>
                   <label className="form__label">Cobertura</label>
+                  {financiadoresError && (
+                    <p>No se pudieron cargar las coberturas.</p>
+                  )}
                 </InputText>
               </article>
-
-              {showCoverageCustomInput ? (
-                <article>
-                  <InputText icono={<v.iconoempresa />}>
-                    <input
-                      className="form__field"
-                      type="text"
-                      placeholder="Nombre de cobertura"
-                      {...register("coverage_custom", {
-                        validate: (value) =>
-                          !showCoverageCustomInput ||
-                          safeString(value).trim() ||
-                          "Indique la cobertura",
-                      })}
-                    />
-                    <label className="form__label">Otra cobertura</label>
-                    {errors.coverage_custom?.message && (
-                      <p>{errors.coverage_custom.message}</p>
-                    )}
-                  </InputText>
-                </article>
-              ) : null}
-
 
               <article>
                 <InputText icono={<v.iconoImportante />}>
@@ -1255,7 +1259,7 @@ export function ModalPacienteIngresoForm({
                   <label className="form__label">Detalle</label>
                 </InputText>
               </article>
-              {false && (
+              {SHOW_COVERAGE_MEMBER_NUMBER && (
                 <article>
                   <InputText icono={<v.iconocodigobarras />}>
                     <input
@@ -1721,7 +1725,7 @@ export function ModalPacienteIngresoForm({
           {!isEditMode && (
             <AccordionPanel
               title="Equipo tratante"
-              subtitle="La asignacion del equipo y el area configurada en Permisos definen la elegibilidad clinica por internacion."
+              subtitle="La asignacion del equipo y el flag de acceso clinico del puesto definen la elegibilidad clinica por internacion."
               isOpen={expandedPanels.treatmentTeam}
               onToggle={() => togglePanel("treatmentTeam")}
             >

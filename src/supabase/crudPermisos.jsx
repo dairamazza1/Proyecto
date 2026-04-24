@@ -3,8 +3,6 @@ import { supabase } from "./supabase.config.jsx";
 const tableFeatures = "funcionalidades";
 const tableRoles = "app_roles";
 const tablePermissions = "funcionalidades_roles";
-const tablePuestos = "puestos_laborales";
-const tableAreas = "areas_laborales";
 
 const emptyPermission = {
   can_view: false,
@@ -64,7 +62,10 @@ export async function deleteFeature(id) {
   if (!featureId) {
     throw new Error("ID de funcionalidad invalido");
   }
-  const { error } = await supabase.from(tableFeatures).delete().eq("id", featureId);
+  const { error } = await supabase
+    .from(tableFeatures)
+    .delete()
+    .eq("id", featureId);
   if (error) throw error;
   return true;
 }
@@ -78,50 +79,25 @@ export async function fetchRoles() {
   return data ?? [];
 }
 
-export async function fetchPuestosLaborales() {
+export async function fetchPuestos() {
   const { data, error } = await supabase
-    .from(tablePuestos)
+    .from("puestos_laborales")
     .select("id, name")
     .order("name", { ascending: true });
   if (error) throw error;
   return data ?? [];
 }
 
-export async function fetchClinicalAreas() {
-  const { data, error } = await supabase
-    .from(tableAreas)
-    .select("id, name, grants_patient_clinical_permissions")
-    .order("name", { ascending: true });
-  if (error) throw error;
-  return data ?? [];
-}
-
-export async function updateClinicalAreaPermission(id, enabled) {
-  const areaId = Number(id);
-  if (!areaId) {
-    throw new Error("ID de area invalido");
-  }
-
-  const { data, error } = await supabase
-    .from(tableAreas)
-    .update({
-      grants_patient_clinical_permissions: Boolean(enabled),
-    })
-    .eq("id", areaId)
-    .select("id, name, grants_patient_clinical_permissions")
-    .maybeSingle();
-
-  if (error) throw error;
-  return data ?? null;
-}
-
-export async function fetchPermissions({
-  roleId = null,
-  puestoId = null,
-  includeGeneralFallback = false,
-} = {}) {
+export async function fetchPermissions(params = {}) {
+  const { roleId = null } = params;
   const normalizedRoleId = toNullableNumber(roleId);
-  const normalizedPuestoId = toNullableNumber(puestoId);
+  const hasPuestoIdFilter = Object.prototype.hasOwnProperty.call(
+    params,
+    "puestoId",
+  );
+  const normalizedPuestoId = hasPuestoIdFilter
+    ? toNullableNumber(params.puestoId)
+    : null;
 
   let query = supabase
     .from(tablePermissions)
@@ -138,23 +114,23 @@ export async function fetchPermissions({
       can_validate,
       created_at,
       feature:funcionalidades(id,name),
-      role:app_roles(id,name),
-      puesto:puestos_laborales(id,name)
+      role:app_roles(id,name)
     `
     )
     .order("feature_id", { ascending: true })
-    .order("app_role_id", { ascending: true });
+    .order("app_role_id", { ascending: true })
+    .order("puesto_id", { ascending: true, nullsFirst: true });
 
   if (normalizedRoleId !== null) {
     query = query.eq("app_role_id", normalizedRoleId);
   }
 
-  if (includeGeneralFallback && normalizedPuestoId !== null) {
-    query = query.or(`puesto_id.is.null,puesto_id.eq.${normalizedPuestoId}`);
-  } else if (normalizedPuestoId === null) {
-    query = query.is("puesto_id", null);
-  } else {
-    query = query.eq("puesto_id", normalizedPuestoId);
+  if (hasPuestoIdFilter) {
+    if (normalizedPuestoId !== null) {
+      query = query.or(`puesto_id.is.null,puesto_id.eq.${normalizedPuestoId}`);
+    } else {
+      query = query.is("puesto_id", null);
+    }
   }
 
   const { data, error } = await query;
@@ -165,32 +141,44 @@ export async function fetchPermissions({
 export function computeEffectivePermission(
   roleId,
   featureId,
-  puestoId,
-  permissionRows = []
+  permissionRows = [],
+  puestoId = null,
 ) {
   const normalizedRoleId = toNullableNumber(roleId);
   const normalizedFeatureId = toNullableNumber(featureId);
   const normalizedPuestoId = toNullableNumber(puestoId);
 
-  const matchingRows = (permissionRows ?? []).filter((row) => {
-    return (
-      Number(row?.app_role_id) === normalizedRoleId &&
-      Number(row?.feature_id) === normalizedFeatureId
-    );
-  });
-
   const specificRow =
     normalizedPuestoId === null
       ? null
-      : matchingRows.find((row) => Number(row?.puesto_id) === normalizedPuestoId) ??
-        null;
+      : (permissionRows ?? []).find(
+          (row) =>
+            Number(row?.app_role_id) === normalizedRoleId &&
+            Number(row?.feature_id) === normalizedFeatureId &&
+            Number(row?.puesto_id) === normalizedPuestoId,
+        ) ?? null;
 
-  const generalRow =
-    matchingRows.find(
-      (row) => row?.puesto_id === null || row?.puesto_id === undefined
+  if (specificRow) {
+    return {
+      can_view: Boolean(specificRow.can_view),
+      can_create: Boolean(specificRow.can_create),
+      can_update: Boolean(specificRow.can_update),
+      can_delete: Boolean(specificRow.can_delete),
+      can_validate: Boolean(specificRow.can_validate),
+      source: "puesto",
+      inherited: false,
+      row: specificRow,
+    };
+  }
+
+  const selectedRow =
+    (permissionRows ?? []).find(
+      (row) =>
+        Number(row?.app_role_id) === normalizedRoleId &&
+        Number(row?.feature_id) === normalizedFeatureId &&
+        (row?.puesto_id === null || row?.puesto_id === undefined)
     ) ?? null;
 
-  const selectedRow = specificRow ?? generalRow;
   if (!selectedRow) {
     return {
       ...emptyPermission,
@@ -206,25 +194,33 @@ export function computeEffectivePermission(
     can_update: Boolean(selectedRow.can_update),
     can_delete: Boolean(selectedRow.can_delete),
     can_validate: Boolean(selectedRow.can_validate),
-    source: specificRow ? "override" : "general",
-    inherited: !specificRow && normalizedPuestoId !== null,
+    source: "general",
+    inherited: false,
     row: selectedRow,
   };
 }
 
-async function fetchGeneralPermissionRow(appRoleId, featureId) {
-  const { data, error } = await supabase
+async function fetchPermissionRow({ appRoleId, featureId, puestoId = null }) {
+  const normalizedPuestoId = toNullableNumber(puestoId);
+
+  let query = supabase
     .from(tablePermissions)
     .select("id, app_role_id, feature_id, puesto_id")
     .eq("app_role_id", appRoleId)
     .eq("feature_id", featureId)
-    .is("puesto_id", null)
     .order("id", { ascending: true })
-    .limit(1)
-    .maybeSingle();
+    .limit(1);
 
-  if (error) throw error;
-  return data ?? null;
+  if (normalizedPuestoId === null) {
+    query = query.is("puesto_id", null);
+  } else {
+    query = query.eq("puesto_id", normalizedPuestoId);
+  }
+
+  const response = await query.maybeSingle();
+
+  if (response.error) throw response.error;
+  return response.data ?? null;
 }
 
 export async function upsertPermission(permission) {
@@ -243,86 +239,45 @@ export async function upsertPermission(permission) {
     throw new Error("app_role_id y feature_id son requeridos");
   }
 
-  if (payload.puesto_id === null) {
-    const existingGeneral = await fetchGeneralPermissionRow(
-      payload.app_role_id,
-      payload.feature_id,
-    );
+  const existingPermission = await fetchPermissionRow({
+    appRoleId: payload.app_role_id,
+    featureId: payload.feature_id,
+    puestoId: payload.puesto_id,
+  });
 
-    if (existingGeneral?.id) {
-      const { data, error } = await supabase
-        .from(tablePermissions)
-        .update(payload)
-        .eq("id", existingGeneral.id)
-        .select("*");
+  if (existingPermission?.id) {
+    const { data, error } = await supabase
+      .from(tablePermissions)
+      .update(payload)
+      .eq("id", existingPermission.id)
+      .select("*");
 
-      if (error) throw error;
+    if (error) throw error;
 
-      const updatedRow = Array.isArray(data) ? data[0] ?? null : data ?? null;
-      if (updatedRow) {
-        return updatedRow;
-      }
+    const updatedRow = Array.isArray(data) ? data[0] ?? null : data ?? null;
+    if (updatedRow) {
+      return updatedRow;
+    }
 
-      const refreshedGeneral = await fetchGeneralPermissionRow(
-        payload.app_role_id,
-        payload.feature_id,
+    const refreshedPermission = await fetchPermissionRow({
+      appRoleId: payload.app_role_id,
+      featureId: payload.feature_id,
+      puestoId: payload.puesto_id,
+    });
+
+    if (refreshedPermission?.id) {
+      throw new Error(
+        "No se pudo actualizar el permiso. Verifica la policy UPDATE de funcionalidades_roles."
       );
-
-      if (refreshedGeneral?.id) {
-        throw new Error(
-          "No se pudo actualizar el permiso. Verifica la policy UPDATE de funcionalidades_roles."
-        );
-      }
-
-      const { data: insertedData, error: insertError } = await supabase
-        .from(tablePermissions)
-        .insert(payload)
-        .select("*")
-        .maybeSingle();
-
-      if (insertError) throw insertError;
-      return insertedData;
     }
   }
 
   const { data, error } = await supabase
     .from(tablePermissions)
-    .upsert(payload, {
-      onConflict: "app_role_id,feature_id,puesto_id",
-    })
-    .select("*");
+    .insert(payload)
+    .select("*")
+    .maybeSingle();
 
   if (error) throw error;
-
-  const upsertedRow = Array.isArray(data) ? data[0] ?? null : data ?? null;
-  if (!upsertedRow) {
-    throw new Error(
-      "No se pudo guardar el permiso. Verifica las policies de funcionalidades_roles."
-    );
-  }
-  return upsertedRow;
-}
-
-export async function deletePermissionOverride({
-  app_role_id,
-  feature_id,
-  puesto_id,
-}) {
-  const appRoleId = Number(app_role_id);
-  const featureId = Number(feature_id);
-  const puestoId = toNullableNumber(puesto_id);
-
-  if (!appRoleId || !featureId || puestoId === null) {
-    throw new Error("app_role_id, feature_id y puesto_id son requeridos");
-  }
-
-  const { error } = await supabase
-    .from(tablePermissions)
-    .delete()
-    .eq("app_role_id", appRoleId)
-    .eq("feature_id", featureId)
-    .eq("puesto_id", puestoId);
-
-  if (error) throw error;
-  return true;
+  return data;
 }

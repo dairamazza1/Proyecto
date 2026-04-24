@@ -2,13 +2,12 @@ import styled from "styled-components";
 import { AccionTabla, Paginacion, resolvePerfilDisplayName } from "../../../index";
 import { v } from "../../../styles/variables";
 import { Device, DeviceMax } from "../../../styles/breakpoints";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { usePermissions } from "../../../hooks/usePermissions";
 import { FEATURES } from "../../../utils/features";
 import Swal from "sweetalert2";
-import { saveAs } from "file-saver";
-import Docxtemplater from "docxtemplater";
-import PizZip from "pizzip";
+import { downloadSancionDocx } from "../../../utils/legajoLaboralExport";
+import { downloadSucursalBannerTemplate } from "../../../supabase/crudSucursales";
 import {
   flexRender,
   getCoreRowModel,
@@ -16,8 +15,6 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-
-const TEMPLATE_URL = "/templates/sancion_template.docx";
 
 const formatNombre = (persona) => {
   if (!persona) return "-";
@@ -39,6 +36,13 @@ const getSucursalAddress = (empleado) => {
     ? empleado.sucursal[0]
     : empleado?.sucursal;
   return raw?.sucursal?.address || "-";
+};
+
+const getSucursalBannerTemplate = (empleado) => {
+  const raw = Array.isArray(empleado?.sucursal)
+    ? empleado.sucursal[0]
+    : empleado?.sucursal;
+  return raw?.sucursal?.banner_template ?? "";
 };
 
 const formatDateRange = (startDate, endDate) => {
@@ -149,7 +153,6 @@ export function TablaSanciones({ data, onEdit, onDelete }) {
   const [sorting, setSorting] = useState([
     { id: "sanction_date_start", desc: true },
   ]);
-  const templateRef = useRef(null);
   
   // Hook de permisos
   const { canUpdate, canDelete, canExport } = usePermissions();
@@ -160,38 +163,22 @@ export function TablaSanciones({ data, onEdit, onDelete }) {
   const getRequestedByLabel = (row) =>
     buildPerfilDateLabel(row?.creador, row?.created_by, row?.created_at);
 
-  const loadTemplate = async () => {
-    if (templateRef.current) return templateRef.current;
-    const response = await fetch(TEMPLATE_URL);
-    if (!response.ok) {
-      throw new Error("No se pudo cargar la plantilla Word.");
-    }
-    const arrayBuffer = await response.arrayBuffer();
-    templateRef.current = arrayBuffer;
-    return arrayBuffer;
-  };
-
   const handleExportDocx = async (sancion) => {
     try {
-      const template = await loadTemplate();
-      const zip = new PizZip(template);
-      const doc = new Docxtemplater(zip, {
-        paragraphLoop: true,
-        linebreaks: true,
-        delimiters: { start: "{{", end: "}}" },
-      });
       const createdByLabel = getCreatedByName(sancion);
-      doc.render(buildTemplateData(sancion, createdByLabel));
-      const blob = doc.getZip().generate({
-        type: "blob",
-        mimeType:
-          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      });
+      const bannerTemplate = getSucursalBannerTemplate(sancion?.empleado);
+      const banner = bannerTemplate
+        ? await downloadSucursalBannerTemplate(bannerTemplate)
+        : null;
       const fileDate = buildFileDate(
         sancion?.sanction_date_start || sancion?.created_at
       );
       const fileName = `legajo_sancion_${sancion?.empleado?.last_name ?? "registro"}_${fileDate}.docx`;
-      saveAs(blob, fileName);
+      await downloadSancionDocx({
+        data: buildTemplateData(sancion, createdByLabel),
+        banner,
+        fileName,
+      });
     } catch (err) {
       Swal.fire({
         icon: "error",

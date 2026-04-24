@@ -92,7 +92,7 @@ export function MyRoutes() {
             </ProtectedByPermission>
           }
         />
-        <Route path="/ConfiguraciÃ³n" element={<Configurations />} />
+        <Route path="/Configuración" element={<Configurations />} />
 
         <Route
           path="/empleados"
@@ -191,7 +191,7 @@ export function MyRoutes() {
           }
         />
         <Route
-          path="/ConfiguraciÃ³n/invitaciones"
+          path="/Configuración/invitaciones"
           element={
             <ProtectedByPermission
               resource={FEATURES.EMPLEADOS}

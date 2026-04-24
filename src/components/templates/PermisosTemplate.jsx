@@ -5,17 +5,13 @@ import Swal from "sweetalert2";
 import { Spinner1, Title, usePermissions } from "../../index";
 import {
   computeEffectivePermission,
-  deletePermissionOverride,
-  fetchClinicalAreas,
   fetchFeatures,
   fetchPermissions,
-  fetchPuestosLaborales,
+  fetchPuestos,
   fetchRoles,
   upsertPermission,
-  updateClinicalAreaPermission,
 } from "../../supabase/crudPermisos";
 import { FEATURES } from "../../utils/features";
-import { DeviceMax } from "../../styles/breakpoints";
 
 const permissionActions = [
   { key: "can_view", label: "Ver" },
@@ -32,41 +28,40 @@ const basePermission = {
   can_delete: false,
   can_validate: false,
 };
+
 const FEATURE_CATALOG = Object.values(FEATURES);
 
-const normalizePuestoId = (value) => {
-  if (value === "general" || value === "" || value === null || value === undefined) {
-    return null;
-  }
+const sourceLabel = (source) => {
+  if (source === "puesto") return "Puesto";
+  if (source === "general") return "General";
+  return "Sin regla";
+};
+
+const toNullableNumber = (value) => {
+  if (value === null || value === undefined || value === "") return null;
   const parsed = Number(value);
   return Number.isNaN(parsed) ? null : parsed;
 };
 
-const sourceLabel = (selectedPuestoId, source) => {
-  if (selectedPuestoId === null) return "General";
-  if (source === "override") return "Override";
-  if (source === "general") return "Heredado";
-  return "Sin regla";
-};
+const permissionRowMatcher = (rows, roleId, featureId, puestoId = null) => {
+  const normalizedPuestoId = toNullableNumber(puestoId);
 
-const permissionRowMatcher = (rows, roleId, featureId, puestoId) =>
+  return (
   (rows ?? []).find(
     (row) =>
       Number(row?.app_role_id) === Number(roleId) &&
       Number(row?.feature_id) === Number(featureId) &&
-      (puestoId === null
-        ? row?.puesto_id === null || row?.puesto_id === undefined
-        : Number(row?.puesto_id) === Number(puestoId))
-  ) ?? null;
+      toNullableNumber(row?.puesto_id) === normalizedPuestoId
+  ) ?? null
+  );
+};
 
 export function PermisosTemplate() {
   const queryClient = useQueryClient();
   const { canUpdate } = usePermissions();
-  const [scopeValue, setScopeValue] = useState("general");
-
-  const selectedPuestoId = normalizePuestoId(scopeValue);
-  const canUpdatePermisos = canUpdate(FEATURES.PERMISOS);
-  const canEditPermissions = canUpdatePermisos;
+  const canEditPermissions = canUpdate(FEATURES.PERMISOS);
+  const [selectedRoleId, setSelectedRoleId] = useState("");
+  const [selectedPuestoId, setSelectedPuestoId] = useState("");
 
   const featuresQuery = useQuery({
     queryKey: ["permissionsFeatures"],
@@ -82,58 +77,52 @@ export function PermisosTemplate() {
 
   const puestosQuery = useQuery({
     queryKey: ["permissionsPuestos"],
-    queryFn: fetchPuestosLaborales,
+    queryFn: fetchPuestos,
     refetchOnWindowFocus: false,
   });
 
-  const clinicalAreasQuery = useQuery({
-    queryKey: ["clinicalAreasPermissions"],
-    queryFn: fetchClinicalAreas,
-    refetchOnWindowFocus: false,
-  });
-
-  const generalPermissionsQuery = useQuery({
+  const permissionsQuery = useQuery({
     queryKey: ["permissionsGridGeneral"],
-    queryFn: () => fetchPermissions({ puestoId: null }),
-    refetchOnWindowFocus: false,
-  });
-
-  const overridePermissionsQuery = useQuery({
-    queryKey: ["permissionsGridOverrides", selectedPuestoId],
-    queryFn: () => fetchPermissions({ puestoId: selectedPuestoId }),
-    enabled: selectedPuestoId !== null,
+    queryFn: () => fetchPermissions(),
     refetchOnWindowFocus: false,
   });
 
   const features = useMemo(() => {
     const featuresByName = new Map(
-      (featuresQuery.data ?? []).map((feature) => [feature?.name, feature]),
+      (featuresQuery.data ?? []).map((feature) => [feature?.name, feature])
     );
 
-    return FEATURE_CATALOG.map((featureName) => featuresByName.get(featureName)).filter(Boolean);
+    return FEATURE_CATALOG.map((featureName) =>
+      featuresByName.get(featureName)
+    ).filter(Boolean);
   }, [featuresQuery.data]);
-  const roles = rolesQuery.data ?? [];
-  const puestos = puestosQuery.data ?? [];
-  const clinicalAreas = clinicalAreasQuery.data ?? [];
-  const generalPermissions = useMemo(
-    () => generalPermissionsQuery.data ?? [],
-    [generalPermissionsQuery.data]
-  );
-  const overridePermissions = useMemo(
-    () => overridePermissionsQuery.data ?? [],
-    [overridePermissionsQuery.data]
-  );
 
-  const permissionsRows = useMemo(() => {
-    if (selectedPuestoId === null) return generalPermissions;
-    return [...generalPermissions, ...overridePermissions];
-  }, [generalPermissions, overridePermissions, selectedPuestoId]);
+  const roles = useMemo(() => rolesQuery.data ?? [], [rolesQuery.data]);
+  const puestos = useMemo(() => puestosQuery.data ?? [], [puestosQuery.data]);
+  const permissionsRows = useMemo(
+    () => permissionsQuery.data ?? [],
+    [permissionsQuery.data]
+  );
+  const resolvedSelectedRoleId = selectedRoleId || String(roles[0]?.id ?? "");
+  const selectedRoleNumeric = toNullableNumber(resolvedSelectedRoleId);
+  const selectedPuestoNumeric = toNullableNumber(selectedPuestoId);
+  const selectedRole = useMemo(
+    () =>
+      roles.find((role) => Number(role?.id) === Number(selectedRoleNumeric)) ?? null,
+    [roles, selectedRoleNumeric]
+  );
+  const selectedPuesto = useMemo(
+    () =>
+      puestos.find(
+        (puesto) => Number(puesto?.id) === Number(selectedPuestoNumeric)
+      ) ?? null,
+    [puestos, selectedPuestoNumeric]
+  );
 
   const refreshPermissionsQueries = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["permissions"] }),
       queryClient.invalidateQueries({ queryKey: ["permissionsGridGeneral"] }),
-      queryClient.invalidateQueries({ queryKey: ["permissionsGridOverrides"] }),
     ]);
   };
 
@@ -149,78 +138,31 @@ export function PermisosTemplate() {
     },
   });
 
-  const updateClinicalAreaMutation = useMutation({
-    mutationFn: ({ id, enabled }) => updateClinicalAreaPermission(id, enabled),
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["clinicalAreasPermissions"] }),
-        queryClient.invalidateQueries({ queryKey: ["pacienteEquipoProfesionalesSearch"] }),
-        queryClient.invalidateQueries({ queryKey: ["pacienteEquipoTratante"] }),
-      ]);
-    },
-    onError: (error) => {
-      Swal.fire({
-        icon: "error",
-        title: "No se pudo actualizar la elegibilidad clínica",
-        text: error?.message ?? "Intenta nuevamente.",
-      });
-    },
-  });
-
-  const resetOverrideMutation = useMutation({
-    mutationFn: (payload) => deletePermissionOverride(payload),
-    onSuccess: refreshPermissionsQueries,
-    onError: (error) => {
-      Swal.fire({
-        icon: "error",
-        title: "No se pudo resetear el override",
-        text: error?.message ?? "Intenta nuevamente.",
-      });
-    },
-  });
-
   const getCellState = (roleId, featureId) => {
-    const effective = computeEffectivePermission(
-      roleId,
-      featureId,
-      selectedPuestoId,
-      permissionsRows
-    );
-    const generalRow = permissionRowMatcher(
-      generalPermissions,
-      roleId,
-      featureId,
-      null
-    );
-    const overrideRow =
-      selectedPuestoId === null
-        ? null
-        : permissionRowMatcher(
-            overridePermissions,
-            roleId,
-            featureId,
-            selectedPuestoId
-          );
-    return { effective, generalRow, overrideRow };
+    return getPermissionCellState(roleId, featureId, null);
   };
 
   const handlePermissionToggle = ({
     roleId,
     featureId,
+    puestoId = null,
     actionKey,
     checked,
   }) => {
-    const { generalRow, overrideRow } = getCellState(roleId, featureId);
-
+    const { effective, exactRow, generalRow } = getPermissionCellState(
+      roleId,
+      featureId,
+      puestoId
+    );
     const base =
-      selectedPuestoId === null
-        ? generalRow ?? basePermission
-        : overrideRow ?? generalRow ?? basePermission;
+      exactRow ??
+      (puestoId !== null ? effective : generalRow) ??
+      basePermission;
 
     upsertPermissionMutation.mutate({
       app_role_id: roleId,
       feature_id: featureId,
-      puesto_id: selectedPuestoId,
+      puesto_id: puestoId,
       can_view: Boolean(base.can_view),
       can_create: Boolean(base.can_create),
       can_update: Boolean(base.can_update),
@@ -230,38 +172,40 @@ export function PermisosTemplate() {
     });
   };
 
-  const handleResetOverride = ({ roleId, featureId }) => {
-    if (selectedPuestoId === null) return;
-    resetOverrideMutation.mutate({
-      app_role_id: roleId,
-      feature_id: featureId,
-      puesto_id: selectedPuestoId,
-    });
-  };
-
-  const handleClinicalAreaToggle = (area) => {
-    if (!area?.id || !canEditPermissions || updateClinicalAreaMutation.isPending) return;
-    updateClinicalAreaMutation.mutate({
-      id: area.id,
-      enabled: !area?.grants_patient_clinical_permissions,
-    });
-  };
-
   const isLoading =
     featuresQuery.isLoading ||
     rolesQuery.isLoading ||
     puestosQuery.isLoading ||
-    clinicalAreasQuery.isLoading ||
-    generalPermissionsQuery.isLoading ||
-    (selectedPuestoId !== null && overridePermissionsQuery.isLoading);
+    permissionsQuery.isLoading;
 
   const firstError =
     featuresQuery.error ||
     rolesQuery.error ||
     puestosQuery.error ||
-    clinicalAreasQuery.error ||
-    generalPermissionsQuery.error ||
-    overridePermissionsQuery.error;
+    permissionsQuery.error;
+
+  function getPermissionCellState(roleId, featureId, puestoId = null) {
+    const normalizedPuestoId = toNullableNumber(puestoId);
+    const effective = computeEffectivePermission(
+      roleId,
+      featureId,
+      permissionsRows,
+      normalizedPuestoId
+    );
+    const exactRow = permissionRowMatcher(
+      permissionsRows,
+      roleId,
+      featureId,
+      normalizedPuestoId
+    );
+    const generalRow = permissionRowMatcher(
+      permissionsRows,
+      roleId,
+      featureId,
+      null
+    );
+    return { effective, exactRow, generalRow };
+  }
 
   if (isLoading) return <Spinner1 />;
   if (firstError) {
@@ -273,97 +217,15 @@ export function PermisosTemplate() {
       <Header>
         <div className="titleGroup">
           <Title>Permisos</Title>
-          <p>Configura permisos globales y elegibilidad clinica sin mezclar ambos criterios.</p>
+          <p>Configura permisos globales por rol y overrides puntuales por puesto.</p>
         </div>
       </Header>
-
-      <InfoCallout>
-        <strong>Permisos globales y elegibilidad clinica</strong>
-        <p>
-          La matriz define acceso global por rol o puesto a las funcionalidades del sistema.
-        </p>
-        <p>
-          La elegibilidad clinica se configura por area y solo habilita acciones sobre pacientes
-          cuando ademas existe una asignacion activa al equipo tratante del ingreso.
-        </p>
-      </InfoCallout>
-
-      <ControlsCard>
-        <div className="scopeControl">
-          <label htmlFor="scopeSelect">Alcance de permisos globales</label>
-          <select
-            id="scopeSelect"
-            value={scopeValue}
-            onChange={(event) => setScopeValue(event.target.value)}
-          >
-            <option value="general">General por rol</option>
-            {puestos.map((puesto) => (
-              <option key={puesto.id} value={puesto.id}>
-                Override por puesto: {puesto.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="scopeHint">
-          <strong>Catálogo fijo</strong>
-          <span>
-            Esta matriz usa las funcionalidades definidas por el sistema. Ya no se crean
-            funcionalidades libres desde esta pantalla.
-          </span>
-        </div>
-      </ControlsCard>
-
-      <ClinicalAreasCard>
-        <div className="sectionHeader">
-          <div>
-            <h3>Elegibilidad clinica por area</h3>
-            <p>
-              Define que areas otorgan permisos clinicos cuando el profesional queda asignado a
-              una internacion.
-            </p>
-          </div>
-        </div>
-
-        {clinicalAreas.length ? (
-          <div className="areasGrid">
-            {clinicalAreas.map((area) => {
-              const enabled = Boolean(area?.grants_patient_clinical_permissions);
-              const isDisabled = !canEditPermissions || updateClinicalAreaMutation.isPending;
-
-              return (
-                <article key={area.id} className="areaCard">
-                  <div className="areaBody">
-                    <strong>{area?.name || "Area"}</strong>
-                    <span className={`status ${enabled ? "enabled" : "disabled"}`}>
-                      {enabled ? "Otorga permisos clinicos" : "No otorga permisos clinicos"}
-                    </span>
-                  </div>
-
-                  <label className={`toggleRow ${isDisabled ? "isDisabled" : ""}`}>
-                    <input
-                      type="checkbox"
-                      checked={enabled}
-                      disabled={isDisabled}
-                      onChange={() => handleClinicalAreaToggle(area)}
-                    />
-                    <span>Otorga permisos clinicos</span>
-                  </label>
-                </article>
-              );
-            })}
-          </div>
-        ) : (
-          <EmptyBlock>No hay áreas laborales disponibles para configurar.</EmptyBlock>
-        )}
-      </ClinicalAreasCard>
 
       <TableCard>
         <div className="sectionHeader">
           <div>
             <h3>Matriz de permisos globales</h3>
-            <p>
-              Controla acceso a módulos y acciones por rol, con overrides opcionales por puesto.
-            </p>
+            <p>Controla acceso a modulos y acciones por rol.</p>
           </div>
         </div>
         <div className="tableWrap">
@@ -386,10 +248,9 @@ export function PermisosTemplate() {
                   </td>
 
                   {roles.map((role) => {
-                    const { effective, overrideRow } = getCellState(role.id, feature.id);
+                    const { effective } = getCellState(role.id, feature.id);
                     const disabled =
                       upsertPermissionMutation.isPending ||
-                      resetOverrideMutation.isPending ||
                       !canEditPermissions;
 
                     return (
@@ -397,24 +258,8 @@ export function PermisosTemplate() {
                         <div className="permissionCell">
                           <div className="cellHeader">
                             <span className={`source ${effective.source}`}>
-                              {sourceLabel(selectedPuestoId, effective.source)}
+                              {sourceLabel(effective.source)}
                             </span>
-                            {selectedPuestoId !== null &&
-                              overrideRow &&
-                              canUpdatePermisos && (
-                                <button
-                                  type="button"
-                                  className="linkButton"
-                                  onClick={() =>
-                                    handleResetOverride({
-                                      roleId: role.id,
-                                      featureId: feature.id,
-                                    })
-                                  }
-                                >
-                                  Reset a general
-                                </button>
-                              )}
                           </div>
 
                           <div className="toggleList">
@@ -447,6 +292,120 @@ export function PermisosTemplate() {
           </table>
         </div>
       </TableCard>
+
+      <TableCard>
+        <div className="sectionHeader">
+          <div>
+            <h3>Permisos por puesto</h3>
+            <p>Selecciona un rol y un puesto para editar overrides especificos.</p>
+          </div>
+        </div>
+
+        <div className="filtersRow">
+          <label className="selectField">
+            <span>Rol</span>
+            <select
+              value={resolvedSelectedRoleId}
+              onChange={(event) => setSelectedRoleId(event.target.value)}
+            >
+              {roles.map((role) => (
+                <option key={role.id} value={role.id}>
+                  {role.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="selectField">
+            <span>Puesto</span>
+            <select
+              value={selectedPuestoId}
+              onChange={(event) => setSelectedPuestoId(event.target.value)}
+            >
+              <option value="">Selecciona un puesto</option>
+              {puestos.map((puesto) => (
+                <option key={puesto.id} value={puesto.id}>
+                  {puesto.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        {selectedRoleNumeric && selectedPuestoNumeric ? (
+          <div className="tableWrap">
+            <table className="permissionsTable puestoTable">
+              <thead>
+                <tr>
+                  <th>Funcionalidad</th>
+                  <th>
+                    {selectedRole?.name ?? "Rol"} / {selectedPuesto?.name ?? "Puesto"}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {features.map((feature) => {
+                  const { effective } = getPermissionCellState(
+                    selectedRoleNumeric,
+                    feature.id,
+                    selectedPuestoNumeric
+                  );
+                  const disabled =
+                    upsertPermissionMutation.isPending || !canEditPermissions;
+
+                  return (
+                    <tr key={`puesto-${feature.id}`}>
+                      <td>
+                        <div className="featureNameCell">
+                          <span>{feature.name}</span>
+                        </div>
+                      </td>
+                      <td>
+                        <div className="permissionCell">
+                          <div className="cellHeader">
+                            <span className={`source ${effective.source}`}>
+                              {sourceLabel(effective.source)}
+                            </span>
+                          </div>
+
+                          <div className="toggleList">
+                            {permissionActions.map((action) => (
+                              <label
+                                key={`puesto-${feature.id}-${action.key}`}
+                                className="toggleItem"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={Boolean(effective[action.key])}
+                                  disabled={disabled}
+                                  onChange={(event) =>
+                                    handlePermissionToggle({
+                                      roleId: selectedRoleNumeric,
+                                      featureId: feature.id,
+                                      puestoId: selectedPuestoNumeric,
+                                      actionKey: action.key,
+                                      checked: event.target.checked,
+                                    })
+                                  }
+                                />
+                                <span>{action.label}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <EmptyState>
+            Selecciona un rol y un puesto para configurar permisos especificos.
+          </EmptyState>
+        )}
+      </TableCard>
     </Container>
   );
 }
@@ -472,165 +431,6 @@ const Header = styled.header`
   }
 `;
 
-const InfoCallout = styled.section`
-  background: ${({ theme }) => theme.bg};
-  border: 1px solid ${({ theme }) => theme.color2};
-  border-radius: 16px;
-  padding: 14px 16px;
-  display: grid;
-  gap: 6px;
-  box-shadow: var(--shadow-elev-1);
-
-  strong,
-  p {
-    margin: 0;
-  }
-
-  strong {
-    color: ${({ theme }) => theme.text};
-  }
-
-  p {
-    color: ${({ theme }) => theme.textsecundary};
-    line-height: 1.45;
-  }
-`;
-
-const ControlsCard = styled.section`
-  background: ${({ theme }) => theme.bg};
-  border-radius: 16px;
-  box-shadow: var(--shadow-elev-1);
-  padding: 16px;
-  display: grid;
-  gap: 14px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-
-  .scopeControl,
-  .scopeHint {
-    display: grid;
-    gap: 8px;
-  }
-
-  label {
-    font-weight: 600;
-    color: ${({ theme }) => theme.text};
-  }
-
-  select,
-  input {
-    height: 44px;
-    border-radius: 10px;
-    border: 1px solid ${({ theme }) => theme.color2};
-    background: ${({ theme }) => theme.bgtotal};
-    color: ${({ theme }) => theme.text};
-    padding: 0 12px;
-    outline: none;
-    width: 100%;
-  }
-
-  .scopeHint {
-    align-content: center;
-    border: 1px dashed ${({ theme }) => theme.color2};
-    border-radius: 12px;
-    padding: 12px;
-    background: ${({ theme }) => theme.bgtotal};
-  }
-
-  .scopeHint strong,
-  .scopeHint span {
-    margin: 0;
-  }
-
-  .scopeHint span {
-    color: ${({ theme }) => theme.textsecundary};
-    line-height: 1.45;
-  }
-
-  @media ${DeviceMax.tablet} {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const ClinicalAreasCard = styled.section`
-  background: ${({ theme }) => theme.bg};
-  border-radius: 16px;
-  box-shadow: var(--shadow-elev-1);
-  padding: 16px;
-  display: grid;
-  gap: 14px;
-
-  .sectionHeader h3,
-  .sectionHeader p {
-    margin: 0;
-  }
-
-  .sectionHeader {
-    display: grid;
-    gap: 6px;
-  }
-
-  .sectionHeader p {
-    color: ${({ theme }) => theme.textsecundary};
-    line-height: 1.45;
-  }
-
-  .areasGrid {
-    display: grid;
-    gap: 12px;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  }
-
-  .areaCard {
-    border: 1px solid ${({ theme }) => theme.color2};
-    border-radius: 14px;
-    padding: 14px;
-    background: ${({ theme }) => theme.bgtotal};
-    display: grid;
-    gap: 12px;
-  }
-
-  .areaBody {
-    display: grid;
-    gap: 6px;
-  }
-
-  .status {
-    width: fit-content;
-    border-radius: 999px;
-    padding: 4px 10px;
-    font-size: 0.76rem;
-    font-weight: 700;
-  }
-
-  .status.enabled {
-    background: rgba(52, 125, 96, 0.14);
-    color: #2d7a60;
-  }
-
-  .status.disabled {
-    background: rgba(168, 138, 75, 0.14);
-    color: #8b6b2d;
-  }
-
-  .toggleRow {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    color: ${({ theme }) => theme.text};
-    font-weight: 600;
-  }
-
-  .toggleRow.isDisabled {
-    opacity: 0.65;
-  }
-
-  .toggleRow input {
-    width: 16px;
-    height: 16px;
-    margin: 0;
-  }
-`;
-
 const TableCard = styled.section`
   background: ${({ theme }) => theme.bg};
   border-radius: 16px;
@@ -651,6 +451,35 @@ const TableCard = styled.section`
   .sectionHeader p {
     color: ${({ theme }) => theme.textsecundary};
     line-height: 1.45;
+  }
+
+  .filtersRow {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .selectField {
+    display: grid;
+    gap: 6px;
+  }
+
+  .selectField span {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: ${({ theme }) => theme.textsecundary};
+  }
+
+  .selectField select {
+    width: 100%;
+    min-height: 44px;
+    border-radius: 10px;
+    border: 1px solid ${({ theme }) => theme.color2};
+    background: ${({ theme }) => theme.bgtotal};
+    color: ${({ theme }) => theme.text};
+    padding: 0 12px;
+    outline: none;
   }
 
   .tableWrap {
@@ -715,14 +544,14 @@ const TableCard = styled.section`
     color: ${({ theme }) => theme.textsecundary};
   }
 
-  .source.override {
-    color: var(--color-success);
-    border-color: var(--color-success);
-  }
-
   .source.general {
     color: ${({ theme }) => theme.color1};
     border-color: ${({ theme }) => theme.color1};
+  }
+
+  .source.puesto {
+    color: var(--color-success);
+    border-color: var(--color-success);
   }
 
   .source.none {
@@ -748,22 +577,17 @@ const TableCard = styled.section`
     height: 14px;
   }
 
-  .linkButton {
-    border: none;
-    background: transparent;
-    color: ${({ theme }) => theme.color1};
-    text-decoration: underline;
-    text-underline-offset: 2px;
-    cursor: pointer;
-    font-size: 0.78rem;
-    padding: 0;
+  @media (max-width: 760px) {
+    .filtersRow {
+      grid-template-columns: 1fr;
+    }
   }
 `;
 
-const EmptyBlock = styled.div`
-  border: 1px dashed ${({ theme }) => theme.color2};
+const EmptyState = styled.div`
+  padding: 18px;
   border-radius: 14px;
-  padding: 16px;
+  border: 1px dashed ${({ theme }) => theme.color2};
   color: ${({ theme }) => theme.textsecundary};
-  background: ${({ theme }) => theme.bgtotal};
+  text-align: center;
 `;

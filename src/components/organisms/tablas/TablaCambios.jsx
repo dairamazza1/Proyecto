@@ -2,13 +2,12 @@ import styled from "styled-components";
 import { AccionTabla, Paginacion, resolvePerfilDisplayName } from "../../../index";
 import { v } from "../../../styles/variables";
 import { Device, DeviceMax } from "../../../styles/breakpoints";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { usePermissions } from "../../../hooks/usePermissions";
 import { FEATURES } from "../../../utils/features";
 import Swal from "sweetalert2";
-import { saveAs } from "file-saver";
-import Docxtemplater from "docxtemplater";
-import PizZip from "pizzip";
+import { downloadCambioTurnoDocx } from "../../../utils/legajoLaboralExport";
+import { downloadSucursalBannerTemplate } from "../../../supabase/crudSucursales";
 import {
   flexRender,
   getCoreRowModel,
@@ -108,6 +107,13 @@ const getSucursalAddress = (empleado) => {
   return raw?.sucursal?.address || "-";
 };
 
+const getSucursalBannerTemplate = (empleado) => {
+  const raw = Array.isArray(empleado?.sucursal)
+    ? empleado.sucursal[0]
+    : empleado?.sucursal;
+  return raw?.sucursal?.banner_template ?? "";
+};
+
 const formatDateTime = (value) => {
   if (!value) return "-";
   const parsed = new Date(value);
@@ -136,8 +142,6 @@ const buildFileDate = (value) => {
   }
   return `${year}${month}${day}`;
 };
-
-const TEMPLATE_URL = "/templates/cambio_template.docx";
 
 const resolveEmpresaNombre = (cambio, empresaNombre) => {
   const storeName = (empresaNombre ?? "").trim();
@@ -177,7 +181,6 @@ export function TablaCambios({
   const [columnFilters] = useState([]);
   const [sorting, setSorting] = useState([{ id: "start_date", desc: true }]);
   const [previewCambio, setPreviewCambio] = useState(null);
-  const templateRef = useRef(null);
 
   // Hook de permisos
   const {
@@ -200,38 +203,22 @@ export function TablaCambios({
     setPreviewCambio(null);
   };
 
-  const loadTemplate = async () => {
-    if (templateRef.current) return templateRef.current;
-    const response = await fetch(TEMPLATE_URL);
-    if (!response.ok) {
-      throw new Error("No se pudo cargar la plantilla Word.");
-    }
-    const arrayBuffer = await response.arrayBuffer();
-    templateRef.current = arrayBuffer;
-    return arrayBuffer;
-  };
-
   const handleExportDocx = async (cambio) => {
     try {
-      const template = await loadTemplate();
-      const zip = new PizZip(template);
-      const doc = new Docxtemplater(zip, {
-        paragraphLoop: true,
-        linebreaks: true,
-        delimiters: { start: "{{", end: "}}" },
-      });
-      doc.render(buildTemplateData(cambio, empresaNombre));
-      const blob = doc.getZip().generate({
-        type: "blob",
-        mimeType:
-          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      });
+      const bannerTemplate = getSucursalBannerTemplate(cambio?.empleado);
+      const banner = bannerTemplate
+        ? await downloadSucursalBannerTemplate(bannerTemplate)
+        : null;
       const fileDate = buildFileDate(cambio?.start_date || cambio?.created_at);
 
       const fileName = `legajo_cambio_turno_${
-        cambio?.empleado.last_name ?? "registro"
+        cambio?.empleado?.last_name ?? "registro"
       }_${fileDate}.docx`;
-      saveAs(blob, fileName);
+      await downloadCambioTurnoDocx({
+        data: buildTemplateData(cambio, empresaNombre),
+        banner,
+        fileName,
+      });
     } catch (err) {
       Swal.fire({
         icon: "error",

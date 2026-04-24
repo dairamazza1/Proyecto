@@ -162,9 +162,7 @@ export const exportPacienteEvolucionesDocx = async ({
             banner,
             clinicName: safeText(empresa?.name ?? empresa?.nombre ?? CLINICA_NOMBRE),
             title: DOCUMENT_TITLE,
-            subtitle: ingreso?.sucursal?.name
-              ? `Sucursal: ${safeText(ingreso.sucursal.name)}`
-              : "",
+            
           }),
           createLabelParagraph("Paciente: ", buildPacienteNombre(paciente)),
           createLabelParagraph(

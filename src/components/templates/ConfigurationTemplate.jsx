@@ -12,6 +12,10 @@ import {
 } from "../../index";
 import { useAuthStore } from "../../context/AuthStoreWithPermissions";
 import { supabase } from "../../supabase/supabase.config.jsx";
+import {
+  PASSWORD_REQUIRED_MESSAGE,
+  validatePasswordRules,
+} from "../../utils/passwordValidation";
 
 export function ConfigurationTemplate() {
   const navigate = useNavigate();
@@ -70,10 +74,12 @@ export function ConfigurationTemplate() {
       errors.currentPassword = "Ingresa tu contraseña actual";
     }
 
-    if (!passwordData.newPassword) {
-      errors.newPassword = "Ingresa una contraseña nueva";
-    } else if (passwordData.newPassword.length < 6) {
-      errors.newPassword = "La contraseña debe tener al menos 6 caracteres";
+    const newPasswordError = validatePasswordRules(passwordData.newPassword);
+    if (newPasswordError) {
+      errors.newPassword =
+        newPasswordError === PASSWORD_REQUIRED_MESSAGE
+          ? "Ingresa una contraseña nueva"
+          : newPasswordError;
     } else if (passwordData.newPassword === passwordData.currentPassword) {
       errors.newPassword = "La nueva contraseña debe ser distinta";
     }

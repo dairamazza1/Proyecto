@@ -3,6 +3,7 @@ import styled from "styled-components";
 import { useQuery } from "@tanstack/react-query";
 import {
   Btn1,
+  ModalEmpleadoBajaForm,
   ModalInvitarUsuario,
   RegistrarEmpleados,
   Title,
@@ -21,6 +22,7 @@ import { useSearchParams } from "react-router-dom";
 
 export function EmpleadoTemplate({ id, empleado, isError, sucursalEmpleado }) {
   const [openEditar, setOpenEditar] = useState(false);
+  const [openBaja, setOpenBaja] = useState(false);
   const [openInvitar, setOpenInvitar] = useState(false);
   const [activeTab, setActiveTab] = useState("vacaciones");
   const [searchParams] = useSearchParams();
@@ -28,6 +30,7 @@ export function EmpleadoTemplate({ id, empleado, isError, sucursalEmpleado }) {
 
   // Hook de permisos
   const { canUpdate, canRead, canCreate, isEmployee } = usePermissions();
+  const canEditEmpleados = useMemo(() => canUpdate("empleados"), [canUpdate]);
   const canInvite = useMemo(() => canCreate("empleados"), [canCreate]);
   const canSeeCambios = useMemo(
     () => canRead("cambios_turno"),
@@ -79,10 +82,16 @@ export function EmpleadoTemplate({ id, empleado, isError, sucursalEmpleado }) {
   const ageLabel = formatAge(empleado?.birthday);
   const genreLabel = empleado?.genre ?? "-";
   const shiftLabel = formatShift(empleado?.shift);
+  const auditorFinanciadorLabel =
+    empleado?.auditor_financiador?.name ??
+    empleado?.auditor_financiador?.code ??
+    "-";
 
   const terminationDate = formatDate(empleado?.termination_date);
 
   const hasUser = Boolean(empleado?.user_id);
+  const canRenderBaja = Boolean(canEditEmpleados && empleado?.is_active);
+  const headerActionCount = [canInvite, canEditEmpleados, canRenderBaja].filter(Boolean).length;
 
   const empleadoInviteLabel = useMemo(() => {
     const name =
@@ -96,29 +105,50 @@ export function EmpleadoTemplate({ id, empleado, isError, sucursalEmpleado }) {
       <Header>
         <div className="titleGroup">
           <Title>Empleado</Title>
-          <h2>{fullName ? `Perfil Profesional de ${fullName}` : "-"}</h2>
+          <div className="profileHeading">
+            <h2>{fullName ? `Perfil Profesional de ${fullName}` : "-"}</h2>
+            {id && empleado && (
+              <StatusPill className={empleado?.is_active ? "activo" : "inactivo"}>
+                Estado: {statusLabel}
+              </StatusPill>
+            )}
+          </div>
         </div>
         {id && empleado && (
-          <div className="headerActions">
-            <StatusPill className={empleado?.is_active ? "activo" : "inactivo"}>
-              Estado: {statusLabel}
-            </StatusPill>
+          <div
+            className="headerActions"
+            style={{
+              "--header-actions-columns": String(
+                Math.max(1, Math.min(3, headerActionCount))
+              ),
+            }}
+          >
             {canInvite && (
               <Btn1
                 icono={<v.iconoagregar />}
-                titulo={hasUser ? "Usuario ya creado" : "Crear usuario"}
+                titulo={hasUser ? "Usuario creado" : "Crear usuario"}
                 bgcolor={v.colorPrincipal}
                 funcion={() => setOpenInvitar(true)}
                 disabled={hasUser || !empresaId}
                 tipo="button"
               />
             )}
-            {canUpdate("empleados") && (
+            
+            {canEditEmpleados && (
               <Btn1
                 icono={<v.iconeditarTabla />}
                 titulo="Editar"
                 bgcolor={v.colorPrincipal}
                 funcion={() => setOpenEditar(true)}
+              />
+            )}
+            {canRenderBaja && (
+              <Btn1
+                icono={<v.iconocerrar />}
+                titulo="Dar de baja"
+                bgcolor="var(--color-danger)"
+                funcion={() => setOpenBaja(true)}
+                tipo="button"
               />
             )}
           </div>
@@ -188,6 +218,12 @@ export function EmpleadoTemplate({ id, empleado, isError, sucursalEmpleado }) {
                 <span className="label">Puesto</span>
                 <span className="value">{empleado?.puesto?.name ?? "-"}</span>
               </InfoItem>
+              {empleado?.auditor_financiador_id && (
+                <InfoItem>
+                  <span className="label">Financiador auditor</span>
+                  <span className="value">{auditorFinanciadorLabel}</span>
+                </InfoItem>
+              )}
               <InfoItem>
                 <span className="label">Turno</span>
                 <span className="value">{shiftLabel}</span>
@@ -285,6 +321,14 @@ export function EmpleadoTemplate({ id, empleado, isError, sucursalEmpleado }) {
         />
       )}
 
+      {openBaja && id && empleado && (
+        <ModalEmpleadoBajaForm
+          empleadoId={id}
+          empleadoLabel={fullName || `Empleado ${id}`}
+          onClose={() => setOpenBaja(false)}
+        />
+      )}
+
       {openInvitar && id && empleado && (
         <ModalInvitarUsuario
           empresaId={empresaId}
@@ -307,7 +351,7 @@ const Container = styled.div`
 
 const Header = styled.header`
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
   flex-wrap: wrap;
@@ -315,6 +359,16 @@ const Header = styled.header`
   .titleGroup {
     display: grid;
     gap: 6px;
+    flex: 1 1 320px;
+    min-width: 0;
+  }
+
+  .profileHeading {
+    display: flex;
+    align-items: center;
+    gap: 10px 12px;
+    flex-wrap: wrap;
+    min-width: 0;
   }
 
   .headerActions {
@@ -322,20 +376,91 @@ const Header = styled.header`
     align-items: center;
     gap: 12px;
     flex-wrap: wrap;
+    justify-content: flex-end;
+    flex: 0 1 auto;
+  }
+
+  .headerActions > * {
+    flex: 0 0 auto;
+  }
+
+  .headerActions > button {
+    padding: 10px 18px;
+    min-height: 48px;
+  }
+
+  .headerActions > button .content {
+    align-items: center;
+    gap: 10px;
+  }
+
+  .headerActions > button .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1.15;
+    text-align: center;
   }
 
   h2 {
+    margin: 0;
     font-size: 1.4rem;
     font-weight: 600;
     color: ${({ theme }) => theme.text};
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  @media ${DeviceMax.mobile} {
+    .titleGroup,
+    .headerActions {
+      width: 100%;
+    }
+
+    .headerActions {
+      display: grid;
+      grid-template-columns: repeat(
+        var(--header-actions-columns, 1),
+        minmax(0, 1fr)
+      );
+      justify-content: stretch;
+      gap: 10px;
+    }
+
+    .headerActions > * {
+      min-width: 0;
+    }
+
+    .headerActions > button {
+      width: 100%;
+      padding: 10px 12px;
+      min-height: 52px;
+      font-size: 0.9rem;
+    }
+
+    .headerActions > button .content {
+      width: 100%;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .headerActions > button .btn {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
   }
 `;
 
 const StatusPill = styled.span`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 8px 16px;
   border-radius: 999px;
   font-weight: 600;
   font-size: 0.9rem;
+  line-height: 1.1;
+  white-space: nowrap;
   background: var(--bg-success-soft);
   color: var(--color-success);
 

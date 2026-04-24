@@ -13,6 +13,12 @@ const normalizeIdArray = (ids = []) => {
   return Array.from(unique.values());
 };
 
+const toNumericId = (value) => {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
 export async function getPerfilActual({ authUserId } = {}) {
   let resolvedAuthId = authUserId;
 
@@ -36,7 +42,7 @@ export async function getPerfilActual({ authUserId } = {}) {
 
 export async function getEmpleadoByPerfil({ perfilId } = {}) {
   const selectFields =
-    "id, user_id, first_name, last_name, employee_id_number, document_type, document_number, professional_number, telephone, hire_date, termination_date, is_active, puesto_id, shift";
+    "id, user_id, first_name, last_name, employee_id_number, document_type, document_number, professional_number, telephone, hire_date, termination_date, is_active, puesto_id, shift, auditor_financiador_id";
 
   if (!perfilId) return null;
 
@@ -56,6 +62,7 @@ export async function getEmpleadoByPerfil({ perfilId } = {}) {
 
   const puesto = await getPuestoById(data?.puesto_id);
   data.puesto = puesto?.name ?? null;
+  data.clinical_section_access = Boolean(puesto?.clinical_section_access);
 
   return data;
 
@@ -85,4 +92,23 @@ export async function getPerfilesByIds(perfilIds = []) {
 
   if (error) throw error;
   return data ?? [];
+}
+
+export async function updatePerfilRole(perfilId, appRoleId) {
+  const normalizedPerfilId = toNumericId(perfilId);
+  const normalizedRoleId = toNumericId(appRoleId);
+
+  if (!normalizedPerfilId || !normalizedRoleId) {
+    throw new Error("ID de perfil y rol son requeridos.");
+  }
+
+  const { data, error } = await supabase
+    .from(table)
+    .update({ app_role_id: normalizedRoleId })
+    .eq("id", normalizedPerfilId)
+    .select("id, email, app_role_id, app_role:app_roles(id, name)")
+    .maybeSingle();
+
+  if (error) throw error;
+  return data ?? null;
 }

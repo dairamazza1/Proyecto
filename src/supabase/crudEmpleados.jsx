@@ -2,11 +2,27 @@ import { supabase } from "./supabase.config.jsx";
 
 const table = "empleados";
 const selectFields =
-  "id, document_number, first_name, last_name, puesto:puestos_laborales(name), empresa_id, employee_id_number, professional_number, telephone, birthday, genre";
+  "id, document_number, first_name, last_name, puesto:puestos_laborales(name), empresa_id, employee_id_number, professional_number, telephone, birthday, genre, is_active, auditor_financiador_id, auditor_financiador:financiadores(id, code, name)";
+
+const normalizeStatusFilter = (statusFilter = "active") => {
+  const normalized = String(statusFilter ?? "active").trim().toLowerCase();
+  return ["all", "active", "inactive"].includes(normalized)
+    ? normalized
+    : "active";
+};
+
+const applyStatusFilter = (query, statusFilter) => {
+  const normalized = normalizeStatusFilter(statusFilter);
+  if (normalized === "active") return query.eq("is_active", true);
+  if (normalized === "inactive") return query.eq("is_active", false);
+  return query;
+};
+
 export async function getEmpleados({
   empresa_id,
   orderBy = "last_name",
-  ascending = true
+  ascending = true,
+  statusFilter = "active",
 } = {}) {
   let query = supabase
     
@@ -18,6 +34,7 @@ export async function getEmpleados({
     query = query.eq("empresa_id", empresa_id);
   }
 
+  query = applyStatusFilter(query, statusFilter);
 
   const { data, error } = await query;
   if (error) throw error;
@@ -28,7 +45,8 @@ export async function searchEmpleados({
   empresa_id,
   search = "",
   orderBy = "last_name",
-  ascending = true
+  ascending = true,
+  statusFilter = "active",
 } = {}) {
   const term = (search ?? "").trim();
   const isNumeric = /^\d+$/.test(term);
@@ -40,6 +58,7 @@ export async function searchEmpleados({
     .order(orderBy, { ascending })
 
   if (empresa_id) q = q.eq("empresa_id", empresa_id);
+  q = applyStatusFilter(q, statusFilter);
 
   if (!term) {
     const { data, error } = await q;
@@ -69,7 +88,7 @@ export async function searchEmpleados({
     
     .from("empleados")
     .select(
-      "id, document_number, first_name, last_name, puesto:puestos_laborales!inner(name), empresa_id, employee_id_number, professional_number, telephone, birthday, genre"
+      "id, document_number, first_name, last_name, puesto:puestos_laborales!inner(name), empresa_id, employee_id_number, professional_number, telephone, birthday, genre, is_active"
     )
     .order(orderBy, { ascending })
     .ilike("puestos_laborales.name", `%${term}%`);
@@ -77,6 +96,7 @@ export async function searchEmpleados({
   if (empresa_id) {
     puestoQuery = puestoQuery.eq("empresa_id", empresa_id);
   }
+  puestoQuery = applyStatusFilter(puestoQuery, statusFilter);
 
   const { data: puestoData, error: puestoError } = await puestoQuery;
   if (puestoError) throw puestoError;
@@ -156,7 +176,9 @@ export async function getEmpleadoById(id) {
   const { data, error } = await supabase
     
     .from(table)
-    .select("*, puesto:puestos_laborales(name), perfil:perfiles(email)")
+    .select(
+      "*, puesto:puestos_laborales(name), perfil:perfiles(id, email, app_role_id, app_role:app_roles(id, name)), auditor_financiador:financiadores(id, code, name)"
+    )
     .eq("id", id)
     .maybeSingle();
   if (error) throw error;
@@ -202,7 +224,7 @@ export async function getAvailableEmpleados({ empresa_id } = {}) {
     
     .from(table)
     .select(
-      "id, first_name, last_name, employee_id_number, is_active, empresa_id, user_id"
+      "id, first_name, last_name, employee_id_number, is_active, empresa_id, user_id, auditor_financiador_id"
     )
     .eq("is_active", true)
     .is("user_id", null)

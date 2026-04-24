@@ -1,3 +1,5 @@
+import { getArgentinaTodayDateInput } from "./argentinaDateTime";
+
 const safeString = (value) =>
   value === null || value === undefined ? "" : String(value);
 
@@ -41,26 +43,47 @@ export const getPacienteEquipoArea = (row) => {
   return resolveSingleRelation(puesto?.area) ?? resolveSingleRelation(row?.area) ?? null;
 };
 
-export const isPacienteEquipoClinicallyEligible = (row) => {
-  if (typeof row?.clinical_permissions_enabled === "boolean") {
-    return row.clinical_permissions_enabled;
+export const isPacienteEquipoEmpleadoActive = (row) => {
+  const empleado = resolveSingleRelation(row?.empleado) ?? row ?? null;
+  return empleado?.is_active !== false;
+};
+
+export const hasPacienteEquipoClinicalSectionAccess = (row) => {
+  const empleado = resolveSingleRelation(row?.empleado) ?? row ?? null;
+  const puesto = getPacienteEquipoPuesto(row);
+
+  if (typeof puesto?.clinical_section_access === "boolean") {
+    return puesto.clinical_section_access;
   }
 
-  const area = getPacienteEquipoArea(row);
-  if (typeof area?.grants_patient_clinical_permissions === "boolean") {
-    return area.grants_patient_clinical_permissions;
+  if (typeof empleado?.clinical_section_access === "boolean") {
+    return empleado.clinical_section_access;
+  }
+
+  if (typeof row?.clinical_section_access === "boolean") {
+    return row.clinical_section_access;
   }
 
   return false;
 };
 
+export const isPacienteEquipoClinicallyEligible = (row) => {
+  if (!isPacienteEquipoEmpleadoActive(row)) {
+    return false;
+  }
+
+  return hasPacienteEquipoClinicalSectionAccess(row);
+};
+
 export const isPacienteEquipoAssignmentActive = (
   row,
-  referenceDate = normalizeDateKey(new Date()),
+  referenceDate = getArgentinaTodayDateInput(),
 ) => {
+  if (!isPacienteEquipoEmpleadoActive(row)) return false;
+
   const endDate = normalizeDateKey(row?.end_date);
   if (!endDate) return true;
-  return !referenceDate || endDate >= referenceDate;
+  return !referenceDate || endDate > referenceDate;
 };
 
 export const sortPacienteEquipoRows = (rows = [], referenceDate) =>
@@ -93,7 +116,7 @@ export const mapPacienteEquipoRow = (row) => {
     puesto,
     area,
     professional_label: buildPacienteEquipoProfesionalLabel({ ...row, empleado }),
-    clinical_permissions_enabled: isPacienteEquipoClinicallyEligible({
+    clinical_section_access: hasPacienteEquipoClinicalSectionAccess({
       ...row,
       empleado,
       puesto,

@@ -13,11 +13,17 @@ import { Device, DeviceMax } from "../../styles/breakpoints";
 import { useNavigate } from "react-router-dom";
 // import { useAuthStore } from "../../store/AuthStore";
 
+const EMPLEADO_STATUS_FILTERS = [
+  { id: "all", label: "Todos" },
+  { id: "active", label: "Activos" },
+  { id: "inactive", label: "Inactivos" },
+];
 
 export function EmpleadosTemplate() {
   // const { cerrarSesion } = useAuthStore();
   const navigate = useNavigate();
-  const { dataEmpleados, setBuscador } = useEmpleadosStore();
+  const { dataEmpleados, setBuscador, estadoFiltro, setEstadoFiltro } =
+    useEmpleadosStore();
   const { dataSucursales, sucursalSeleccionada, setSucursalSeleccionada } = useSucursalesStore();
   
   // Hook de permisos
@@ -36,7 +42,24 @@ export function EmpleadosTemplate() {
     <Container>
       {/* <button onClick={cerrarSesion}>cerrar</button> */}
       <section className="header">
-        <Title>Empleados</Title>
+        <div className="titleBlock">
+          <Title>Empleados</Title>
+          <div
+            className="estado-filter"
+            aria-label="Filtrar empleados por estado"
+          >
+            {EMPLEADO_STATUS_FILTERS.map((filter) => (
+              <button
+                key={filter.id}
+                type="button"
+                className={estadoFiltro === filter.id ? "active" : ""}
+                onClick={() => setEstadoFiltro(filter.id)}
+              >
+                {filter.label}
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="acciones">
           <div className="selector-sucursal">
             <select 
@@ -44,7 +67,7 @@ export function EmpleadosTemplate() {
               onChange={handleSucursalChange}
               className="select-sucursal"
             >
-              <option value="">Sucursales</option>
+              <option value="">Todas las sucursales</option>
               {dataSucursales?.map((sucursal) => (
                 <option key={sucursal.id} value={sucursal.id}>
                   {sucursal.name}
@@ -60,7 +83,7 @@ export function EmpleadosTemplate() {
               <Btn1
                 funcion={nuevoRegistro}
                 bgcolor={v.colorPrincipal}
-                titulo="nuevo"
+                titulo="Agregar empleado"
                 icono={<v.iconoagregar />}
               ></Btn1>
             </div>
@@ -117,10 +140,16 @@ const Container = styled.div`
     }
   }
 
+  .titleBlock {
+    display: grid;
+    gap: 8px;
+    align-items: start;
+  }
+
   .acciones {
     display: flex;
     align-items: center;
-    gap: 15px;
+    gap: 12px;
     flex-wrap: nowrap;
     justify-content: flex-end;
     width: 100%;
@@ -128,12 +157,13 @@ const Container = styled.div`
       width: auto;
     }
     @media ${DeviceMax.tablet} {
+      flex-wrap: wrap;
       justify-content: stretch;
       gap: 10px;
     }
   }
   .selector-sucursal {
-    width: min(240px, 100%);
+    width: min(260px, 100%);
     @media ${DeviceMax.tablet} {
       width: 100%;
     }
@@ -159,6 +189,47 @@ const Container = styled.div`
     width: min(340px, 100%);
     @media ${DeviceMax.tablet} {
       width: 100%;
+    }
+  }
+  .estado-filter {
+    display: inline-flex;
+    align-items: center;
+    height: 40px;
+    padding: 3px;
+    border: 1px solid ${({ theme }) => theme.color2};
+    border-radius: 999px;
+    background: ${({ theme }) => theme.bgtotal};
+    flex: 0 0 auto;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+
+    button {
+      min-width: 70px;
+      height: 32px;
+      padding: 0 10px;
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+      color: ${({ theme }) => theme.text};
+      font-size: 0.82rem;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 120ms ease, color 120ms ease, box-shadow 120ms ease;
+
+      &.active {
+        background: ${({ theme }) => theme.bg};
+        color: ${({ theme }) => theme.color1};
+        box-shadow: var(--shadow-elev-1);
+      }
+    }
+
+    @media ${DeviceMax.tablet} {
+      width: 100%;
+      height: 42px;
+
+      button {
+        flex: 1;
+      }
     }
   }
   .btn-nuevo {

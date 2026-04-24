@@ -1,10 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "./AuthStoreWithPermissions.jsx";
-import {
-  computeEffectivePermission,
-  fetchPermissions,
-} from "../supabase/crudPermisos.jsx";
+import { computeEffectivePermission, fetchPermissions } from "../supabase/crudPermisos.jsx";
 import { PermissionsContext } from "./permissionsContext.jsx";
 
 const emptyPermission = {
@@ -42,7 +39,7 @@ const buildPermissionsMap = (rows, roleId, puestoId) => {
     const featureName = featureRow?.feature?.name;
     if (!featureName) return;
 
-    const effective = computeEffectivePermission(roleId, featureId, puestoId, rows);
+    const effective = computeEffectivePermission(roleId, featureId, rows, puestoId);
     map.set(featureName, {
       feature_id: featureId,
       ...effective,
@@ -73,7 +70,6 @@ export function PermissionsProvider({ children }) {
       fetchPermissions({
         roleId,
         puestoId,
-        includeGeneralFallback: puestoId !== null,
       }),
     staleTime: 1000 * 60 * 5,
     cacheTime: 1000 * 60 * 10,
